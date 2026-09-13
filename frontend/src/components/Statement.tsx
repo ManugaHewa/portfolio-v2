@@ -4,7 +4,7 @@ import { Reveal } from "./Reveal";
 
 const LINES = [
   "Every claim on this page is backed by code you can open.",
-  "Typed from the database to the browser — no guessing at the boundary.",
+  "Typed from the database to the browser.",
   "Tests, CI, containers: the boring parts, done anyway.",
 ];
 

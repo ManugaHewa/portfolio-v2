@@ -1,28 +1,87 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
 import { Nav } from "./components/Nav";
 import { Hero } from "./components/Hero";
 import { Statement } from "./components/Statement";
 import { ProjectCard } from "./components/ProjectCard";
 import { ProjectModal } from "./components/ProjectModal";
-import { SkillsGraph } from "./components/SkillsGraph";
-import { ContactForm } from "./components/ContactForm";
+import { SkillsSection } from "./components/SkillsSection";
+import { ContactSection } from "./components/ContactSection";
 import { Reveal } from "./components/Reveal";
+import { SpotlightPanel } from "./components/SpotlightPanel";
+import { CapabilityIcon } from "./components/CapabilityIcon";
+import type { CapabilityIconId } from "./components/CapabilityIcon";
 import { SmoothScroll } from "./components/SmoothScroll";
 import { api } from "./api";
 import type { ProjectDetail, ProjectSummary } from "./types";
+
+// One glyph, one short line. The detail behind each of these lives in the
+// skills map above and the project case studies below, so repeating it here
+// only asks the reader to absorb it twice.
+const CAPABILITIES: { icon: CapabilityIconId; title: string; body: string }[] = [
+  {
+    icon: "layers",
+    title: "Full-stack ownership",
+    body: "One schema, from database column to rendered pixel.",
+  },
+  {
+    icon: "shield",
+    title: "Tested, not just working",
+    body: "Proven by machines on both sides of the wire.",
+  },
+  {
+    icon: "ship",
+    title: "Shipped, not just coded",
+    body: "The pipeline decides when a change is done.",
+  },
+  {
+    icon: "cursor",
+    title: "Interfaces with intent",
+    body: "Motion tracks scroll. Every effect has an off switch.",
+  },
+  {
+    icon: "database",
+    title: "Data modelled on purpose",
+    body: "Migrations replayed from scratch, on every push.",
+  },
+  {
+    icon: "lock",
+    title: "Security as a default",
+    body: "Validated at the edge. Secrets never reach the repo.",
+  },
+];
+
+const IMPACT = [
+  {
+    title: "Delivery speed",
+    value: "~30% faster",
+    note: "Release cycles, via test automation and CI guardrails.",
+  },
+  {
+    title: "Reliability",
+    value: "Idempotent import",
+    note: "Safe upserts. Re-running a file cannot duplicate records.",
+  },
+  {
+    title: "Real-time UX",
+    value: "Live dashboard",
+    note: "WebSocket progress while a long import runs.",
+  },
+];
 
 export default function App() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectDetail | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [scrollPct, setScrollPct] = useState(0);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+  const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     api
       .getProjects()
       .then(setProjects)
-      .catch(() => setLoadError(true));
+      .catch(() => setLoadError(true))
+      .finally(() => setLoadingProjects(false));
   }, []);
 
   useEffect(() => {
@@ -30,9 +89,10 @@ export default function App() {
     const onScroll = () => {
       const max = doc.scrollHeight - doc.clientHeight;
       const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
-      setScrollPct(pct);
-      // Drives the ambient background tint (see .bg-scroll-tint) — cheap
-      // enough to set every scroll tick without going through React state.
+      // Both the bar and the ambient background tint are written straight to
+      // the DOM. Holding this in React state re-rendered the whole page tree
+      // on every scroll event, which with smooth scrolling means every frame.
+      if (progressRef.current) progressRef.current.style.width = `${pct}%`;
       doc.style.setProperty("--scroll", String(pct / 100));
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -52,8 +112,12 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <SmoothScroll />
 
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+
       <div className="scroll-progress" aria-hidden="true">
-        <div className="scroll-progress-bar" style={{ width: `${scrollPct}%` }} />
+        <div className="scroll-progress-bar" ref={progressRef} />
       </div>
 
       <Nav />
@@ -63,124 +127,108 @@ export default function App() {
 
         <Statement />
 
-        <section className="section container" id="about">
-          <Reveal as="section">
-            <h2 className="section-title">What I build</h2>
-            <p className="section-subtitle">
-              Fewer words, more signal: systems that are reliable, fast, and pleasant to use —
-              and that I can defend line by line in an interview.
-            </p>
+        {/* Promoted to the front of the page: the map is the clearest single
+            artefact on the site, so it argues the case before the prose does. */}
+        <SkillsSection />
+
+        <section className="section container" id="about" aria-labelledby="about-heading">
+          <Reveal>
+            <div className="section-head-row">
+              <div>
+                <p className="kicker">What the work looks like</p>
+                <h2 className="section-title" id="about-heading">
+                  Six things I bring to a codebase
+                </h2>
+              </div>
+              <p className="section-note">Hold me to these in an interview.</p>
+            </div>
           </Reveal>
 
           <div className="about-grid">
-            <Reveal delay={0}>
-              <div className="panel">
-                <h3>Full-stack ownership</h3>
-                <p>
-                  Typed React on the frontend, an Express + Prisma API on the backend, one
-                  schema shared end to end — no guesswork at the boundary.
-                </p>
-              </div>
-            </Reveal>
-            <Reveal delay={80}>
-              <div className="panel">
-                <h3>Tested, not just working</h3>
-                <p>
-                  Vitest + React Testing Library on the frontend, Vitest + Supertest on the
-                  backend — behaviour is checked by machines, not just eyeballed.
-                </p>
-              </div>
-            </Reveal>
-            <Reveal delay={160}>
-              <div className="panel">
-                <h3>Shipped, not just coded</h3>
-                <p>
-                  Docker Compose for local dev, a multi-stage Dockerfile for production, and
-                  GitHub Actions running migrations + tests on every push.
-                </p>
-              </div>
-            </Reveal>
+            {CAPABILITIES.map((c, i) => (
+              <Reveal key={c.title} delay={i * 60}>
+                <SpotlightPanel>
+                  <span className="capability-glyph" aria-hidden="true">
+                    <CapabilityIcon id={c.icon} />
+                  </span>
+                  <h3>{c.title}</h3>
+                  <p>{c.body}</p>
+                </SpotlightPanel>
+              </Reveal>
+            ))}
           </div>
 
           <Reveal delay={120}>
             <div className="impact-strip">
               <div className="impact-grid">
-                <div className="impact-item">
-                  <div className="impact-title">Architecture</div>
-                  <div className="impact-value">Typed end to end</div>
-                  <div className="impact-note">
-                    Shared TypeScript types between the API and the UI keep the contract honest.
+                {IMPACT.map((item) => (
+                  <div className="impact-item" key={item.title}>
+                    <div className="impact-title">{item.title}</div>
+                    <div className="impact-value">{item.value}</div>
+                    <div className="impact-note">{item.note}</div>
                   </div>
-                </div>
-                <div className="impact-item">
-                  <div className="impact-title">Quality bar</div>
-                  <div className="impact-value">CI on every push</div>
-                  <div className="impact-note">
-                    GitHub Actions spins up a real Postgres service and runs the full test suite.
-                  </div>
-                </div>
-                <div className="impact-item">
-                  <div className="impact-title">Delivery</div>
-                  <div className="impact-value">Container-first</div>
-                  <div className="impact-note">
-                    Docker Compose locally, a production Dockerfile for the backend — no
-                    "works on my machine" surprises.
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </Reveal>
         </section>
 
-        <section className="section skills-section" id="skills">
-          <div className="container">
-            <Reveal as="section">
-              <h2 className="section-title">Skills</h2>
-              <p className="section-subtitle">
-                Sixteen technologies, one live network — drag it around.
-              </p>
-            </Reveal>
-          </div>
-
-          <Reveal delay={80} className="skills-reveal">
-            <SkillsGraph />
-          </Reveal>
-        </section>
-
-        <section className="section container" id="projects">
-          <Reveal as="section">
-            <h2 className="section-title">Featured projects</h2>
-            <p className="section-subtitle">
-              Real APIs, real databases, real tests — click a card for the details.
-            </p>
+        <section className="section container" id="projects" aria-labelledby="projects-heading">
+          <Reveal>
+            <div className="section-head-row">
+              <div>
+                <p className="kicker">Evidence</p>
+                <h2 className="section-title" id="projects-heading">
+                  Featured projects
+                </h2>
+              </div>
+              <p className="section-note">Click a card for the full case study.</p>
+            </div>
           </Reveal>
 
           {loadError && (
-            <p className="muted" role="alert">
-              Couldn't load projects from the API — is the backend running?
-            </p>
+            <div className="load-error" role="alert">
+              <strong>Couldn't reach the API.</strong>
+              <span>
+                The projects come from Express and Postgres rather than a hardcoded array, so
+                this section needs the backend running.
+              </span>
+            </div>
           )}
 
           <div className="projects-grid">
+            {/* Placeholders rather than an empty grid: the section otherwise
+                collapses to its heading and then jumps when the data lands. */}
+            {loadingProjects &&
+              !loadError &&
+              [0, 1, 2].map((i) => (
+                <div className="project-skeleton" key={i} aria-hidden="true">
+                  <span className="skeleton-line skeleton-title" />
+                  <span className="skeleton-line" />
+                  <span className="skeleton-line skeleton-short" />
+                  <div className="skeleton-chips">
+                    {[0, 1, 2, 3].map((c) => (
+                      <span className="skeleton-chip" key={c} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
             {projects.map((p, i) => (
               <Reveal key={p.slug} delay={i * 70}>
                 <ProjectCard project={p} onOpen={openProject} />
               </Reveal>
             ))}
           </div>
+
+          {loadingProjects && (
+            <p className="visually-hidden" role="status">
+              Loading projects
+            </p>
+          )}
         </section>
 
-        <section className="section container" id="contact">
-          <Reveal as="section">
-            <h2 className="section-title">Contact</h2>
-            <p className="section-subtitle">
-              Have a role, project, or question in mind? Send a message and I'll reply directly.
-            </p>
-          </Reveal>
-          <Reveal delay={80}>
-            <ContactForm />
-          </Reveal>
-        </section>
+        <ContactSection />
       </main>
 
       <ProjectModal project={activeProject} onClose={() => setActiveProject(null)} />

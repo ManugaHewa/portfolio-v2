@@ -1,45 +1,75 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+// Order matches the page: the skills map comes first, before the prose.
 const LINKS = [
-  { href: "#about", label: "About" },
   { href: "#skills", label: "Skills" },
+  { href: "#about", label: "About" },
   { href: "#projects", label: "Projects" },
   { href: "#contact", label: "Contact" },
 ];
 
 export function Nav() {
-  const [active, setActive] = useState("#about");
+  const [active, setActive] = useState("#skills");
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 24);
 
-      const y = window.scrollY + window.innerHeight * 0.35;
+      // A line a third of the way down the viewport decides the active
+      // section. getBoundingClientRect rather than offsetTop, because the
+      // pinned hero sits inside a GSAP pin-spacer and offsetTop is measured
+      // against an offsetParent that the pin can change.
+      const line = window.innerHeight * 0.34;
+      let current = LINKS[0].href;
 
-      // Sort by actual live position instead of a hardcoded order, so a
-      // nested/adjacent section can't hijack the "active" state the way
-      // it did in the static-site version.
-      const sections = LINKS.map((l) => document.querySelector(l.href))
-        .filter((el): el is HTMLElement => el !== null)
-        .sort((a, b) => a.offsetTop - b.offsetTop);
-
-      let current = sections[0]?.id;
-      for (const s of sections) {
-        if (s.offsetTop <= y) current = s.id;
+      for (const link of LINKS) {
+        const el = document.querySelector(link.href);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= line) current = link.href;
       }
-      if (current) setActive(`#${current}`);
+
+      // At the very bottom the last section may never cross the line, so
+      // make sure the final link still lights up when the page bottoms out.
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+      setActive(atBottom ? LINKS[LINKS.length - 1].href : current);
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, []);
+
+  // The mobile menu is an overlay, so it should close the way overlays do:
+  // on Escape, and on a click that lands outside it.
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!navRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [open]);
 
   return (
     <header className={`site-header${scrolled ? " is-scrolled" : ""}`}>
-      <nav className="nav">
+      <nav className="nav" ref={navRef} aria-label="Primary">
         <a className="brand" href="#top" aria-label="Home">
           <span className="brand-mark">MH</span>
           <span className="brand-text">Manuga Hewa Pathirana</span>
@@ -51,7 +81,7 @@ export function Nav() {
           aria-controls="navLinks"
           onClick={() => setOpen((o) => !o)}
         >
-          Menu
+          {open ? "Close" : "Menu"}
         </button>
 
         <div className={`nav-links${open ? " is-open" : ""}`} id="navLinks">
@@ -60,6 +90,7 @@ export function Nav() {
               key={l.href}
               className={`nav-link${active === l.href ? " is-active" : ""}`}
               href={l.href}
+              aria-current={active === l.href ? "true" : undefined}
               onClick={() => setOpen(false)}
             >
               {l.label}

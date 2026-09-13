@@ -16,7 +16,7 @@ export function Hero() {
 
     // gsap.context scopes every selector below to this element and gives us a
     // single revert() that kills the tweens, the ScrollTriggers and the pin
-    // spacer, and restores the inline styles — so StrictMode's double-mount
+    // spacer, and restores the inline styles, so StrictMode's double-mount
     // and HMR can't leave a second pinned copy behind.
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
@@ -129,9 +129,7 @@ export function Hero() {
               I turn ideas into shipped, production-grade software.
             </h1>
             <p className="hero-subtitle hero-stagger">
-              I'm Manuga Hewa Pathirana — I build clean, typed, well-tested web and mobile
-              products end to end: React on the front, Node/Express + PostgreSQL underneath,
-              and CI that actually proves the thing works.
+              I'm Manuga Hewa Pathirana. I build typed, tested, full-stack products end to end.
             </p>
             <div className="hero-actions hero-stagger">
               <a className="btn btn-primary" href="#projects">
@@ -142,11 +140,26 @@ export function Hero() {
               </a>
             </div>
             <div className="hero-meta hero-stagger">
+              <a
+                className="chip"
+                href="https://github.com/ManugaHewa"
+                target="_blank"
+                rel="noreferrer"
+              >
+                GitHub
+              </a>
+              <a
+                className="chip"
+                href="https://www.linkedin.com/in/manugahewa"
+                target="_blank"
+                rel="noreferrer"
+              >
+                LinkedIn
+              </a>
               <span className="chip">TypeScript</span>
               <span className="chip">React</span>
               <span className="chip">Node.js</span>
-              <span className="chip">PostgreSQL</span>
-              <span className="chip">Docker</span>
+              <span className="chip chip-muted">Milton, ON</span>
             </div>
           </div>
 

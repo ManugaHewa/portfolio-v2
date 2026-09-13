@@ -10,7 +10,7 @@ const contactSchema = z.object({
   message: z.string().min(10).max(2000),
 });
 
-// POST /api/contact — persists the message and (in a real deploy)
+// POST /api/contact: persists the message and (in a real deploy)
 // would also trigger an email/Slack notification via a mail provider.
 contactRouter.post("/", async (req, res) => {
   const parsed = contactSchema.safeParse(req.body);

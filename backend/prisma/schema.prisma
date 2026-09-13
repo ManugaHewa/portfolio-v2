@@ -8,17 +8,50 @@ generator client {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  title       String
-  subtitle    String
-  stack       String[]
-  githubUrl   String?
-  liveUrl     String?
-  problem     String?
-  scope       String[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id       String @id @default(cuid())
+  slug     String @unique
+  title    String
+  subtitle String
+
+  // Card-level fields.
+  stack String[]
+
+  // Framing: who it was for, what I did, and when.
+  role     String?
+  timeline String?
+  context  String?
+
+  // The case study itself. Every list is optional in practice: a small
+  // project fills in two of them, a capstone fills in most.
+  problem         String?
+  scope           String[]
+  stakeholders    String[]
+  requirements    String[]
+  nonFunctional   String[]
+  deliveryProcess String[]
+  risks           String[]
+  outcomes        String[]
+  highlights      String[]
+
+  links ProjectLink[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// One project can have several labelled links (the capstone has a separate
+// frontend and backend repository), which a pair of githubUrl/liveUrl columns
+// could not represent without inventing a third.
+model ProjectLink {
+  id       String @id @default(cuid())
+  label    String
+  url      String
+  position Int    @default(0)
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@index([projectId])
 }
 
 model ContactMessage {

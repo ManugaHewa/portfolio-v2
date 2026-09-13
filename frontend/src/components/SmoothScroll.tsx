@@ -2,11 +2,15 @@ import { useEffect } from "react";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { registerLenis } from "../lib/scrollLock";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Lenis smooths native scroll input (it still drives real window.scrollY —
-// no virtual wrapper) so every scroll-linked effect elsewhere in the app
+// Clears the sticky header when an in-page link lands on a section.
+const HEADER_OFFSET = -76;
+
+// Lenis smooths native scroll input (it still drives real window.scrollY, no
+// virtual wrapper) so every scroll-linked effect elsewhere in the app
 // (useScroll, IntersectionObserver, the progress bar) keeps working as-is.
 //
 // It runs off gsap.ticker rather than its own requestAnimationFrame: with
@@ -25,7 +29,13 @@ export function SmoothScroll() {
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
       autoRaf: false,
+      // Lenis takes over in-page anchor clicks. Without this the nav jumps
+      // instantly while everything else on the page glides, which reads as a
+      // bug rather than as speed.
+      anchors: { offset: HEADER_OFFSET },
     });
+
+    registerLenis(lenis);
 
     const update = () => ScrollTrigger.update();
     lenis.on("scroll", update);
@@ -38,6 +48,7 @@ export function SmoothScroll() {
     gsap.ticker.lagSmoothing(0);
 
     return () => {
+      registerLenis(null);
       gsap.ticker.remove(tick);
       gsap.ticker.lagSmoothing(500, 33); // GSAP's default
       lenis.off("scroll", update);
