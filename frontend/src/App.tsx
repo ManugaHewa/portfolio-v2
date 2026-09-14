@@ -8,6 +8,7 @@ import { ProjectModal } from "./components/ProjectModal";
 import { SkillsSection } from "./components/SkillsSection";
 import { ContactSection } from "./components/ContactSection";
 import { Reveal } from "./components/Reveal";
+import { SectionHead } from "./components/SectionHead";
 import { SpotlightPanel } from "./components/SpotlightPanel";
 import { CapabilityIcon } from "./components/CapabilityIcon";
 import type { CapabilityIconId } from "./components/CapabilityIcon";
@@ -132,17 +133,13 @@ export default function App() {
         <SkillsSection />
 
         <section className="section container" id="about" aria-labelledby="about-heading">
-          <Reveal>
-            <div className="section-head-row">
-              <div>
-                <p className="kicker">What the work looks like</p>
-                <h2 className="section-title" id="about-heading">
-                  Six things I bring to a codebase
-                </h2>
-              </div>
-              <p className="section-note">Hold me to these in an interview.</p>
-            </div>
-          </Reveal>
+          <SectionHead
+            index="02"
+            kicker="What the work looks like"
+            title="Six things I bring to a codebase"
+            id="about-heading"
+            note="Hold me to these in an interview."
+          />
 
           <div className="about-grid">
             {CAPABILITIES.map((c, i) => (
@@ -174,17 +171,13 @@ export default function App() {
         </section>
 
         <section className="section container" id="projects" aria-labelledby="projects-heading">
-          <Reveal>
-            <div className="section-head-row">
-              <div>
-                <p className="kicker">Evidence</p>
-                <h2 className="section-title" id="projects-heading">
-                  Featured projects
-                </h2>
-              </div>
-              <p className="section-note">Click a card for the full case study.</p>
-            </div>
-          </Reveal>
+          <SectionHead
+            index="03"
+            kicker="Evidence"
+            title="Featured projects"
+            id="projects-heading"
+            note="Click a card for the full case study."
+          />
 
           {loadError && (
             <div className="load-error" role="alert">

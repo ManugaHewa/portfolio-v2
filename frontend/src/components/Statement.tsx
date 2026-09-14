@@ -8,7 +8,7 @@ const LINES = [
   "Tests, CI, containers: the boring parts, done anyway.",
 ];
 
-const TINTS = ["rgba(78,242,255,0.16)", "rgba(167,139,250,0.18)", "rgba(255,79,216,0.16)"];
+const TINTS = ["rgba(240,169,44,0.10)", "rgba(255,255,255,0.05)", "rgba(240,169,44,0.07)"];
 
 function Line({ text, index, progress }: { text: string; index: number; progress: ReturnType<typeof useScroll>["scrollYProgress"] }) {
   const n = LINES.length;

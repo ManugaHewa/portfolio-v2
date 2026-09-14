@@ -1,5 +1,6 @@
 import { ContactForm } from "./ContactForm";
 import { Reveal } from "./Reveal";
+import { SectionHead } from "./SectionHead";
 
 const ROUTES = [
   {
@@ -40,16 +41,13 @@ const EXPECTATIONS = [
 export function ContactSection() {
   return (
     <section className="section container" id="contact" aria-labelledby="contact-heading">
-      <Reveal>
-        <p className="kicker">Next step</p>
-        <h2 className="section-title" id="contact-heading">
-          Let's talk about the work
-        </h2>
-        <p className="section-subtitle section-subtitle-wide">
-          Posted to the Express API, validated with Zod, stored in Postgres. The form is itself
-          a working piece of the stack above.
-        </p>
-      </Reveal>
+      <SectionHead
+        index="04"
+        kicker="Next step"
+        title="Let's talk about the work"
+        id="contact-heading"
+        note="Validated with Zod, stored in Postgres."
+      />
 
       <div className="contact-layout">
         <Reveal className="contact-main">

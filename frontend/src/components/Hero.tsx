@@ -71,7 +71,7 @@ export function Hero() {
               scrollTrigger: {
                 trigger: root,
                 start: "top top",
-                end: "+=85%",
+                end: "+=62%",
                 pin: true,
                 // Direct scrub, no smoothing lag: Lenis already smooths the
                 // scroll position feeding this.

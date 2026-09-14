@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { SkillsGraph } from "./SkillsGraph";
 import { Reveal } from "./Reveal";
+import { SectionHead } from "./SectionHead";
 import { CATEGORIES, CATEGORY_BY_ID, SKILLS } from "../skills";
 import type { Category, CategoryId, Skill } from "../skills";
 
@@ -142,16 +143,13 @@ export function SkillsSection() {
   return (
     <section className="section skills-section" id="skills" aria-labelledby="skills-heading">
       <div className="container">
-        <Reveal>
-          <p className="kicker">The stack, as a system</p>
-          <h2 className="section-title" id="skills-heading">
-            {SKILLS.length} technologies, one nervous system
-          </h2>
-          <p className="section-subtitle section-subtitle-wide">
-            A flat list tells you what someone has touched, not how it holds together. Drag the
-            map. Click any node.
-          </p>
-        </Reveal>
+        <SectionHead
+          index="01"
+          kicker="The stack, as a system"
+          title={`${SKILLS.length} technologies, one nervous system`}
+          id="skills-heading"
+          note="Drag the map. Click any node."
+        />
 
         <Reveal delay={60}>
           <div className="skills-stats">

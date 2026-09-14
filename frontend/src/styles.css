@@ -1,18 +1,49 @@
 :root{
-  --bg: #070811;
-  --bg-subtle: #0f1117;
-  --panel: rgba(255,255,255,0.06);
-  --panel-hover: rgba(255,255,255,0.10);
-  --border: rgba(255,255,255,0.12);
-  --text: rgba(255,255,255,0.92);
-  --muted: rgba(255,255,255,0.68);
-  --muted2: rgba(255,255,255,0.52);
-  --cyan:#4ef2ff;
-  --purple:#a78bfa;
-  --pink:#ff4fd8;
-  --shadow: 0 18px 60px rgba(0,0,0,0.55);
-  --radius: 18px;
-  --container: 1280px;
+  /* Ink: neutral rather than blue-black, so the accent is the only warmth. */
+  --bg: #0a0a0c;
+  --surface-1: #101014;
+  --surface-2: #16161b;
+  --surface-3: #1c1c22;
+
+  /* Hairlines, not frosted glass. Solid values read crisper at 1px. */
+  --line: #26262e;
+  --line-strong: #33333d;
+  --line-soft: #1a1a20;
+
+  --text: #f2f2f4;
+  --text-2: #a6a6b0;
+  /* Lightened from #6e6e7a, which measured 3.93:1 on the ink and failed
+     the 4.5:1 floor for the small label text it is used on. */
+  --text-3: #7b7b87;
+
+  /* One interactive accent. Deliberately clear of every domain hue below, so
+     "this is interactive" never reads as "this is a category". */
+  --accent: #f0a92c;
+  --accent-hover: #ffc054;
+  --accent-soft: rgba(240,169,44,0.12);
+  --accent-line: rgba(240,169,44,0.38);
+
+  /* Legacy aliases: older rules still reference these names. */
+  --bg-subtle: var(--surface-1);
+  --panel: var(--surface-2);
+  --panel-hover: var(--surface-3);
+  --border: var(--line);
+  --muted: var(--text-2);
+  --muted2: var(--text-3);
+  --cyan: var(--accent);
+  --purple: var(--accent);
+  --pink: var(--accent);
+
+  --shadow: 0 20px 50px rgba(0,0,0,0.5);
+
+  /* Tighter radii: precise rather than bubbly. */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+  --radius: var(--r-lg);
+
+  --container: 1180px;
   --transition: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -38,11 +69,9 @@ body::before{
   inset:0;
   z-index:-1;
   background:
-    radial-gradient(1400px 700px at 20% 8%, rgba(167,139,250,.12), transparent 55%),
-    radial-gradient(1200px 680px at 78% 6%, rgba(78,242,255,.10), transparent 55%),
-    radial-gradient(1100px 640px at 55% 88%, rgba(255,79,216,.08), transparent 50%),
-    linear-gradient(120deg, rgba(12,14,24,0.96), rgba(7,8,17,0.98));
-  filter: hue-rotate(calc(var(--scroll, 0) * 55deg));
+    radial-gradient(1200px 620px at 22% 0%, rgba(255,255,255,0.035), transparent 60%),
+    radial-gradient(900px 520px at 82% 8%, rgba(240,169,44,0.05), transparent 58%),
+    linear-gradient(180deg, #0c0c10, var(--bg));
 }
 
 a{ color:inherit; text-decoration:none; }
@@ -98,14 +127,14 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 
 .brand:hover {
-  background: rgba(78,242,255,0.08);
+  background: rgba(240,169,44,0.08);
 }
 
 .brand-mark{
   width:34px; height:34px;
   border-radius:12px;
   display:grid; place-items:center;
-  background: linear-gradient(135deg, rgba(78,242,255,.18), rgba(255,79,216,.14));
+  background: linear-gradient(135deg, rgba(240,169,44,.18), rgba(120,120,140,.14));
   border:1px solid rgba(255,255,255,0.12);
   box-shadow: 0 10px 30px rgba(0,0,0,.35);
   font-weight:800;
@@ -185,9 +214,9 @@ main > section[id]{ scroll-margin-top: 84px; }
   will-change: transform;
 }
 
-.orb-a{ left:-140px; top:-160px; background: radial-gradient(circle at 30% 30%, rgba(78,242,255,0.75), transparent 60%); }
-.orb-b{ right:-220px; top:-110px; background: radial-gradient(circle at 50% 40%, rgba(255,79,216,0.65), transparent 60%); }
-.orb-c{ left:40%; bottom:-280px; background: radial-gradient(circle at 40% 40%, rgba(167,139,250,0.65), transparent 62%); }
+.orb-a{ left:-140px; top:-160px; background: radial-gradient(circle at 30% 30%, rgba(240,169,44,0.75), transparent 60%); }
+.orb-b{ right:-220px; top:-110px; background: radial-gradient(circle at 50% 40%, rgba(120,120,140,0.65), transparent 60%); }
+.orb-c{ left:40%; bottom:-280px; background: radial-gradient(circle at 40% 40%, rgba(150,150,170,0.65), transparent 62%); }
 
 .grid{
   position:absolute; inset:-40px;
@@ -215,8 +244,8 @@ main > section[id]{ scroll-margin-top: 84px; }
   border-radius: 26px;
   border:1px solid rgba(255,255,255,0.12);
   background:
-    radial-gradient(120% 90% at 20% 30%, rgba(78,242,255,0.10), transparent 55%),
-    radial-gradient(100% 90% at 80% 60%, rgba(255,79,216,0.12), transparent 55%),
+    radial-gradient(120% 90% at 20% 30%, rgba(240,169,44,0.10), transparent 55%),
+    radial-gradient(100% 90% at 80% 60%, rgba(120,120,140,0.12), transparent 55%),
     linear-gradient(135deg, rgba(15,16,28,0.92), rgba(18,16,26,0.88));
   box-shadow: 0 30px 80px rgba(0,0,0,0.55);
   overflow:hidden;
@@ -257,7 +286,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   height:6px;
   border-radius:50%;
   background: linear-gradient(135deg, var(--cyan), var(--pink));
-  box-shadow: 0 0 12px rgba(78,242,255,0.5);
+  box-shadow: 0 0 12px rgba(240,169,44,0.5);
   animation: scrollCueBounce 1.8s ease-in-out infinite;
 }
 
@@ -277,11 +306,11 @@ main > section[id]{ scroll-margin-top: 84px; }
   aspect-ratio: 1/1.1;
   border-radius: 24px;
   background:
-    radial-gradient(120% 120% at 30% 30%, rgba(78,242,255,.35), transparent 55%),
-    radial-gradient(120% 120% at 70% 70%, rgba(255,79,216,.28), transparent 55%),
+    radial-gradient(120% 120% at 30% 30%, rgba(240,169,44,.35), transparent 55%),
+    radial-gradient(120% 120% at 70% 70%, rgba(120,120,140,.28), transparent 55%),
     linear-gradient(135deg, rgba(12,15,28,0.95), rgba(20,18,32,0.85));
   border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 36px 90px rgba(0,0,0,0.60), 0 0 50px rgba(78,242,255,0.22);
+  box-shadow: 0 36px 90px rgba(0,0,0,0.60), 0 0 50px rgba(240,169,44,0.22);
   display:grid;
   place-items:center;
   overflow:hidden;
@@ -299,12 +328,12 @@ main > section[id]{ scroll-margin-top: 84px; }
 .hero-photo-inner{
   width: 170px; height: 170px;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(167,139,250,.45), rgba(78,242,255,.42));
+  background: linear-gradient(135deg, rgba(150,150,170,.45), rgba(240,169,44,.42));
   border:1px solid rgba(255,255,255,0.18);
   display:grid; place-items:center;
   font-weight:800; letter-spacing:2px;
   color: rgba(255,255,255,0.94);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 30px rgba(167,139,250,0.35);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 30px rgba(150,150,170,0.35);
   font-size:20px;
 }
 
@@ -318,11 +347,11 @@ main > section[id]{ scroll-margin-top: 84px; }
 
 .hero-title{
   margin:0 0 18px;
-  font-size: clamp(36px, 6.2vw, 68px);
-  line-height:1.02;
-  letter-spacing:-0.025em;
+  font-size: clamp(40px, 6.6vw, 78px);
+  line-height:0.99;
+  letter-spacing:-0.035em;
   font-weight: 700;
-  background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(78,242,255,0.82));
+  background: linear-gradient(120deg, #ffffff 30%, var(--accent));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -367,13 +396,13 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 
 .btn-primary{
-  background: linear-gradient(135deg, rgba(78,242,255,0.16), rgba(255,79,216,0.12));
-  border-color: rgba(78,242,255,0.3);
+  background: linear-gradient(135deg, rgba(240,169,44,0.16), rgba(120,120,140,0.12));
+  border-color: rgba(240,169,44,0.3);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, rgba(78,242,255,0.25), rgba(255,79,216,0.20));
-  box-shadow: 0 10px 30px rgba(78,242,255,0.2);
+  background: linear-gradient(135deg, rgba(240,169,44,0.25), rgba(120,120,140,0.20));
+  box-shadow: 0 10px 30px rgba(240,169,44,0.2);
 }
 
 .hero-meta{
@@ -394,8 +423,8 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 
 .chip:hover {
-  background: rgba(78,242,255,0.1);
-  border-color: rgba(78,242,255,0.3);
+  background: rgba(240,169,44,0.1);
+  border-color: rgba(240,169,44,0.3);
   color: var(--cyan);
 }
 
@@ -408,7 +437,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   position: relative;
   /* Three lines at roughly 60vh of scroll each. 280vh made the reader work
      noticeably harder than the content justified. */
-  height: 190vh;
+  height: 150vh;
 }
 
 .statement-sticky{
@@ -478,8 +507,8 @@ main > section[id]{ scroll-margin-top: 84px; }
   position:absolute;
   inset:-220px -200px 35% -200px;
   background:
-    radial-gradient(900px 520px at 55% 0%, rgba(167,139,250,0.22), transparent 65%),
-    radial-gradient(780px 480px at 70% 18%, rgba(78,242,255,0.16), transparent 65%),
+    radial-gradient(900px 520px at 55% 0%, rgba(150,150,170,0.22), transparent 65%),
+    radial-gradient(780px 480px at 70% 18%, rgba(240,169,44,0.16), transparent 65%),
     linear-gradient(180deg, rgba(12,14,24,0.0), rgba(12,14,24,0.6));
   opacity:0.9;
   pointer-events:none;
@@ -492,7 +521,7 @@ main > section[id]{ scroll-margin-top: 84px; }
 
 .section-title{
   margin:0 0 8px;
-  font-size: clamp(30px, 3.4vw, 46px);
+  font-size: clamp(32px, 3.8vw, 52px);
   letter-spacing: -0.01em;
   font-weight: 600;
   display:inline-flex;
@@ -507,15 +536,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   height: 0.82em;
   border-radius: 999px;
   background: linear-gradient(180deg, var(--cyan), var(--pink));
-  box-shadow: 0 0 12px rgba(78,242,255,0.4);
-}
-
-.section-subtitle{
-  margin: 10px 0 34px;
-  color: var(--muted);
-  max-width: 80ch;
-  line-height:1.6;
-  font-size: 16px;
+  box-shadow: 0 0 12px rgba(240,169,44,0.4);
 }
 
 .about-grid{
@@ -551,7 +572,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   content: '';
   position: absolute;
   inset: -1px;
-  background: radial-gradient(400px at var(--mx, 50%) var(--my, 0%), rgba(78,242,255,0.1), transparent 60%);
+  background: radial-gradient(400px at var(--mx, 50%) var(--my, 0%), rgba(240,169,44,0.1), transparent 60%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -605,9 +626,9 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 
 .project-card:hover {
-  border-color: rgba(78,242,255,0.3);
+  border-color: rgba(240,169,44,0.3);
   background: rgba(255,255,255,0.08);
-  box-shadow: 0 20px 60px rgba(78,242,255,0.15);
+  box-shadow: 0 20px 60px rgba(240,169,44,0.15);
 }
 
 .project-content {
@@ -667,21 +688,14 @@ main > section[id]{ scroll-margin-top: 84px; }
   position:absolute;
   inset: -10% -10% 0 -10%;
   background:
-    radial-gradient(60% 60% at 50% 20%, rgba(167,139,250,0.14), transparent 65%),
-    radial-gradient(50% 50% at 80% 60%, rgba(78,242,255,0.10), transparent 65%);
+    radial-gradient(60% 60% at 50% 20%, rgba(150,150,170,0.14), transparent 65%),
+    radial-gradient(50% 50% at 80% 60%, rgba(240,169,44,0.10), transparent 65%);
   pointer-events:none;
   z-index:0;
 }
 .skills-section > *{ position:relative; z-index:1; }
 
 /* ===== Skills: the centrepiece ===================================== */
-
-.section-subtitle-wide{
-  max-width: 78ch;
-  font-size: 17px;
-  line-height: 1.72;
-  color: rgba(255,255,255,0.74);
-}
 
 .skills-stats{
   display:grid;
@@ -739,7 +753,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   border-radius: 28px;
   border:1px solid rgba(255,255,255,0.08);
   background:
-    radial-gradient(60% 55% at 50% 45%, rgba(167,139,250,0.10), transparent 70%),
+    radial-gradient(60% 55% at 50% 45%, rgba(150,150,170,0.10), transparent 70%),
     rgba(255,255,255,0.02);
   box-shadow: 0 24px 80px rgba(0,0,0,0.35);
   overflow:hidden;
@@ -1174,7 +1188,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   height: 100%;
   width: 0%;
   background: linear-gradient(90deg, var(--cyan), var(--pink));
-  box-shadow: 0 10px 24px rgba(78,242,255,0.22);
+  box-shadow: 0 10px 24px rgba(240,169,44,0.22);
   transition: width 120ms linear;
 }
 
@@ -1330,8 +1344,8 @@ main > section[id]{ scroll-margin-top: 84px; }
      tracking a cursor rather than sitting at a default 50% 0%. */
   background: radial-gradient(
     260px circle at var(--mx, 50%) var(--my, 0%),
-    rgba(78,242,255,0.16),
-    rgba(167,139,250,0.10) 40%,
+    rgba(240,169,44,0.16),
+    rgba(150,150,170,0.10) 40%,
     transparent 70%
   );
 }
@@ -1467,7 +1481,7 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 .impact-item:hover{
   background: rgba(10,12,20,0.6);
-  border-color: rgba(78,242,255,0.26);
+  border-color: rgba(240,169,44,0.26);
 }
 
 /* --- 6. Contact links: an arrow flies in from the left and the value
@@ -1524,7 +1538,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   border-radius: 24px;
   border: 1px solid rgba(255,255,255,0.10);
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(78,242,255,0.07), transparent 55%),
+    radial-gradient(120% 80% at 0% 0%, rgba(240,169,44,0.07), transparent 55%),
     linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
   box-shadow: 0 24px 70px rgba(0,0,0,0.34);
 }
@@ -1589,9 +1603,9 @@ main > section[id]{ scroll-margin-top: 84px; }
 .contact-form input:focus,
 .contact-form textarea:focus{
   outline: none;
-  border-color: rgba(78,242,255,0.6);
+  border-color: rgba(240,169,44,0.6);
   background: rgba(4,6,14,0.75);
-  box-shadow: 0 0 0 4px rgba(78,242,255,0.13);
+  box-shadow: 0 0 0 4px rgba(240,169,44,0.13);
 }
 .contact-form input[aria-invalid="true"],
 .contact-form textarea[aria-invalid="true"]{
@@ -1660,7 +1674,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   font-size: 22px;
   color: #061018;
   background: linear-gradient(135deg, var(--cyan), #8affc9);
-  box-shadow: 0 0 26px rgba(78,242,255,0.42);
+  box-shadow: 0 0 26px rgba(240,169,44,0.42);
 }
 .contact-success h3{
   margin: 0;
@@ -1714,8 +1728,8 @@ main > section[id]{ scroll-margin-top: 84px; }
   transition: background var(--transition), border-color var(--transition);
 }
 .contact-route:hover{
-  background: rgba(78,242,255,0.07);
-  border-color: rgba(78,242,255,0.28);
+  background: rgba(240,169,44,0.07);
+  border-color: rgba(240,169,44,0.28);
 }
 .contact-route-label{
   grid-area: label;
@@ -1936,20 +1950,6 @@ main > section[id]{ scroll-margin-top: 84px; }
    cards below lead with a glyph or a chip set rather than a paragraph.
 ================================================================== */
 
-.section-head-row{
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 34px;
-}
-.section-head-row .kicker{
-  margin-bottom: 8px;
-}
-.section-head-row .section-title{
-  margin: 0;
-}
 .section-note{
   margin: 0;
   font-size: 14px;
@@ -1966,8 +1966,8 @@ main > section[id]{ scroll-margin-top: 84px; }
   margin-bottom: 16px;
   border-radius: 14px;
   color: var(--cyan);
-  background: linear-gradient(135deg, rgba(78,242,255,0.14), rgba(167,139,250,0.10));
-  border: 1px solid rgba(78,242,255,0.22);
+  background: linear-gradient(135deg, rgba(240,169,44,0.14), rgba(150,150,170,0.10));
+  border: 1px solid rgba(240,169,44,0.22);
   transition: transform var(--transition), color var(--transition),
               border-color var(--transition);
 }
@@ -1977,7 +1977,7 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 .panel-spotlight:hover .capability-glyph{
   color: #fff;
-  border-color: rgba(78,242,255,0.45);
+  border-color: rgba(240,169,44,0.45);
   transform: scale(1.06) rotate(-3deg);
 }
 .panel-spotlight h3{
@@ -2008,7 +2008,7 @@ main > section[id]{ scroll-margin-top: 84px; }
               background var(--transition);
 }
 .project-card:hover .stack-chip{
-  border-color: rgba(78,242,255,0.26);
+  border-color: rgba(240,169,44,0.26);
   color: rgba(255,255,255,0.92);
 }
 .stack-chip-more{
@@ -2031,8 +2031,7 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 
 @media (max-width: 720px){
-  .section-head-row{ align-items: flex-start; }
-}
+  }
 
 @media (prefers-reduced-motion: reduce){
   .panel-spotlight:hover .capability-glyph{ transform: none; }
@@ -2158,3 +2157,301 @@ main > section[id]{ scroll-margin-top: 84px; }
   .skeleton-chip{ animation: none; }
   .nav-link::after{ transition: opacity var(--transition); }
 }
+
+/* ===== Section headers: editorial, numbered, ruled ==================
+   One arrangement for every section. The number and the hairline carry the
+   structure, which matters more now that each section leads with a single
+   line instead of a paragraph.
+==================================================================== */
+
+.section-head{
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+  margin-bottom: clamp(38px, 4.5vw, 62px);
+}
+
+.section-head-meta{
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-top: 10px;
+}
+.section-index{
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.section-kicker{
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+
+.section-head-main{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.section-head .section-title{
+  margin: 0;
+  max-width: 20ch;
+}
+/* The accent bar belonged to the old centred look; the rule and number
+   above do that job now. */
+.section-head .section-title::before{
+  display: none;
+}
+.section-head .section-note{
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-3);
+  max-width: 30ch;
+  text-align: right;
+}
+
+@media (max-width: 860px){
+  .section-head{
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .section-head-meta{ padding-top: 0; }
+  .section-head .section-title{ max-width: none; }
+  .section-head .section-note{ text-align: left; }
+}
+
+/* ===== Surfaces: solid, hairlined, less frosted ==================== */
+
+.panel,
+.domain-card,
+.skills-stat,
+.panel,
+.domain-card,
+.skills-stat,
+.skill-detail,
+.contact-routes,
+.contact-expect{
+  background: var(--surface-1);
+}
+.contact-panel,
+.impact-strip{
+  background: var(--surface-1);
+}
+.project-card{
+  background: var(--surface-1);
+}
+.project-card:hover{
+  background: var(--surface-2);
+  border-color: var(--accent-line);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+}
+.panel:hover{
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+/* Radii tightened across the board: precise rather than pill-shaped. */
+.panel,
+.domain-card,
+.skills-stat,
+.impact-strip,
+.contact-panel,
+.contact-routes,
+.contact-expect,
+.skill-detail,
+.skills-network,
+.project-card,
+.modal-card,
+.hero-frame{
+  border-radius: var(--r-xl);
+}
+.impact-item,
+.contact-availability,
+.project-skeleton,
+.load-error,
+.modal-fact,
+.capability-glyph{
+  border-radius: var(--r-md);
+}
+
+/* ===== Hero: left-aligned, less ornament ========================== */
+
+.hero-frame{
+  background: var(--surface-1);
+  box-shadow: none;
+  padding: clamp(28px, 4vw, 54px);
+}
+/* The three orbs were the loudest thing on the page. Keep one soft lift
+   behind the frame instead of a light show. */
+.orb-b,
+.orb-c{ display: none; }
+.orb-a{
+  left: -10%;
+  top: -20%;
+  width: 640px;
+  height: 640px;
+  opacity: 0.35;
+  background: radial-gradient(circle at 40% 40%, rgba(240,169,44,0.30), transparent 62%);
+}
+.grid{ opacity: 0.18; }
+
+/* ===== Chips, pills, buttons ====================================== */
+
+.chip,
+.stack-chip,
+.meta-pill{
+  border-radius: var(--r-sm);
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+.btn{
+  border-radius: var(--r-md);
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+.btn:hover{
+  background: var(--surface-3);
+  border-color: var(--accent-line);
+  box-shadow: none;
+}
+.btn-primary{
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #171009;
+  font-weight: 600;
+}
+.btn-primary:hover{
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: #171009;
+}
+
+/* ===== Scroll progress: a hairline, not a glow ==================== */
+.scroll-progress-bar{
+  background: var(--accent);
+  box-shadow: none;
+}
+
+/* ===== Header ===================================================== */
+.site-header{
+  background: rgba(10,10,12,0.72);
+  border-bottom: 1px solid transparent;
+}
+.site-header.is-scrolled{
+  background: rgba(10,10,12,0.9);
+  border-bottom-color: var(--line);
+}
+
+/* ===== Fixes from reviewing the rendered page ======================
+   Everything below was found by screenshotting the built site, not by
+   reading the stylesheet.
+================================================================== */
+
+/* The diagonal white-to-amber gradient landed mid-word, so "into" was half
+   coloured and the last two lines were fully amber for no reason. A headline
+   should not look like the colour slipped. */
+.hero-title{
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--text);
+}
+
+/* The old cyan/pink washes turned muddy brown once recoloured. A flat panel
+   with a single amber wash and a crisp monogram reads deliberate instead. */
+.hero-photo{
+  aspect-ratio: 1 / 1;
+  max-width: 400px;
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 120% at 30% 25%, rgba(240,169,44,0.16), transparent 60%),
+    var(--surface-2);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.hero-photo-ring{
+  inset: 14px;
+  border-radius: var(--r-lg);
+  border: 1px dashed rgba(240,169,44,0.28);
+  opacity: 0.8;
+}
+.hero-photo-inner{
+  color: var(--text);
+  text-shadow: none;
+}
+
+/* The frame was a full viewport tall with the right half mostly empty. */
+.hero{
+  min-height: auto;
+  padding: clamp(32px, 5vw, 68px) 0 clamp(40px, 6vw, 88px);
+}
+.hero-inner{ padding: 12px 0 24px; }
+.hero-frame{
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: clamp(24px, 3vw, 48px);
+}
+.hero-title{
+  max-width: 16ch;
+  margin-bottom: 20px;
+}
+.hero-subtitle{ max-width: 48ch; }
+
+/* Links were crammed against the stack chips with no separation. */
+.project-links{
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-soft);
+  width: 100%;
+}
+.project-content{ gap: 0; }
+.project-desc{ margin-bottom: 0; }
+
+/* Inputs kept a blue-black cast from the old palette. */
+.contact-form input,
+.contact-form textarea{
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+.contact-form input:focus,
+.contact-form textarea:focus{
+  background: var(--surface-3);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* The kicker wrapped to two lines inside its 190px column and pushed the
+   number out of line with the title. */
+.section-head{ grid-template-columns: 210px minmax(0, 1fr); }
+.section-kicker{ font-size: 11px; letter-spacing: 0.13em; }
+.section-head-main{ align-items: flex-start; }
+.section-head .section-note{ padding-top: 10px; }
+
+/* The scroll cue sat over dead space at the bottom of a much shorter hero. */
+.scroll-cue{ display: none; }
+
+/* The monogram disc was a grey-to-amber gradient, which mixes to olive mud.
+   A dark disc with an amber rim and amber initials is legible and on-system. */
+.hero-photo-inner{
+  width: 156px;
+  height: 156px;
+  background: var(--surface-1);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 30px;
+  letter-spacing: 3px;
+  box-shadow: 0 0 0 8px rgba(240,169,44,0.06);
+  text-shadow: none;
+}
+
+/* The dashed ring span at this rotation read as stray diagonal lines in the
+   corners rather than as a ring, so it goes. */
+.hero-photo-ring{ display: none; }

@@ -536,7 +536,7 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
         if (em < 0.08) return;
         const lit = synapseGlow[i];
         const cat = neurons[s.a].category ?? neurons[s.b].category;
-        const rgb = cat ? CATEGORY_BY_ID[cat].rgb : [140, 175, 255];
+        const rgb = cat ? CATEGORY_BY_ID[cat].rgb : [130, 130, 145];
         const base = s.bridge ? 0.04 : 0.06 + s.weight * 0.07;
         ctx.strokeStyle =
           lit > 0.01
@@ -550,16 +550,16 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
 
       travelling.forEach(({ px, py, scale, alpha }) => {
         if (alpha < 0.08) return;
-        const rad = 10 * dpr * scale;
+        const rad = 7 * dpr * scale;
         const glow = ctx.createRadialGradient(px, py, 0, px, py, rad);
-        glow.addColorStop(0, `rgba(190,235,255,${0.95 * alpha})`);
-        glow.addColorStop(1, "rgba(190,235,255,0)");
+        glow.addColorStop(0, `rgba(255,240,214,${0.6 * alpha})`);
+        glow.addColorStop(1, "rgba(255,240,214,0)");
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(px, py, rad, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = `rgba(255,255,255,${0.95 * alpha})`;
+        ctx.fillStyle = `rgba(255,248,235,${0.8 * alpha})`;
         ctx.beginPath();
         ctx.arc(px, py, 2 * dpr * scale, 0, Math.PI * 2);
         ctx.fill();
@@ -577,7 +577,7 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
         const depthAlpha = Math.max(0.4, Math.min(1, (scale - 0.5) / 0.9)) * em;
         const isFocus = i === focusIdx;
         const r = (n.r + (reduceMotion ? 0 : n.charge * 3) + (isFocus ? 3 : 0)) * dpr * scale;
-        const rgb = n.category ? CATEGORY_BY_ID[n.category].rgb : [200, 215, 255];
+        const rgb = n.category ? CATEGORY_BY_ID[n.category].rgb : [205, 205, 218];
 
         if (n.charge > 0.05 || isFocus) {
           const strength = isFocus ? 1 : n.charge;
@@ -592,7 +592,7 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
 
         ctx.fillStyle = n.skill !== null
           ? `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(0.78 + n.charge * 0.22) * depthAlpha})`
-          : `rgba(200,215,255,${(0.24 + n.charge * 0.45) * depthAlpha})`;
+          : `rgba(205,205,218,${(0.24 + n.charge * 0.45) * depthAlpha})`;
         ctx.beginPath();
         ctx.arc(px, py, r, 0, Math.PI * 2);
         ctx.fill();
@@ -642,17 +642,23 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
           };
         });
 
-      // One relaxation pass: push apart any two labels whose boxes overlap.
-      for (let i = 0; i < labels.length; i++) {
-        for (let j = i + 1; j < labels.length; j++) {
-          const a = labels[i];
-          const b = labels[j];
-          const dx = Math.abs(a.px - b.px);
-          const dy = Math.abs(a.ty - b.ty);
-          const minDx = (a.width + b.width) / 2 + 10 * dpr;
-          const minDy = 15 * dpr;
-          if (dx < minDx && dy < minDy) {
-            const push = (minDy - dy) / 2 + 1;
+      // Relaxation: 52 labels at this density need more than one pass, and
+      // a little horizontal give as well, or pairs sitting on the same
+      // vertical line never separate however far they are pushed apart.
+      for (let pass = 0; pass < 4; pass++) {
+        let moved = false;
+        for (let i = 0; i < labels.length; i++) {
+          for (let j = i + 1; j < labels.length; j++) {
+            const a = labels[i];
+            const b = labels[j];
+            const dx = Math.abs(a.px - b.px);
+            const dy = Math.abs(a.ty - b.ty);
+            const minDx = (a.width + b.width) / 2 + 8 * dpr;
+            const minDy = 16 * dpr;
+            if (dx >= minDx || dy >= minDy) continue;
+
+            moved = true;
+            const push = (minDy - dy) / 2 + 0.5;
             if (a.ty <= b.ty) {
               a.ty -= push;
               b.ty += push;
@@ -660,8 +666,19 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
               a.ty += push;
               b.ty -= push;
             }
+            // Nudge sideways too, so a stubborn pair stops fighting purely
+            // along one axis.
+            const side = (minDx - dx) / 6;
+            if (a.px <= b.px) {
+              a.px -= side;
+              b.px += side;
+            } else {
+              a.px += side;
+              b.px -= side;
+            }
           }
         }
+        if (!moved) break;
       }
 
       // Draw back-to-front so a nearer label correctly sits above a farther one.
@@ -673,7 +690,7 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
           Math.max(0.4, Math.min(1, (CAM_DIST / (CAM_DIST - z2) - 0.5) / 0.9)) * em;
         ctx.font = `${isFocus ? 800 : 700} ${size}px system-ui, sans-serif`;
         ctx.lineWidth = 3.5 * dpr;
-        ctx.strokeStyle = `rgba(5,6,14,${0.9 * depthAlpha})`;
+        ctx.strokeStyle = `rgba(10,10,12,${0.95 * depthAlpha})`;
         ctx.lineJoin = "round";
         ctx.strokeText(text, px, ty);
         ctx.fillStyle = isFocus
