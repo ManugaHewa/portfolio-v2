@@ -1275,8 +1275,11 @@ main > section[id]{ scroll-margin-top: 84px; }
   display: block;
   filter: saturate(1.05) contrast(1.02) brightness(0.96);
 }
-.shot @media (max-width: 900px){
+@media (max-width: 900px) {
+  .shot {
+    ...
   }
+}
 
 /* Reduced motion: also freeze progress transition */
 @media (prefers-reduced-motion: reduce){
