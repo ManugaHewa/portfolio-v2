@@ -8,7 +8,9 @@ const LINES = [
   "Tests, CI, containers: the boring parts, done anyway.",
 ];
 
-const TINTS = ["rgba(240,169,44,0.10)", "rgba(255,255,255,0.05)", "rgba(240,169,44,0.07)"];
+// Drifts orange to blue across the three lines, rather than sitting on one
+// colour - the tint itself tracks scroll the same way the lines do.
+const TINTS = ["rgba(255,122,41,0.10)", "rgba(255,255,255,0.05)", "rgba(91,150,255,0.10)"];
 
 function Line({ text, index, progress }: { text: string; index: number; progress: ReturnType<typeof useScroll>["scrollYProgress"] }) {
   const n = LINES.length;

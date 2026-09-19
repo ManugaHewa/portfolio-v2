@@ -34,61 +34,66 @@ export interface Skill {
   evidence: string;
 }
 
+// Hues chosen to stay >=45deg clear of both site accents (orange ~23deg,
+// blue ~218deg - see --accent/--accent-2 in styles.css) so a domain colour in
+// the skills graph never reads as "this is a button" or gets lost against
+// the new blue chrome. Cloud and Delivery moved the furthest: their old hues
+// (204deg, 225deg) sat almost on top of the new blue accent.
 export const CATEGORIES: Category[] = [
   {
     id: "language",
     label: "Languages & Types",
     short: "Languages",
-    color: "#a8d44a",
-    rgb: [168, 212, 74],
+    color: "#add44a",
+    rgb: [173, 212, 74],
     tagline: "One language, end to end.",
   },
   {
     id: "frontend",
     label: "Frontend & Interface",
     short: "Frontend",
-    color: "#a184f5",
-    rgb: [161, 132, 245],
+    color: "#e484f5",
+    rgb: [228, 132, 245],
     tagline: "Interfaces that feel deliberate.",
   },
   {
     id: "backend",
     label: "Backend & APIs",
     short: "Backend",
-    color: "#e072d8",
-    rgb: [224, 114, 216],
+    color: "#e072c6",
+    rgb: [224, 114, 198],
     tagline: "Boring, predictable, well-guarded.",
   },
   {
     id: "data",
     label: "Data & Persistence",
     short: "Data",
-    color: "#4cc98a",
-    rgb: [76, 201, 138],
+    color: "#69c94c",
+    rgb: [105, 201, 76],
     tagline: "The schema is the source of truth.",
   },
   {
     id: "quality",
     label: "Testing & Quality",
     short: "Quality",
-    color: "#3fc5c0",
-    rgb: [63, 197, 192],
+    color: "#3fc561",
+    rgb: [63, 197, 97],
     tagline: "Proof, not vibes.",
   },
   {
     id: "delivery",
     label: "Delivery & Tooling",
     short: "Delivery",
-    color: "#6d8ef5",
-    rgb: [109, 142, 245],
+    color: "#aa6df5",
+    rgb: [170, 109, 245],
     tagline: "Not done until it runs elsewhere.",
   },
   {
     id: "cloud",
     label: "Cloud & Platform",
     short: "Cloud",
-    color: "#4fb0ef",
-    rgb: [79, 176, 239],
+    color: "#4fefc4",
+    rgb: [79, 239, 196],
     tagline: "Somewhere for it to actually run.",
   },
 ];

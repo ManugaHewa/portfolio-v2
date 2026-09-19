@@ -18,7 +18,7 @@ export function ProjectCard({ project, onOpen }: Props) {
   // the cursor across the card face instead of sitting in a fixed spot.
   const glareX = useTransform(springX, (v) => `${v * 100}%`);
   const glareY = useTransform(springY, (v) => `${v * 100}%`);
-  const glare = useMotionTemplate`radial-gradient(340px circle at ${glareX} ${glareY}, rgba(255,255,255,0.13), rgba(240,169,44,0.06) 35%, transparent 65%)`;
+  const glare = useMotionTemplate`radial-gradient(340px circle at ${glareX} ${glareY}, rgba(255,255,255,0.13), rgba(255,122,41,0.06) 35%, transparent 65%)`;
 
   const handleMove = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
