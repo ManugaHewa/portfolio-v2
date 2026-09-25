@@ -1,4 +1,4 @@
-# Portfolio v2 Edit: auto-deploy test
+# Portfolio v2
 
 A full-stack rebuild of the portfolio: instead of a static site that *describes*
 a tech stack, this one *is* one.
