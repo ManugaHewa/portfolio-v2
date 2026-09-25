@@ -3,3 +3,4 @@ dist/
 *.tsbuildinfo
 .env
 *.log
+portfolio-deployment-context.txt
