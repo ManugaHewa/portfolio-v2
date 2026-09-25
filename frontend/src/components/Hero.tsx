@@ -1,6 +1,12 @@
 import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
+import { MaskedWords } from "./MaskedWords";
+
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+// Lazy, and skipped outright on a small screen: see Scene.tsx. The CSS scope
+// below renders immediately and stays underneath, so the hero never waits on
+// WebGL and still looks finished when the chunk never arrives.
+import { Scene } from "./Scene";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -41,21 +47,31 @@ export function Hero() {
           if (!motion) return;
 
           const lines = gsap.utils.toArray<HTMLElement>(".hero-stagger");
+          // The headline rises word by word from its own mask (MaskedWords),
+          // so it is excluded here or the two entrances fight over opacity.
+          // It stays in `lines` for the scrubbed departure further down.
+          const introLines = gsap.utils.toArray<HTMLElement>(
+            ".hero-stagger:not(.hero-title)"
+          );
 
           // One-shot entrance, not scroll-linked: the hero has to be readable
           // at first paint, before the user has scrolled anything.
           const intro = gsap
             .timeline({ defaults: { ease: EASE, duration: 0.7 } })
-            .from(lines, { opacity: 0, y: 18, filter: "blur(6px)", stagger: 0.09 })
+            .from(introLines, { opacity: 0, y: 18, filter: "blur(6px)", stagger: 0.09 })
             .from(
               ".hero-visual",
               { opacity: 0, y: 24, filter: "blur(8px)", duration: 0.8 },
               0.25
             );
 
+          // Drift with a slight roll rather than a straight bob: a pure
+          // vertical float is the most generic loop there is, and at 14px it
+          // was barely readable as motion at all.
           gsap.to(".hero-photo", {
-            y: -14,
-            duration: 3.5,
+            y: -22,
+            rotate: 1.4,
+            duration: 5,
             ease: "sine.inOut",
             repeat: -1,
             yoyo: true,
@@ -126,11 +142,16 @@ export function Hero() {
               Software Engineering graduate · full-stack developer
             </p>
             <h1 className="hero-title hero-stagger">
-              I turn ideas into shipped, production-grade software.
+              {/* The site's own thesis in its own words: portfolio_projects.txt
+                  argues that the strongest entries "show real clients, real
+                  infrastructure and real engineering decisions". Both halves
+                  are load-bearing and both are checkable further down the page
+                  - a real industry client on the capstone, and a server this
+                  site is actually deployed on. The line it replaced spent a
+                  whole sentence claiming what the work below already proves. */}
+              <MaskedWords text="Real clients, real infrastructure." delay={0.15} />
             </h1>
-            <p className="hero-subtitle hero-stagger">
-              I'm Manuga Hewa Pathirana. I build typed, tested, full-stack products end to end.
-            </p>
+            <p className="hero-subtitle hero-stagger">Manuga Hewa Pathirana</p>
             <div className="hero-actions hero-stagger">
               <a className="btn btn-primary" href="#projects">
                 See the work
@@ -156,17 +177,13 @@ export function Hero() {
               >
                 LinkedIn
               </a>
-              <span className="chip">TypeScript</span>
-              <span className="chip">React</span>
-              <span className="chip">Node.js</span>
               <span className="chip chip-muted">Milton, ON</span>
             </div>
           </div>
 
           <div className="hero-visual">
             <div className="hero-photo">
-              <div className="hero-photo-ring" />
-              <div className="hero-photo-inner">MH</div>
+              <Scene variant="core" className="scene-core" />
             </div>
           </div>
         </div>

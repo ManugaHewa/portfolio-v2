@@ -2,41 +2,6 @@ import { useEffect, useRef } from "react";
 import { CATEGORIES, CATEGORY_BY_ID, SKILLS } from "../skills";
 import type { CategoryId } from "../skills";
 
-interface Neuron {
-  x: number; // model space, roughly -1..1
-  y: number;
-  z: number;
-  /** Index into SKILLS, or null for the decorative filler neurons. */
-  skill: number | null;
-  category: CategoryId | null;
-  r: number;
-  charge: number; // current fire brightness 0..1
-}
-
-interface Synapse {
-  a: number;
-  b: number;
-  weight: number;
-  /** Bridges run between two different lobes and are drawn fainter. */
-  bridge: boolean;
-}
-
-interface Pulse {
-  synapse: number;
-  from: number;
-  progress: number; // 0..1 along the synapse, direction-aware
-  speed: number;
-  depth: number; // hops from the originating spontaneous fire
-}
-
-// Hard ceilings so a firing chain always dies out and the animation can never
-// snowball into an ever-growing pulse count (that's what used to freeze the tab).
-const MAX_CHAIN_DEPTH = 3;
-const MAX_LIVE_PULSES = 70;
-
-const FILLER_NEURONS = 120;
-const CAM_DIST = 2.4;
-
 export interface SkillsGraphProps {
   /** Name of the currently selected skill, or null. Controlled by the parent. */
   selected: string | null;
@@ -46,146 +11,72 @@ export interface SkillsGraphProps {
   active: Set<CategoryId>;
 }
 
-// Seeded PRNG so the decorative neuron cloud is stable across resizes/rerenders.
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-// Union of two overlapping ellipsoids (hemispheres) tapering into a brainstem.
-// Gives rejection-sampled points a recognizable 3D brain silhouette.
-function insideBrain(x: number, y: number, z: number): boolean {
-  const leftHemi = ((x + 0.32) / 0.56) ** 2 + ((y - 0.05) / 0.58) ** 2 + (z / 0.46) ** 2 <= 1;
-  const rightHemi = ((x - 0.32) / 0.56) ** 2 + ((y - 0.05) / 0.58) ** 2 + (z / 0.46) ** 2 <= 1;
-  const stem = Math.abs(x) < 0.14 && y < 0.05 && y > -0.58 && Math.abs(z) < 0.26;
-  return leftHemi || rightHemi || stem;
+interface Dot {
+  skill: number;
+  category: CategoryId;
+  angle: number; // base bearing, radians
+  radius: number; // 0..1, from centre
+  r: number; // dot radius in px at scale 1
+  /** Angular drift, rad/s. Signed, so neighbouring dots separate. */
+  drift: number;
+  /** Phase offset for the radial bob, so they do not breathe in unison. */
+  phase: number;
+  /** How far it bobs in and out, in normalised radius. */
+  bob: number;
 }
 
 /**
- * Skills are no longer scattered evenly over one sphere. Each category gets
- * its own lobe, so the shape of the graph carries information: a dense cluster
- * is a domain with depth behind it, and the bridges between lobes are the
- * places those domains actually touch in the codebase.
+ * A radial depth scope rather than a 3D node cloud.
+ *
+ * The previous version drew all 52 labels at once inside a rotating
+ * perspective graph. The labels collided constantly, and the rotation
+ * encoded nothing - it was motion for its own sake, which is what made the
+ * thing hard to read.
+ *
+ * Here position means something: the angle is the domain, and the distance
+ * from the centre is depth, so the strongest skills sit in the core and the
+ * ring you are looking at tells you the level. Only the seven domain names
+ * are permanently drawn; a skill names itself when you point at it. That
+ * one change is what removes the clutter.
  */
-function buildNetwork(rng: () => number): { neurons: Neuron[]; synapses: Synapse[] } {
-  const neurons: Neuron[] = [];
+const DEPTH_RINGS = 5;
+// Level 5 lands near the middle, level 1 out at the rim.
+const INNER = 0.3;
+const OUTER = 0.94;
 
-  // Category centroids on a Fibonacci sphere, then squashed onto the brain's
-  // proportions (wider than it is deep) so no two lobes overlap.
-  const nCat = CATEGORIES.length;
-  const centroids = CATEGORIES.map((c, i) => {
-    const phi = Math.acos(1 - (2 * (i + 0.5)) / nCat);
-    const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
-    return {
-      id: c.id,
-      x: Math.sin(phi) * Math.cos(theta) * 0.70,
-      y: Math.cos(phi) * 0.52 + 0.02,
-      z: Math.sin(phi) * Math.sin(theta) * 0.42,
-    };
-  });
+function buildLayout(): Dot[] {
+  const dots: Dot[] = [];
+  const sector = (Math.PI * 2) / CATEGORIES.length;
 
-  // Scatter each category's skills in a small blob around its centroid, again
-  // on a mini Fibonacci sphere so labels inside a lobe stay legible.
-  centroids.forEach((c) => {
-    const members = SKILLS.map((s, i) => ({ s, i })).filter(({ s }) => s.category === c.id);
-    const m = members.length;
-    members.forEach(({ i }, k) => {
-      const phi = Math.acos(1 - (2 * (k + 0.5)) / m);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * (k + 0.5);
-      // Higher-level skills sit slightly nearer their lobe's core.
-      const spread = 0.3 - (SKILLS[i].level - 3) * 0.018;
-      neurons.push({
-        x: c.x + Math.sin(phi) * Math.cos(theta) * spread,
-        y: c.y + Math.cos(phi) * spread * 0.8,
-        z: c.z + Math.sin(phi) * Math.sin(theta) * spread * 0.75,
+  CATEGORIES.forEach((cat, ci) => {
+    const members = SKILLS.map((s, i) => ({ s, i })).filter(({ s }) => s.category === cat.id);
+    // Start at the top and run clockwise, leaving a gap between sectors so
+    // neighbouring domains stay visually separate.
+    const start = ci * sector - Math.PI / 2 + sector * 0.1;
+    const usable = sector * 0.8;
+
+    members.forEach(({ s, i }, k) => {
+      // Spread members across their sector; a lone skill sits mid-sector.
+      const t = members.length === 1 ? 0.5 : k / (members.length - 1);
+      const depth = (s.level - 1) / (DEPTH_RINGS - 1); // 0 = level 1, 1 = level 5
+      // Deterministic per-skill jitter: same layout on every load, but
+      // every dot moves on its own schedule.
+      const seed = (i * 2654435761) % 1000 / 1000;
+      dots.push({
         skill: i,
-        category: c.id,
-        r: 4.5 + SKILLS[i].level * 0.7,
-        charge: 0,
+        category: cat.id,
+        angle: start + usable * t,
+        radius: OUTER - (OUTER - INNER) * depth,
+        r: 3.4 + s.level * 0.75,
+        // Dots drift within their own sector, alternating direction.
+        drift: (0.018 + seed * 0.03) * (k % 2 === 0 ? 1 : -1),
+        phase: seed * Math.PI * 2,
+        bob: 0.012 + seed * 0.022,
       });
     });
   });
 
-  const labelled = neurons.length;
-
-  // Decorative unlabelled neurons filling the rest of the volume for texture.
-  let attempts = 0;
-  while (neurons.length < labelled + FILLER_NEURONS && attempts < 12000) {
-    attempts++;
-    const x = (rng() * 2 - 1) * 0.98;
-    const y = (rng() * 2 - 1) * 0.78 + 0.05;
-    const z = (rng() * 2 - 1) * 0.58;
-    if (!insideBrain(x, y, z)) continue;
-    neurons.push({ x, y, z, skill: null, category: null, r: 1.4 + rng() * 1.5, charge: 0 });
-  }
-
-  // Connect each neuron to its nearest neighbours, a simple k-NN mesh. A
-  // synapse spanning two categories is flagged as a bridge so it can be drawn
-  // as the weaker, longer-range connection it is.
-  const synapses: Synapse[] = [];
-  const seen = new Set<string>();
-  const link = (i: number, j: number, weight: number) => {
-    const key = i < j ? `${i}-${j}` : `${j}-${i}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    const ca = neurons[i].category;
-    const cb = neurons[j].category;
-    synapses.push({ a: i, b: j, weight, bridge: ca !== null && cb !== null && ca !== cb });
-  };
-
-  neurons.forEach((n, i) => {
-    const k = n.skill !== null ? 4 : 3;
-    neurons
-      .map((m, j) => ({
-        j,
-        d: i === j ? Infinity : (m.x - n.x) ** 2 + (m.y - n.y) ** 2 + (m.z - n.z) ** 2,
-      }))
-      .sort((a, b) => a.d - b.d)
-      .slice(0, k)
-      .forEach(({ j, d }) => {
-        if (d > 0.16) return;
-        link(i, j, 0.4 + rng() * 0.6);
-      });
-  });
-
-  // Guarantee every lobe is reachable from its neighbours: connect the closest
-  // pair of skill neurons between each pair of categories, even if the k-NN
-  // pass didn't happen to bridge them.
-  for (let a = 0; a < centroids.length; a++) {
-    for (let b = a + 1; b < centroids.length; b++) {
-      let bestI = -1;
-      let bestJ = -1;
-      let bestD = Infinity;
-      neurons.forEach((n, i) => {
-        if (n.category !== centroids[a].id) return;
-        neurons.forEach((m, j) => {
-          if (m.category !== centroids[b].id) return;
-          const d = (m.x - n.x) ** 2 + (m.y - n.y) ** 2 + (m.z - n.z) ** 2;
-          if (d < bestD) {
-            bestD = d;
-            bestI = i;
-            bestJ = j;
-          }
-        });
-      });
-      if (bestI >= 0) link(bestI, bestJ, 0.5);
-    }
-  }
-
-  return { neurons, synapses };
-}
-
-interface Projected {
-  sx: number;
-  sy: number;
-  scale: number; // perspective size/brightness multiplier
-  z2: number; // view-space depth, for back-to-front sorting
+  return dots;
 }
 
 export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraphProps) {
@@ -193,8 +84,6 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
   const containerRef = useRef<HTMLDivElement>(null);
   const runningRef = useRef(false);
 
-  // Props the render loop reads every frame. Kept in a ref so changing the
-  // selection or the legend filter never tears down and rebuilds the network.
   const viewRef = useRef({ selected, active, onSelect, onHover });
   useEffect(() => {
     viewRef.current = { selected, active, onSelect, onHover };
@@ -204,160 +93,22 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const dots = buildLayout();
+    const byName = new Map<string, number>();
+    dots.forEach((d, i) => byName.set(SKILLS[d.skill].name, i));
 
-    const rng = mulberry32(20260912);
-    const { neurons, synapses } = buildNetwork(rng);
-    const adjacency: number[][] = neurons.map(() => []);
-    synapses.forEach((s, i) => {
-      adjacency[s.a].push(i);
-      adjacency[s.b].push(i);
-    });
-
-    // Neuron index -> skill name, and the reverse, for hit testing and for
-    // resolving the parent's `selected` name back to a node each frame.
-    const neuronBySkillName = new Map<string, number>();
-    neurons.forEach((n, i) => {
-      if (n.skill !== null) neuronBySkillName.set(SKILLS[n.skill].name, i);
-    });
-
-    const pulses: Pulse[] = [];
-    const synapseGlow = new Array<number>(synapses.length).fill(0);
     let dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    // Updated every frame; pointer hit testing reads it in CSS pixel space.
-    let hitTargets: Array<{ i: number; sx: number; sy: number; scale: number }> = [];
     let hoverIdx: number | null = null;
-
-    // --- Orbit state: yaw/pitch + drag with momentum -----------------------
-    let rotY = 0.4;
-    let rotX = -0.15;
-    // velY/velX are angular velocity in radians PER MILLISECOND, matching
-    // the `rotY += velY * dt` below. Mixing this up with an un-normalized
-    // per-pointer-event pixel delta is what caused runaway spin.
-    const MAX_ANGULAR_VEL = 0.0035;
-    let velY = reduceMotion ? 0 : 0.00022; // gentle idle drift when untouched
-    let velX = 0;
-    let dragging = false;
-    let lastPX = 0;
-    let lastPY = 0;
-    let lastMoveT = 0;
-    // Distinguishes a click (select a skill) from a drag (orbit the graph).
-    let pointerTravel = 0;
-
-    const clampPitch = (v: number) => Math.max(-0.62, Math.min(0.62, v));
-    const clampVel = (v: number) => Math.max(-MAX_ANGULAR_VEL, Math.min(MAX_ANGULAR_VEL, v));
-
-    const toLocal = (e: PointerEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    };
-
-    /** Nearest labelled neuron under the pointer, in CSS pixels. */
-    const pick = (lx: number, ly: number): number | null => {
-      let best: number | null = null;
-      let bestD = Infinity;
-      const { active: act } = viewRef.current;
-      for (const t of hitTargets) {
-        const n = neurons[t.i];
-        if (n.category && !act.has(n.category)) continue;
-        const d = (t.sx - lx) ** 2 + (t.sy - ly) ** 2;
-        // Generous radius, scaled by perspective so near nodes are easier to hit.
-        const radius = 15 * t.scale;
-        if (d < radius * radius && d < bestD) {
-          bestD = d;
-          best = t.i;
-        }
-      }
-      return best;
-    };
-
-    const onPointerDown = (e: PointerEvent) => {
-      dragging = true;
-      pointerTravel = 0;
-      velY = 0;
-      velX = 0;
-      lastPX = e.clientX;
-      lastPY = e.clientY;
-      lastMoveT = performance.now();
-      canvas.setPointerCapture(e.pointerId);
-      canvas.style.cursor = "grabbing";
-    };
-
-    const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) {
-        // Hover: highlight the node under the cursor and tell the parent, so
-        // the detail panel can preview without committing a selection.
-        const { x, y } = toLocal(e);
-        const hit = pick(x, y);
-        if (hit !== hoverIdx) {
-          hoverIdx = hit;
-          canvas.style.cursor = hit === null ? "grab" : "pointer";
-          const n = hit === null ? null : neurons[hit];
-          viewRef.current.onHover?.(n && n.skill !== null ? SKILLS[n.skill].name : null);
-        }
-        return;
-      }
-      const now = performance.now();
-      const dtEvent = Math.max(1, now - lastMoveT); // ms since last sample
-      const dx = e.clientX - lastPX;
-      const dy = e.clientY - lastPY;
-      pointerTravel += Math.abs(dx) + Math.abs(dy);
-      lastPX = e.clientX;
-      lastPY = e.clientY;
-      lastMoveT = now;
-      const rotDX = dx * 0.009;
-      const rotDY = -dy * 0.009;
-      rotY += rotDX;
-      rotX = clampPitch(rotX + rotDY);
-      // Carry drag speed forward as release momentum, in true rad/ms so it
-      // composes correctly with `rotY += velY * dt` once the loop takes over.
-      velY = clampVel(rotDX / dtEvent);
-      velX = clampVel(rotDY / dtEvent);
-    };
-
-    const endDrag = (e: PointerEvent) => {
-      if (!dragging) return;
-      dragging = false;
-      canvas.style.cursor = "grab";
-      // A short press that barely moved is a click, not a flick: select the
-      // node under it (or clear the selection when clicking empty space).
-      if (pointerTravel < 6 && e.type === "pointerup") {
-        const { x, y } = toLocal(e);
-        const hit = pick(x, y);
-        const n = hit === null ? null : neurons[hit];
-        const name = n && n.skill !== null ? SKILLS[n.skill].name : null;
-        viewRef.current.onSelect(name === viewRef.current.selected ? null : name);
-        velY = 0;
-        velX = 0;
-        return;
-      }
-      if (reduceMotion) {
-        // A user-driven drag is fine under reduced motion; an unrequested
-        // glide afterwards isn't, so stop dead instead of coasting.
-        velY = 0;
-        velX = 0;
-      }
-    };
-
-    const onPointerLeave = () => {
-      if (hoverIdx !== null) {
-        hoverIdx = null;
-        viewRef.current.onHover?.(null);
-      }
-    };
-
-    canvas.style.cursor = "grab";
-    canvas.style.touchAction = "none";
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerup", endDrag);
-    canvas.addEventListener("pointercancel", endDrag);
-    canvas.addEventListener("pointerleave", onPointerLeave);
+    // Screen positions in CSS pixels, refreshed each frame for hit testing.
+    let hits: Array<{ i: number; x: number; y: number; r: number }> = [];
+    // The sweep, echoing the sonar on the hero mark.
+    let sweep = -Math.PI / 2;
+    let elapsed = 0;
+    let last = performance.now();
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
@@ -368,342 +119,292 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
       canvas.style.height = `${rect.height}px`;
     };
 
-    // Rotate a model-space point by the current orbit and project it to
-    // screen space with a simple perspective divide.
-    const project = (x: number, y: number, z: number, w: number, h: number): Projected => {
-      const cosY = Math.cos(rotY);
-      const sinY = Math.sin(rotY);
-      const x1 = x * cosY + z * sinY;
-      const z1 = -x * sinY + z * cosY;
-
-      const cosX = Math.cos(rotX);
-      const sinX = Math.sin(rotX);
-      const y2 = y * cosX - z1 * sinX;
-      const z2 = y * sinX + z1 * cosX;
-
-      const scale = CAM_DIST / (CAM_DIST - z2);
-      const baseRadius = Math.min(w, h) * 0.585;
-      return {
-        sx: w / 2 + x1 * scale * baseRadius,
-        sy: h / 2 - y2 * scale * baseRadius,
-        scale,
-        z2,
-      };
+    const pick = (lx: number, ly: number): number | null => {
+      const { active: act } = viewRef.current;
+      let best: number | null = null;
+      let bestD = Infinity;
+      for (const h of hits) {
+        if (!act.has(dots[h.i].category)) continue;
+        const d = (h.x - lx) ** 2 + (h.y - ly) ** 2;
+        const reach = Math.max(h.r + 7, 12);
+        if (d < reach * reach && d < bestD) {
+          bestD = d;
+          best = h.i;
+        }
+      }
+      return best;
     };
 
-    const fireFrom = (idx: number, depth: number) => {
-      // Always light the neuron itself, even at max depth. Only the
-      // *spread* to further neurons is what needs to terminate.
-      neurons[idx].charge = 1;
-      if (depth >= MAX_CHAIN_DEPTH) return;
-      if (pulses.length >= MAX_LIVE_PULSES) return;
-
-      const options = adjacency[idx];
-      if (!options.length) return;
-      // Fan out along a couple of synapses to look like a propagating signal.
-      const count = Math.min(options.length, 1 + Math.floor(rng() * 2));
-      const shuffled = [...options].sort(() => rng() - 0.5).slice(0, count);
-      shuffled.forEach((synIdx) => {
-        if (pulses.length >= MAX_LIVE_PULSES) return;
-        // depth + 1: the depth the destination neuron will be at once this
-        // pulse arrives, which is what makes the chain actually terminate.
-        pulses.push({
-          synapse: synIdx,
-          from: idx,
-          progress: 0,
-          speed: 0.012 + rng() * 0.016,
-          depth: depth + 1,
-        });
-      });
+    const onPointerMove = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const hit = pick(e.clientX - rect.left, e.clientY - rect.top);
+      if (hit === hoverIdx) return;
+      hoverIdx = hit;
+      canvas.style.cursor = hit === null ? "default" : "pointer";
+      viewRef.current.onHover?.(hit === null ? null : SKILLS[dots[hit].skill].name);
     };
 
-    let spawnTimer = 0;
-    let last = performance.now();
+    const onLeave = () => {
+      if (hoverIdx === null) return;
+      hoverIdx = null;
+      viewRef.current.onHover?.(null);
+    };
+
+    const onClick = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const hit = pick(e.clientX - rect.left, e.clientY - rect.top);
+      const name = hit === null ? null : SKILLS[dots[hit].skill].name;
+      viewRef.current.onSelect(name === viewRef.current.selected ? null : name);
+    };
+
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerleave", onLeave);
+    canvas.addEventListener("pointerdown", onClick);
 
     const draw = (now: number) => {
       if (!runningRef.current) return;
       const dt = Math.min(now - last, 48);
       last = now;
+      if (!reduceMotion) {
+        elapsed += dt / 1000;
+        sweep += (dt / 1000) * ((Math.PI * 2) / 5.5); // one turn per 5.5s
+      }
 
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
+      const cx = w / 2;
+      const cy = h / 2;
+      // Fills the card: the rim labels sit just inside the edge at 1.06R,
+      // so the scope uses the height it has instead of floating in it.
+      const R = Math.min(w, h) * 0.455;
+      /**
+       * The whole display turns clockwise. On a canvas the y axis points
+       * down, so a *rising* angle sweeps from +x toward +y, which reads
+       * clockwise on screen. Sector dividers, rim labels and dots all take
+       * the same offset, so a skill never drifts out of its own domain
+       * wedge - the map keeps meaning while it rotates.
+       */
+      const spin = reduceMotion ? 0 : elapsed * 0.075;
       const { selected: selName, active: act } = viewRef.current;
-      const selIdx = selName != null ? (neuronBySkillName.get(selName) ?? null) : null;
-      const focusIdx = hoverIdx ?? selIdx;
+      const selIdx = selName != null ? (byName.get(selName) ?? null) : null;
+      const focus = hoverIdx ?? selIdx;
 
-      // Neurons one synapse away from the focused node stay bright while the
-      // rest dim. That's the "what does this actually touch" read.
-      const related = new Set<number>();
-      if (focusIdx !== null) {
-        related.add(focusIdx);
-        adjacency[focusIdx].forEach((si) => {
-          related.add(synapses[si].a);
-          related.add(synapses[si].b);
-        });
-      }
-
-      /** How visible a neuron should be, given filter + focus state. */
-      const emphasis = (i: number): number => {
-        const n = neurons[i];
-        if (n.category && !act.has(n.category)) return 0.06;
-        if (focusIdx === null) return 1;
-        if (related.has(i)) return 1;
-        return 0.16;
-      };
-
-      // Orbit motion: drag sets rotation directly; otherwise coast on
-      // momentum (from a flick, or the idle drift) with friction.
-      if (!dragging) {
-        rotY += velY * dt;
-        rotX = clampPitch(rotX + velX * dt);
-        const friction = Math.pow(0.92, dt / 16);
-        velY *= friction;
-        velX *= friction;
-        // Hold still while the user is reading a selected skill.
-        const idle = !reduceMotion && focusIdx === null;
-        if (idle && Math.abs(velY) < 0.00022) velY = 0.00022;
-      }
-
-      // Spontaneously fire a random neuron every so often, like background
-      // cortical activity, rather than a single scripted animation loop.
-      spawnTimer -= dt;
-      if (spawnTimer <= 0) {
-        spawnTimer = reduceMotion ? 900 + rng() * 900 : 240 + rng() * 380;
-        // Prefer firing inside the focused lobe when one is selected, so the
-        // activity reinforces what the user is looking at.
-        let idx = Math.floor(rng() * neurons.length);
-        if (focusIdx !== null && rng() < 0.6) {
-          const pool = [...related];
-          idx = pool[Math.floor(rng() * pool.length)] ?? idx;
-        }
-        fireFrom(idx, 0);
-      }
-
-      for (let i = 0; i < synapseGlow.length; i++) {
-        synapseGlow[i] = Math.max(0, synapseGlow[i] - dt * 0.002);
-      }
-
-      // Project every neuron once per frame; edges, pulses and hit testing
-      // all reuse this.
-      const projected: Projected[] = neurons.map((n) => project(n.x, n.y, n.z, w, h));
-
-      hitTargets = [];
-      neurons.forEach((n, i) => {
-        if (n.skill === null) return;
-        const p = projected[i];
-        hitTargets.push({ i, sx: p.sx / dpr, sy: p.sy / dpr, scale: p.scale });
-      });
-
-      const travelling: Array<{ px: number; py: number; scale: number; alpha: number }> = [];
-      for (let i = pulses.length - 1; i >= 0; i--) {
-        const p = pulses[i];
-        p.progress += p.speed;
-        const syn = synapses[p.synapse];
-        synapseGlow[p.synapse] = 1;
-
-        if (p.progress >= 1) {
-          fireFrom(p.from === syn.a ? syn.b : syn.a, p.depth);
-          pulses.splice(i, 1);
-          continue;
-        }
-
-        if (!reduceMotion) {
-          const from = neurons[p.from];
-          const toIdx = p.from === syn.a ? syn.b : syn.a;
-          const to = neurons[toIdx];
-          const mx = from.x + (to.x - from.x) * p.progress;
-          const my = from.y + (to.y - from.y) * p.progress;
-          const mz = from.z + (to.z - from.z) * p.progress;
-          const proj = project(mx, my, mz, w, h);
-          travelling.push({
-            px: proj.sx,
-            py: proj.sy,
-            scale: proj.scale,
-            alpha: Math.min(emphasis(p.from), emphasis(toIdx)),
-          });
-        }
-      }
-
-      // Draw synapses, tinted toward their lobe's colour and brighter where a
-      // signal is currently passing through.
-      ctx.lineWidth = Math.max(1, dpr * 0.7);
-      synapses.forEach((s, i) => {
-        const a = projected[s.a];
-        const b = projected[s.b];
-        const em = Math.min(emphasis(s.a), emphasis(s.b));
-        if (em < 0.08) return;
-        const lit = synapseGlow[i];
-        const cat = neurons[s.a].category ?? neurons[s.b].category;
-        const rgb = cat ? CATEGORY_BY_ID[cat].rgb : [130, 130, 145];
-        const base = s.bridge ? 0.04 : 0.06 + s.weight * 0.07;
-        ctx.strokeStyle =
-          lit > 0.01
-            ? `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(0.12 + lit * 0.6) * em})`
-            : `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${base * em})`;
+      // --- Depth rings -------------------------------------------------
+      ctx.lineWidth = dpr;
+      for (let ring = 1; ring <= DEPTH_RINGS; ring++) {
+        const t = (ring - 1) / (DEPTH_RINGS - 1);
+        const rr = R * (OUTER - (OUTER - INNER) * t);
+        ctx.strokeStyle = `rgba(106,185,231,${ring === DEPTH_RINGS ? 0.16 : 0.07})`;
         ctx.beginPath();
-        ctx.moveTo(a.sx, a.sy);
-        ctx.lineTo(b.sx, b.sy);
+        ctx.arc(cx, cy, rr, 0, Math.PI * 2);
         ctx.stroke();
-      });
+      }
 
-      travelling.forEach(({ px, py, scale, alpha }) => {
-        if (alpha < 0.08) return;
-        const rad = 7 * dpr * scale;
-        const glow = ctx.createRadialGradient(px, py, 0, px, py, rad);
-        glow.addColorStop(0, `rgba(255,240,214,${0.6 * alpha})`);
-        glow.addColorStop(1, "rgba(255,240,214,0)");
-        ctx.fillStyle = glow;
+      // --- Sector dividers ---------------------------------------------
+      const sector = (Math.PI * 2) / CATEGORIES.length;
+      ctx.strokeStyle = "rgba(106,185,231,0.06)";
+      for (let i = 0; i < CATEGORIES.length; i++) {
+        const a = i * sector - Math.PI / 2 + spin;
         ctx.beginPath();
-        ctx.arc(px, py, rad, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(cx + Math.cos(a) * R * INNER * 0.7, cy + Math.sin(a) * R * INNER * 0.7);
+        ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+        ctx.stroke();
+      }
 
-        ctx.fillStyle = `rgba(255,248,235,${0.8 * alpha})`;
-        ctx.beginPath();
-        ctx.arc(px, py, 2 * dpr * scale, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Draw neurons back-to-front so nearer ones correctly sit in front.
-      const order = neurons.map((_, i) => i).sort((i, j) => projected[i].z2 - projected[j].z2);
-
-      order.forEach((i) => {
-        const n = neurons[i];
-        const { sx: px, sy: py, scale } = projected[i];
-        n.charge = Math.max(0, n.charge - dt * 0.0016);
-        const em = emphasis(i);
-        if (em < 0.05) return;
-        const depthAlpha = Math.max(0.4, Math.min(1, (scale - 0.5) / 0.9)) * em;
-        const isFocus = i === focusIdx;
-        const r = (n.r + (reduceMotion ? 0 : n.charge * 3) + (isFocus ? 3 : 0)) * dpr * scale;
-        const rgb = n.category ? CATEGORY_BY_ID[n.category].rgb : [205, 205, 218];
-
-        if (n.charge > 0.05 || isFocus) {
-          const strength = isFocus ? 1 : n.charge;
-          const glow = ctx.createRadialGradient(px, py, 0, px, py, r * 3.2);
-          glow.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.4 * strength * depthAlpha})`);
-          glow.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
-          ctx.fillStyle = glow;
+      // --- Range pings expanding from the hub ---------------------------
+      if (!reduceMotion) {
+        // Was 2.75s with three concurrent rings, so a new ping left the hub
+        // every 0.9s. Now one crossing takes 7s and only two are in flight,
+        // which is a pulse every 3.5s instead - slower and far less busy.
+        const PING_PERIOD = 7;
+        const PING_COUNT = 2;
+        for (let k = 0; k < PING_COUNT; k++) {
+          const t = ((elapsed + k * (PING_PERIOD / PING_COUNT)) % PING_PERIOD) / PING_PERIOD;
+          const rr = R * (0.12 + t * 0.95);
+          ctx.strokeStyle = `rgba(106,185,231,${0.4 * (1 - t) ** 1.4})`;
+          ctx.lineWidth = 1.4 * dpr;
           ctx.beginPath();
-          ctx.arc(px, py, r * 3.2, 0, Math.PI * 2);
+          ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.lineWidth = dpr;
+      }
+
+      // --- Sweep: bright leading edge, long wake ------------------------
+      if (!reduceMotion) {
+        const grad = ctx.createConicGradient?.(sweep, cx, cy);
+        if (grad) {
+          /**
+           * The stops are mirrored (1 - offset) so the wash TRAILS the arm.
+           *
+           * createConicGradient runs clockwise from its start angle, and the
+           * arm also travels clockwise (sweep rises, and on a canvas the y
+           * axis points down, so a rising angle turns clockwise). Putting the
+           * bright stop at offset 0 therefore painted the wake in the
+           * direction the arm was heading - the glow arrived somewhere before
+           * the beam did. Anchoring the bright stop at offset 1 puts it on
+           * the arm with the falloff running back the way it came, which also
+           * matches the contact pings: those use (sweep - angle), so a dot
+           * lights up once the beam has passed it and decays behind.
+           */
+          grad.addColorStop(0, "rgba(106,185,231,0)");
+          grad.addColorStop(0.58, "rgba(106,185,231,0)");
+          grad.addColorStop(0.76, "rgba(106,185,231,0.028)");
+          grad.addColorStop(0.91, "rgba(106,185,231,0.1)");
+          grad.addColorStop(0.988, "rgba(106,185,231,0.3)");
+          grad.addColorStop(1, "rgba(106,185,231,0.62)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(cx, cy, R, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        ctx.fillStyle = n.skill !== null
-          ? `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${(0.78 + n.charge * 0.22) * depthAlpha})`
-          : `rgba(205,205,218,${(0.24 + n.charge * 0.45) * depthAlpha})`;
+        // The arm itself, so the beam has a hard edge to lead with.
+        ctx.strokeStyle = "rgba(150,215,245,0.85)";
+        ctx.lineWidth = 1.6 * dpr;
         ctx.beginPath();
-        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(sweep) * R, cy + Math.sin(sweep) * R);
+        ctx.stroke();
+        ctx.lineWidth = dpr;
+      }
+
+      // --- Domain labels at the rim -------------------------------------
+      ctx.font = `600 ${11.5 * dpr}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      CATEGORIES.forEach((cat, i) => {
+        const a = i * sector - Math.PI / 2 + sector / 2 + spin;
+        const lr = R * 1.06;
+        const on = act.has(cat.id);
+        const [cr, cg, cb] = cat.rgb;
+        const text = cat.short.toUpperCase();
+        // The window is square now and the labels ride at 1.06R, so a wide
+        // one like LANGUAGE ran off the side when the rotation carried it to
+        // the horizontal. Clamping each label into an inset box keeps the
+        // scope at full size and the text whole: the labels trace a rounded
+        // rectangle rather than a circle, which is not visible as anything
+        // other than them staying on screen.
+        const half = ctx.measureText(text).width / 2;
+        const padX = half + 6 * dpr;
+        const padY = 9 * dpr;
+        const lx = Math.min(Math.max(cx + Math.cos(a) * lr, padX), w - padX);
+        const ly = Math.min(Math.max(cy + Math.sin(a) * lr, padY), h - padY);
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${on ? 0.92 : 0.2})`;
+        ctx.fillText(text, lx, ly);
+      });
+
+      // --- Dots ----------------------------------------------------------
+      hits = [];
+      dots.forEach((d, i) => {
+        // Live position: the bearing creeps around its sector and the
+        // range breathes, so the scope reads as tracking something rather
+        // than displaying a fixed diagram.
+        // Global clockwise rotation plus the dot's own bearing wobble. The
+        // old per-dot net drift is gone: it ran in alternating directions,
+        // which fought the shared rotation and slowly smeared each domain.
+        const ang = reduceMotion
+          ? d.angle
+          : d.angle + spin + Math.sin(elapsed * d.drift * 2.4 + d.phase) * 0.06;
+        // `dist` not `rad`: `rad` is already the dot's pixel radius below.
+        const dist = reduceMotion ? d.radius : d.radius + Math.sin(elapsed * 0.55 + d.phase) * d.bob;
+        const x = cx + Math.cos(ang) * R * dist;
+        const y = cy + Math.sin(ang) * R * dist;
+        hits.push({ i, x: x / dpr, y: y / dpr, r: (d.r * dpr) / dpr });
+
+        const on = act.has(d.category);
+        const isFocus = i === focus;
+        let alpha = on ? 0.85 : 0.08;
+        if (focus !== null && on && !isFocus) alpha = 0.3;
+
+        // Light up and swell as the beam crosses, then decay behind it -
+        // a contact being painted by the sweep rather than a static dot.
+        let ping = 0;
+        if (!reduceMotion && on) {
+          let diff = (sweep - ang) % (Math.PI * 2);
+          if (diff < 0) diff += Math.PI * 2;
+          const WAKE = 1.5;
+          if (diff < WAKE) {
+            ping = (1 - diff / WAKE) ** 2;
+            alpha = Math.min(1, alpha + ping * 0.6);
+          }
+        }
+
+        const [cr, cg, cb] = CATEGORY_BY_ID[d.category].rgb;
+        const rad = d.r * dpr * (isFocus ? 1.7 : 1) * (1 + ping * 0.85);
+
+        if (isFocus || (on && ping > 0.05)) {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, rad * 4);
+          g.addColorStop(0, `rgba(${cr},${cg},${cb},${(isFocus ? 0.4 : 0.55 * ping) * alpha})`);
+          g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, rad * 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, Math.PI * 2);
         ctx.fill();
 
         if (isFocus) {
-          ctx.strokeStyle = `rgba(255,255,255,${0.9 * em})`;
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
           ctx.lineWidth = 1.6 * dpr;
           ctx.beginPath();
-          ctx.arc(px, py, r + 4 * dpr, 0, Math.PI * 2);
+          ctx.arc(x, y, rad + 4 * dpr, 0, Math.PI * 2);
           ctx.stroke();
-          ctx.lineWidth = Math.max(1, dpr * 0.7);
+          ctx.lineWidth = dpr;
         }
       });
 
-      // Labels are placed in a separate pass, after every node is drawn, so a
-      // declutter step can nudge apart any two that would otherwise land on
-      // top of each other at this particular rotation.
-      const labels = neurons
-        .map((n, i) => ({ n, i }))
-        .filter(({ n, i }) => n.skill !== null && emphasis(i) > 0.12)
-        .map(({ n, i }) => {
-          const { sx: px, sy: py, z2 } = projected[i];
-          const isFocus = i === focusIdx;
-          const size = (isFocus ? 15 : 12.5) * dpr;
-          ctx.font = `${isFocus ? 800 : 700} ${size}px system-ui, sans-serif`;
-          // Alternate above/below by index so neighbouring labels default to
-          // opposite sides instead of stacking on each other.
-          let above = i % 2 === 0;
-          if (py < h * 0.14) above = false; // too close to the top edge
-          if (py > h * 0.88) above = true; // too close to the bottom edge
-          const ty = above ? py - 13 * dpr : py + 19 * dpr;
-          // Nodes now reach much closer to the frame edge, so a centred label
-          // could hang off it. Nudge it back inside rather than clipping.
-          const halfWidth = ctx.measureText(SKILLS[n.skill as number].name).width / 2;
-          const margin = halfWidth + 10 * dpr;
-          const clampedX = Math.max(margin, Math.min(w - margin, px));
-          return {
-            text: SKILLS[n.skill as number].name,
-            px: clampedX,
-            ty,
-            z2,
-            size,
-            isFocus,
-            em: emphasis(i),
-            rgb: n.category ? CATEGORY_BY_ID[n.category].rgb : ([255, 255, 255] as number[]),
-            width: halfWidth * 2,
-          };
-        });
+      // --- One label, for whatever is being pointed at --------------------
+      if (focus !== null) {
+        const d = dots[focus];
+        const skill = SKILLS[d.skill];
+        // Read back the position the dot was actually drawn at this frame,
+        // otherwise the chip lags behind a moving dot.
+        const live = hits.find((hh) => hh.i === focus);
+        const x = live ? live.x * dpr : cx + Math.cos(d.angle) * R * d.radius;
+        const y = live ? live.y * dpr : cy + Math.sin(d.angle) * R * d.radius;
+        const text = skill.name;
+        ctx.font = `700 ${13 * dpr}px system-ui, sans-serif`;
+        const tw = ctx.measureText(text).width;
+        const padX = 9 * dpr;
+        const bw = tw + padX * 2;
+        const bh = 25 * dpr;
+        // Flip the chip to the inside near the rim so it never clips.
+        const side = (live ? Math.hypot(x - cx, y - cy) / R : d.radius) > 0.62 ? -1 : 1;
+        let bx = x - bw / 2;
+        const by = y + side * (18 * dpr) - bh / 2;
+        bx = Math.max(4 * dpr, Math.min(w - bw - 4 * dpr, bx));
 
-      // Relaxation: 52 labels at this density need more than one pass, and
-      // a little horizontal give as well, or pairs sitting on the same
-      // vertical line never separate however far they are pushed apart.
-      for (let pass = 0; pass < 4; pass++) {
-        let moved = false;
-        for (let i = 0; i < labels.length; i++) {
-          for (let j = i + 1; j < labels.length; j++) {
-            const a = labels[i];
-            const b = labels[j];
-            const dx = Math.abs(a.px - b.px);
-            const dy = Math.abs(a.ty - b.ty);
-            const minDx = (a.width + b.width) / 2 + 8 * dpr;
-            const minDy = 16 * dpr;
-            if (dx >= minDx || dy >= minDy) continue;
+        ctx.fillStyle = "rgba(10,18,21,0.94)";
+        ctx.strokeStyle = "rgba(106,185,231,0.35)";
+        ctx.lineWidth = dpr;
+        const rr = 7 * dpr;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, rr);
+        ctx.fill();
+        ctx.stroke();
 
-            moved = true;
-            const push = (minDy - dy) / 2 + 0.5;
-            if (a.ty <= b.ty) {
-              a.ty -= push;
-              b.ty += push;
-            } else {
-              a.ty += push;
-              b.ty -= push;
-            }
-            // Nudge sideways too, so a stubborn pair stops fighting purely
-            // along one axis.
-            const side = (minDx - dx) / 6;
-            if (a.px <= b.px) {
-              a.px -= side;
-              b.px += side;
-            } else {
-              a.px += side;
-              b.px -= side;
-            }
-          }
-        }
-        if (!moved) break;
+        ctx.fillStyle = "rgba(240,246,248,0.98)";
+        ctx.textAlign = "center";
+        ctx.fillText(text, bx + bw / 2, by + bh / 2);
       }
 
-      // Draw back-to-front so a nearer label correctly sits above a farther one.
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      labels.sort((a, b) => a.z2 - b.z2);
-      labels.forEach(({ text, px, ty, z2, size, isFocus, em, rgb }) => {
-        const depthAlpha =
-          Math.max(0.4, Math.min(1, (CAM_DIST / (CAM_DIST - z2) - 0.5) / 0.9)) * em;
-        ctx.font = `${isFocus ? 800 : 700} ${size}px system-ui, sans-serif`;
-        ctx.lineWidth = 3.5 * dpr;
-        ctx.strokeStyle = `rgba(10,10,12,${0.95 * depthAlpha})`;
-        ctx.lineJoin = "round";
-        ctx.strokeText(text, px, ty);
-        ctx.fillStyle = isFocus
-          ? `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${Math.max(0.85, depthAlpha)})`
-          : `rgba(255,255,255,${Math.max(0.62, 0.95 * depthAlpha)})`;
-        ctx.fillText(text, px, ty);
-      });
+      // --- Centre hub -----------------------------------------------------
+      ctx.fillStyle = "rgba(106,185,231,0.5)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
+      ctx.fill();
 
       frame = requestAnimationFrame(draw);
     };
 
     let frame = 0;
-
     const io = new IntersectionObserver(
       ([entry]) => {
         runningRef.current = entry.isIntersecting;
@@ -722,25 +423,18 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
     return () => {
       io.disconnect();
       window.removeEventListener("resize", resize);
-      canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerup", endDrag);
-      canvas.removeEventListener("pointercancel", endDrag);
-      canvas.removeEventListener("pointerleave", onPointerLeave);
+      canvas.removeEventListener("pointerleave", onLeave);
+      canvas.removeEventListener("pointerdown", onClick);
       cancelAnimationFrame(frame);
     };
   }, []);
 
   return (
     <div className="skills-network" ref={containerRef}>
-      <div className="skills-hint">
-        <strong>Drag</strong> to orbit · <strong>click</strong> a node to inspect it
-      </div>
       <canvas ref={canvasRef} aria-hidden="true" />
 
-      {/* The canvas is decorative to assistive tech; this is the real content.
-          It's visually hidden but focusable, so a keyboard user can walk the
-          same skill list and drive the same selection the pointer does. */}
+      {/* The canvas is decorative to assistive tech; this is the real content. */}
       <ul className="visually-hidden">
         {CATEGORIES.map((c) => (
           <li key={c.id}>
@@ -748,7 +442,7 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
             <ul>
               {SKILLS.filter((s) => s.category === c.id).map((s) => (
                 <li key={s.name}>
-                  {s.name}: {s.blurb}
+                  {s.name} — {s.blurb}
                 </li>
               ))}
             </ul>

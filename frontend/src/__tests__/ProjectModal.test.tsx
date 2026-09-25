@@ -12,6 +12,9 @@ const project: ProjectDetail = {
   links: [{ label: "GitHub repository", url: "https://github.com/example/dms" }],
   role: "Full-stack engineer",
   timeline: "Multi-sprint",
+  category: "Full-stack web",
+  status: "In active development",
+  tier: 1,
   context: "Built for a working organisation.",
   problem: "Tracking was fragmented across channels.",
   scope: ["Donor records", "Validation workflow"],
@@ -20,8 +23,11 @@ const project: ProjectDetail = {
   nonFunctional: ["WCAG 2.1"],
   deliveryProcess: ["Schema first"],
   risks: ["Duplicate records on re-import"],
+  challenges: ["requireAdmin resolved to undefined on an import mismatch"],
   outcomes: ["Faster release cycles"],
   highlights: [],
+  nextSteps: [],
+  learned: "Prisma migrations and schema design against a real system.",
 };
 
 /** Mounts the modal behind a trigger, so focus return can be observed. */
@@ -41,8 +47,32 @@ describe("ProjectModal", () => {
 
     expect(screen.getByText("Scope")).toBeInTheDocument();
     expect(screen.getByText("Outcomes")).toBeInTheDocument();
-    // highlights is empty, so its heading must not appear at all.
+    expect(screen.getByText("Technical challenges")).toBeInTheDocument();
+    expect(screen.getByText("What I learned")).toBeInTheDocument();
+    // highlights and nextSteps are empty, so their headings must not appear.
     expect(screen.queryByText("Highlights")).not.toBeInTheDocument();
+    expect(screen.queryByText("Next steps")).not.toBeInTheDocument();
+  });
+
+  it("lists the category and status alongside the role and timeline", () => {
+    render(<ProjectModal project={project} onClose={vi.fn()} />);
+
+    for (const label of ["Role", "Timeline", "Category", "Status"]) {
+      expect(screen.getByText(label)).toBeInTheDocument();
+    }
+  });
+
+  it("treats a link with no url as unpublished rather than as a repository", () => {
+    // A placeholder has a label but no destination, so it cannot stand in for
+    // a repository: the note has to key off a real url, not off the count.
+    const pending: ProjectDetail = {
+      ...project,
+      links: [{ label: "GitHub repository", url: "" }],
+    };
+    render(<ProjectModal project={pending} onClose={vi.fn()} />);
+
+    expect(screen.queryByRole("link", { name: /github repository/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/no public repository linked/i)).toBeInTheDocument();
   });
 
   it("locks the page behind it and releases on close", async () => {

@@ -2,8 +2,11 @@ import { useMemo, useState } from "react";
 import { SkillsGraph } from "./SkillsGraph";
 import { Reveal } from "./Reveal";
 import { SectionHead } from "./SectionHead";
+
+import { CountUp } from "./CountUp";
 import { CATEGORIES, CATEGORY_BY_ID, SKILLS } from "../skills";
 import type { Category, CategoryId, Skill } from "../skills";
+import { Scene } from "./Scene";
 
 const ALL_CATEGORIES = new Set<CategoryId>(CATEGORIES.map((c) => c.id));
 
@@ -41,9 +44,12 @@ function SkillDetail({ skill }: { skill: Skill | null }) {
       </div>
       <h3>{skill.name}</h3>
       <p>{skill.blurb}</p>
+      {/* Was a <code> element back when this held a file path. A project
+          name set in monospace reads as a filename, which is exactly the
+          confusion this change was meant to remove. */}
       <p className="skill-detail-evidence">
         <span>Proven in</span>
-        <code>{skill.evidence}</code>
+        <strong>{skill.evidence}</strong>
       </p>
     </div>
   );
@@ -61,12 +67,21 @@ interface DomainCardProps {
  * the comparison between one domain and the next, so the only sentence on the
  * card is the tagline.
  */
+// Domains hold between 5 and 11 skills, so at full length the tallest card
+// ran 2.2x the shortest and the row looked accidental. Six is the number that
+// flattens the grid (every domain becomes 6, bar one at 5) while still showing
+// most of a domain up front; the rest are one click away.
+const VISIBLE_SKILLS = 6;
+
 function DomainCard({ category, selected, onSelect, onHover }: DomainCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const skills = useMemo(
     () => SKILLS.filter((s) => s.category === category.id),
     [category.id]
   );
   const average = skills.reduce((a, s) => a + s.level, 0) / skills.length;
+  const hidden = skills.length - VISIBLE_SKILLS;
+  const shownSkills = expanded ? skills : skills.slice(0, VISIBLE_SKILLS);
 
   return (
     <article className="domain-card" style={{ ["--cat" as string]: category.color }}>
@@ -90,7 +105,7 @@ function DomainCard({ category, selected, onSelect, onHover }: DomainCardProps) 
       </div>
 
       <ul className="domain-skills">
-        {skills.map((s) => (
+        {shownSkills.map((s) => (
           <li key={s.name}>
             <button
               type="button"
@@ -108,6 +123,17 @@ function DomainCard({ category, selected, onSelect, onHover }: DomainCardProps) 
           </li>
         ))}
       </ul>
+
+      {hidden > 0 && (
+        <button
+          type="button"
+          className="domain-more"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? "Show fewer" : `Show ${hidden} more`}
+        </button>
+      )}
     </article>
   );
 }
@@ -141,32 +167,33 @@ export function SkillsSection() {
   );
 
   return (
-    <section className="section skills-section" id="skills" aria-labelledby="skills-heading">
+    <section className="section skills-section has-scene" id="skills" aria-labelledby="skills-heading">
+      <Scene variant="globe" className="scene-globe" />
       <div className="container">
         <SectionHead
-          index="01"
+          index="02"
           kicker="The stack, as a system"
           title={`${SKILLS.length} technologies, one nervous system`}
           id="skills-heading"
-          note="Drag the map. Click any node."
+          note="Angle is domain. Distance from the centre is depth."
         />
 
         <Reveal delay={60}>
           <div className="skills-stats">
             <div className="skills-stat">
-              <span className="skills-stat-value">{SKILLS.length}</span>
+              <CountUp className="skills-stat-value" value={SKILLS.length} />
               <span className="skills-stat-label">technologies mapped</span>
             </div>
             <div className="skills-stat">
-              <span className="skills-stat-value">{CATEGORIES.length}</span>
+              <CountUp className="skills-stat-value" value={CATEGORIES.length} />
               <span className="skills-stat-label">connected domains</span>
             </div>
             <div className="skills-stat">
-              <span className="skills-stat-value">{avgLevel}</span>
+              <CountUp className="skills-stat-value" value={Number(avgLevel)} decimals={1} />
               <span className="skills-stat-label">average depth, out of 5</span>
             </div>
             <div className="skills-stat">
-              <span className="skills-stat-value">2</span>
+              <CountUp className="skills-stat-value" value={2} />
               <span className="skills-stat-label">workspaces, one language</span>
             </div>
           </div>
@@ -183,29 +210,20 @@ export function SkillsSection() {
               active={active}
             />
 
-            <div className="skills-legend" role="group" aria-label="Filter skills by domain">
-              {CATEGORIES.map((c) => {
-                const on = active.has(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={`legend-chip${on ? " is-on" : ""}`}
-                    style={{ ["--cat" as string]: c.color }}
-                    aria-pressed={on}
-                    onClick={() => toggleCategory(c.id)}
-                  >
-                    <span className="legend-dot" />
-                    {c.short}
-                    <span className="legend-count">
-                      {SKILLS.filter((s) => s.category === c.id).length}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* The hint used to float inside the scope at its top-left. Once
+                the window was pulled in toward square the rim labels reached
+                that corner, so it sat on top of them. It reads fine as a
+                caption under the scope and leaves the display clean. */}
+            <p className="skills-hint">
+              <strong>Closer to the centre</strong> means deeper. Point at any dot.
+            </p>
+
           </div>
 
+          {/* The legend used to sit under the scope, where seven chips wrapped
+              onto three rows and pushed the map up the page. In the aside it
+              fills the column the detail panel was leaving half empty, and
+              the scope gets the width back. */}
           <aside className="skills-aside">
             <SkillDetail skill={shownSkill} />
             {selected && (
@@ -213,6 +231,31 @@ export function SkillsSection() {
                 Clear selection
               </button>
             )}
+
+            <div className="skills-filter">
+              <h4 className="skills-filter-title">Filter by domain</h4>
+              <div className="skills-legend" role="group" aria-label="Filter skills by domain">
+                {CATEGORIES.map((c) => {
+                  const on = active.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`legend-chip${on ? " is-on" : ""}`}
+                      style={{ ["--cat" as string]: c.color }}
+                      aria-pressed={on}
+                      onClick={() => toggleCategory(c.id)}
+                    >
+                      <span className="legend-dot" />
+                      {c.short}
+                      <span className="legend-count">
+                        {SKILLS.filter((s) => s.category === c.id).length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </aside>
         </div>
       </div>

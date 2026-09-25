@@ -8,12 +8,42 @@ import { CATEGORIES, SKILLS } from "../skills";
 // the surrounding section must still render and stay fully interactive.
 
 describe("SkillsSection", () => {
-  it("renders every skill as a selectable control", () => {
+  it("keeps every skill reachable once the dense domains are expanded", () => {
+    // Cards show six skills by default so one 11-skill domain cannot dictate
+    // the height of the whole row. Nothing is dropped: expanding reveals the
+    // rest, and this walks that path to prove all 52 are still reachable.
     render(<SkillsSection />);
-    for (const skill of SKILLS) {
-      expect(screen.getAllByRole("button", { name: new RegExp(`^${skill.name}`) }).length)
-        .toBeGreaterThan(0);
+
+    for (const button of screen.getAllByRole("button", { name: /^Show \d+ more$/ })) {
+      fireEvent.click(button);
     }
+
+    for (const skill of SKILLS) {
+      expect(
+        screen.getAllByRole("button", { name: new RegExp(`^${skill.name}`) }).length,
+        `${skill.name} should be reachable`
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("caps each domain at six skills until asked for more", () => {
+    render(<SkillsSection />);
+
+    const dense = CATEGORIES.find(
+      (c) => SKILLS.filter((s) => s.category === c.id).length > 6
+    )!;
+    const card = screen
+      .getByRole("heading", { level: 4, name: dense.label })
+      .closest(".domain-card")!;
+
+    expect(card.querySelectorAll(".skill-pill")).toHaveLength(6);
+
+    const more = within(card as HTMLElement).getByRole("button", { name: /^Show \d+ more$/ });
+    fireEvent.click(more);
+
+    const total = SKILLS.filter((s) => s.category === dense.id).length;
+    expect(card.querySelectorAll(".skill-pill")).toHaveLength(total);
+    expect(within(card as HTMLElement).getByRole("button", { name: /show fewer/i })).toBeInTheDocument();
   });
 
   it("shows a skill's blurb and evidence when its pill is selected", () => {

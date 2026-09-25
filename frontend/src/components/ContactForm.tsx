@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import { SendTrace } from "./SendTrace";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -43,6 +44,8 @@ export function ContactForm() {
   // rather than shouting at someone who has only just started typing.
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
+  // Which hop of the send trace is in flight. -1 when idle.
+  const [stage, setStage] = useState(-1);
 
   const errors = validate(values);
   const showError = (field: keyof Fields) =>
@@ -60,14 +63,28 @@ export function ContactForm() {
     if (Object.keys(errors).length > 0) return;
 
     setStatus("sending");
+    // Validation has genuinely already passed at this point, so the first
+    // step is shown as complete rather than pending.
+    setStage(0);
     try {
+      // The trace advances to the network hop on the next frame, so the
+      // first segment is visibly drawn even on a fast local response.
+      requestAnimationFrame(() => setStage(1));
       await api.sendContactMessage(values);
+      // The server answered, which means it parsed and persisted. Walk the
+      // last two hops at a readable pace before switching to the success view.
+      setStage(2);
+      await new Promise((r) => setTimeout(r, 260));
+      setStage(3);
+      await new Promise((r) => setTimeout(r, 320));
       setStatus("sent");
+      setStage(-1);
       setValues(EMPTY);
       setTouched({});
       setSubmitted(false);
     } catch {
       setStatus("error");
+      setStage(-1);
     }
   };
 
@@ -168,6 +185,8 @@ export function ContactForm() {
           Validated with Zod. No third-party form service.
         </span>
       </div>
+
+      {sending && stage >= 0 && <SendTrace stage={stage} />}
 
       {status === "error" && (
         <p className="field-error field-error-block" role="alert">

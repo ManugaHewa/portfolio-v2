@@ -24,7 +24,9 @@ describe("page landmarks", () => {
 
   it("gives every section a heading that names it", async () => {
     await act(async () => { render(<App />); });
-    for (const id of ["skills", "about", "projects", "contact"]) {
+    // "about" is gone: the six capability cards were merged into #contact,
+    // so the page is Work / Skills / Contact.
+    for (const id of ["skills", "projects", "contact"]) {
       const section = document.getElementById(id);
       expect(section, `#${id} should exist`).not.toBeNull();
       const labelledBy = section?.getAttribute("aria-labelledby");

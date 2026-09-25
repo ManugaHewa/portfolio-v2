@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
 import { Nav } from "./components/Nav";
+import { Scene } from "./components/Scene";
 import { Hero } from "./components/Hero";
 import { Statement } from "./components/Statement";
 import { ProjectCard } from "./components/ProjectCard";
@@ -9,66 +10,37 @@ import { SkillsSection } from "./components/SkillsSection";
 import { ContactSection } from "./components/ContactSection";
 import { Reveal } from "./components/Reveal";
 import { SectionHead } from "./components/SectionHead";
-import { SpotlightPanel } from "./components/SpotlightPanel";
-import { CapabilityIcon } from "./components/CapabilityIcon";
-import type { CapabilityIconId } from "./components/CapabilityIcon";
 import { SmoothScroll } from "./components/SmoothScroll";
+
+/**
+ * Smaller public repositories that are not projects in their own right. They
+ * share the Other work list with the projects that did not earn a card: two
+ * kinds of row at one visual weight, since a second heading for two links was
+ * more structure than the content justified.
+ *
+ * Two entries left when the project list took them over: portfolio-v2 is a
+ * project of its own now, and AI-Product-Recommendation is the repository
+ * behind ShopSense. Listing either twice would read as padding.
+ */
+const ALSO_ON_GITHUB = [
+  {
+    name: "Portfolio",
+    note: "The previous portfolio, in vanilla HTML, CSS and JavaScript.",
+    year: 2025,
+    url: "https://github.com/ManugaHewa/Portfolio",
+  },
+  {
+    name: "Calculators",
+    note: "Three successive refactors of one Python program.",
+    year: 2024,
+    url: "https://github.com/ManugaHewa/Calculators",
+  },
+  // Newest first. Sorted here rather than trusted to the order above, so
+  // adding an entry in the wrong place cannot quietly break the sequence.
+].sort((a, b) => b.year - a.year);
+
 import { api } from "./api";
 import type { ProjectDetail, ProjectSummary } from "./types";
-
-// One glyph, one short line. The detail behind each of these lives in the
-// skills map above and the project case studies below, so repeating it here
-// only asks the reader to absorb it twice.
-const CAPABILITIES: { icon: CapabilityIconId; title: string; body: string }[] = [
-  {
-    icon: "layers",
-    title: "Full-stack ownership",
-    body: "One schema, from database column to rendered pixel.",
-  },
-  {
-    icon: "shield",
-    title: "Tested, not just working",
-    body: "Proven by machines on both sides of the wire.",
-  },
-  {
-    icon: "ship",
-    title: "Shipped, not just coded",
-    body: "The pipeline decides when a change is done.",
-  },
-  {
-    icon: "cursor",
-    title: "Interfaces with intent",
-    body: "Motion tracks scroll. Every effect has an off switch.",
-  },
-  {
-    icon: "database",
-    title: "Data modelled on purpose",
-    body: "Migrations replayed from scratch, on every push.",
-  },
-  {
-    icon: "lock",
-    title: "Security as a default",
-    body: "Validated at the edge. Secrets never reach the repo.",
-  },
-];
-
-const IMPACT = [
-  {
-    title: "Delivery speed",
-    value: "~30% faster",
-    note: "Release cycles, via test automation and CI guardrails.",
-  },
-  {
-    title: "Reliability",
-    value: "Idempotent import",
-    note: "Safe upserts. Re-running a file cannot duplicate records.",
-  },
-  {
-    title: "Real-time UX",
-    value: "Live dashboard",
-    note: "WebSocket progress while a long import runs.",
-  },
-];
 
 export default function App() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -87,19 +59,48 @@ export default function App() {
 
   useEffect(() => {
     const doc = document.documentElement;
-    const onScroll = () => {
-      const max = doc.scrollHeight - doc.clientHeight;
-      const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
-      // Both the bar and the ambient background tint are written straight to
-      // the DOM. Holding this in React state re-rendered the whole page tree
-      // on every scroll event, which with smooth scrolling means every frame.
-      if (progressRef.current) progressRef.current.style.width = `${pct}%`;
-      doc.style.setProperty("--scroll", String(pct / 100));
+    // Measured here rather than inside the scroll handler. scrollHeight forces
+    // layout, and with Lenis smoothing the scroll this handler runs every
+    // frame, so reading it there meant a forced reflow per frame for a number
+    // that only changes when the page itself resizes.
+    let max = 0;
+    const measure = () => {
+      max = doc.scrollHeight - doc.clientHeight;
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
+
+    // Written straight to the DOM. Holding this in React state re-rendered the
+    // whole page tree on every scroll event, which with smooth scrolling means
+    // every frame.
+    const paint = () => {
+      const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
+      if (progressRef.current) progressRef.current.style.width = `${pct}%`;
+    };
+
+    const remeasure = () => {
+      measure();
+      paint();
+    };
+
+    remeasure();
+    window.addEventListener("scroll", paint, { passive: true });
+    window.addEventListener("resize", remeasure);
+    // The page gets taller when the project data lands and when a modal opens,
+    // so the track length has to be remeasured then too, not only on resize.
+    const ro = new ResizeObserver(remeasure);
+    ro.observe(document.body);
+
+    return () => {
+      window.removeEventListener("scroll", paint);
+      window.removeEventListener("resize", remeasure);
+      ro.disconnect();
+    };
   }, []);
+
+  // The band a project sits in is a column on the row, not a slice of the
+  // ordering, so reordering the seed cannot quietly promote something into the
+  // card grid. Both lists keep the order the API sent them in.
+  const cards = projects.filter((p) => p.tier === 1);
+  const otherWork = projects.filter((p) => p.tier !== 1);
 
   const openProject = async (slug: string) => {
     try {
@@ -112,6 +113,10 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <SmoothScroll />
+
+      {/* Page-wide, fixed, and purely a backdrop: no sweep crossing the
+          content, which is what made the earlier full-page radar intrusive. */}
+      <Scene variant="starfield" className="scene-starfield" />
 
       <a className="skip-link" href="#main">
         Skip to content
@@ -126,57 +131,18 @@ export default function App() {
       <main id="main">
         <Hero />
 
-        <Statement />
-
-        {/* Promoted to the front of the page: the map is the clearest single
-            artefact on the site, so it argues the case before the prose does. */}
-        <SkillsSection />
-
-        <section className="section container" id="about" aria-labelledby="about-heading">
+        {/* Evidence first. This used to sit fourth, nearly eight viewports
+            down, behind a skills map that is by nature self-reported. The
+            projects are the only part of the page someone else can verify,
+            so they lead. */}
+        <section className="section container has-scene" id="projects" aria-labelledby="projects-heading">
+          <Scene variant="field" className="scene-field" />
           <SectionHead
-            index="02"
-            kicker="What the work looks like"
-            title="Six things I bring to a codebase"
-            id="about-heading"
-            note="Hold me to these in an interview."
-          />
-
-          <div className="about-grid">
-            {CAPABILITIES.map((c, i) => (
-              <Reveal key={c.title} delay={i * 60}>
-                <SpotlightPanel>
-                  <span className="capability-glyph" aria-hidden="true">
-                    <CapabilityIcon id={c.icon} />
-                  </span>
-                  <h3>{c.title}</h3>
-                  <p>{c.body}</p>
-                </SpotlightPanel>
-              </Reveal>
-            ))}
-          </div>
-
-          <Reveal delay={120}>
-            <div className="impact-strip">
-              <div className="impact-grid">
-                {IMPACT.map((item) => (
-                  <div className="impact-item" key={item.title}>
-                    <div className="impact-title">{item.title}</div>
-                    <div className="impact-value">{item.value}</div>
-                    <div className="impact-note">{item.note}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        </section>
-
-        <section className="section container" id="projects" aria-labelledby="projects-heading">
-          <SectionHead
-            index="03"
+            index="01"
             kicker="Evidence"
-            title="Featured projects"
+            title="Selected work"
             id="projects-heading"
-            note="Click a card for the full case study."
+            note="Every card opens a full case study."
           />
 
           {loadError && (
@@ -189,12 +155,11 @@ export default function App() {
             </div>
           )}
 
-          <div className="projects-grid">
-            {/* Placeholders rather than an empty grid: the section otherwise
-                collapses to its heading and then jumps when the data lands. */}
-            {loadingProjects &&
-              !loadError &&
-              [0, 1, 2].map((i) => (
+          {/* Placeholders rather than an empty grid: the section otherwise
+              collapses to its heading and then jumps when the data lands. */}
+          {loadingProjects && !loadError && (
+            <div className="projects-grid">
+              {[0, 1, 2].map((i) => (
                 <div className="project-skeleton" key={i} aria-hidden="true">
                   <span className="skeleton-line skeleton-title" />
                   <span className="skeleton-line" />
@@ -206,8 +171,15 @@ export default function App() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
 
-            {projects.map((p, i) => (
+          {/* Six cards, three to a row. The ranking is the point: a capstone
+              with a real industry client and a coursework routing simulator
+              both belong on this page, and giving them the same card would say
+              they carry the same weight. */}
+          <div className="projects-grid">
+            {cards.map((p, i) => (
               <Reveal key={p.slug} delay={i * 70}>
                 <ProjectCard project={p} onOpen={openProject} />
               </Reveal>
@@ -219,7 +191,56 @@ export default function App() {
               Loading projects
             </p>
           )}
+
+          {/* Everything else in one list: first the projects that did not earn
+              a card, then the smaller repositories. A project row opens its
+              case study and a repository row links straight out, but they sit
+              at one weight because that is what they are worth. Two headings
+              for two links was more structure than the content justified. */}
+          {(otherWork.length > 0 || ALSO_ON_GITHUB.length > 0) && (
+            <Reveal delay={120}>
+              <div className="other-work">
+                <h3 className="band-title">Other work</h3>
+                <div className="projects-compact-list">
+                  {otherWork.map((p) => (
+                    <ProjectCard
+                      key={p.slug}
+                      project={p}
+                      onOpen={openProject}
+                      variant="compact"
+                    />
+                  ))}
+
+                  {ALSO_ON_GITHUB.map((r) => (
+                    <a
+                      className="project-compact"
+                      key={r.name}
+                      href={r.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <div className="project-compact-main">
+                        <h4 className="project-compact-title">{r.name}</h4>
+                        <p className="project-compact-desc">{r.note}</p>
+                      </div>
+                      <div className="project-compact-aside">
+                        <span className="project-category">Repository · {r.year}</span>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          )}
         </section>
+
+        {/* Sits between the work and the stack sections on purpose: it is the
+            claim that the projects above are typed end to end, and it leads
+            straight into the map that backs that up. In front of the work it
+            was a 2.6-viewport gate before any evidence. */}
+        <Statement />
+
+        <SkillsSection />
 
         <ContactSection />
       </main>

@@ -1,0 +1,638 @@
+==========================================================================
+MANUGA HEWA PATHIRANA - SOFTWARE PROJECT PORTFOLIO
+Master list of projects with portfolio-ready descriptions
+==========================================================================
+
+HOW TO READ THIS FILE
+- Descriptions are written in first person so you can paste them straight
+  onto your portfolio site.
+- Anything marked [VERIFY] is a prediction I made to fill a gap. Confirm or
+  correct it before publishing. Recruiters and interviewers will ask about
+  anything on your site, so only keep what you can talk about confidently.
+- Projects are ordered from strongest portfolio piece to weakest.
+- Where the two source lists overlapped (Hand Therapy Canada / RxFlow,
+  Alice in Brussels, the Python recommender / ShopSense), they have been
+  merged into a single entry.
+
+--------------------------------------------------------------------------
+QUICK INDEX
+--------------------------------------------------------------------------
+ 1. RxFlow - Hand Therapy Canada Exercise Prescription App   (Capstone, Mobile/Full-stack)
+ 2. Donation Management System (DMS)                         (Full-stack, Active)
+ 3. Portfolio v2 + Self-Hosted Home Server                   (Full-stack, DevOps)
+ 4. Flaky Test Detector                                      (ML + Developer Tooling)
+ 5. Alice in Brussels Digital Exhibition Platform            (Work-study, Frontend)
+ 6. ShopSense - Product Recommendation Engine                (Data Science / Python)
+ 7. Pix2Pix GAN with Self-Attention                          (Deep Learning)
+ 8. DURB Onboarding Web App                                  (Frontend)
+ 9. Superhero REST API                                       (Backend / Cloud)
+10. iFINANCE Accounting Application                          (Desktop / Java)
+11. Mail Client                                              (Networking)
+12. Distance-Vector Routing Simulator                        (Networking / Algorithms)
+
+
+==========================================================================
+1. RxFlow - HAND THERAPY CANADA EXERCISE PRESCRIPTION APP
+==========================================================================
+Tagline:   A cross-platform rehab app that lets hand therapists prescribe
+           exercise programs and lets patients follow, track and understand
+           them from their phone.
+Category:  Mobile / Full-stack / Cloud
+Context:   SE4450 Software Design II capstone, Western University (Team 5)
+Client:    Hand Therapy Canada (real industry sponsor)
+Role:      Team Lead and Full-stack Developer
+Dates:     September 2024 - April 2025 [VERIFY]
+Team size: 5 [VERIFY]
+Status:    Completed
+
+Tech stack
+- Frontend: React Native, TypeScript, Expo Router, React Native Web
+- Backend: Node.js, Express [VERIFY Express], REST API
+- Database: MongoDB Atlas
+- Cloud / DevOps: Docker, Google Cloud Run, Google Compute Engine
+  (Ubuntu 22.04, e2-small), Google Secret Manager, HTTPS load balancing,
+  DuckDNS
+- APIs: Google Cloud Speech-to-Text (LINEAR16, 16 kHz), translation service
+- Testing: Jest [VERIFY], roughly 80% coverage on critical paths [VERIFY]
+
+The problem
+Hand Therapy Canada treats hand, wrist, elbow and shoulder injuries across
+Southwestern Ontario. Home exercise programs were being shared as videos
+saved to a patient's camera roll and paper handouts. Therapists had no
+reliable way to know whether patients were actually doing their exercises,
+patients lost or confused their videos, and there was no support for
+patients who spoke other languages or for younger patients.
+
+What I built
+RxFlow is a React Native app that runs on iOS, Android and the web from one
+TypeScript codebase. It has two sides:
+
+- Clinician portal: therapists assign exercise programs to patients, pick
+  from a central video library, set schedules, and review each patient's
+  completion history.
+- Patient app: patients see today's exercises, watch the demonstration
+  video, check off completed sets, and see a weekly progress bar. Reminders
+  nudge them when a session is due.
+
+Key features
+- Centralized exercise video library served from the backend instead of
+  patients' camera rolls
+- Weekly completion tracking with a visual progress bar
+- Scheduled exercise reminders
+- Captions on exercise videos generated with Google Speech-to-Text
+- Six languages: English, French, Spanish, German, Italian and Portuguese
+- "Fun Mode", a child-friendly interface for younger patients
+- Patient onboarding designed to take under two minutes
+- Backend REST routes for /auth, /videos, /progress, /translation,
+  /captions and /schedule
+- Cookie-based authentication, CORS configuration and secrets stored in
+  Google Secret Manager
+
+Biggest technical challenge
+For months the iOS build could not talk to the backend. iOS refuses
+insecure HTTP connections by default, so the fix was not in our app code;
+it was in the infrastructure. I worked through TLS certificates, HTTPS
+termination, a Google Cloud load balancer and DuckDNS for the domain,
+debugging each layer until the full path of iOS app -> HTTPS -> backend
+worked end to end. Rather than cutting the feature to hit the deadline, I
+stayed on it (including a 3 AM finish) and demonstrated the working iOS
+connection to the client. Earlier I also fixed a "This screen doesn't
+exist" routing bug caused by mixing Expo Router with React Navigation and
+nesting two NavigationContainers.
+
+Outcome
+- Delivered a working cross-platform app to a real healthcare client
+- Led a 5-person team through requirements, design, build and demo [VERIFY]
+- Migrated the backend from a single Compute Engine VM to containerized
+  Cloud Run deployment [VERIFY order]
+
+What I learned
+Infrastructure problems (certificates, networking, platform security rules)
+can block a product as completely as a code bug, and the only way through
+is reading documentation carefully and testing each layer on its own.
+Leading the team also taught me to break work into pieces people could own
+independently.
+
+Links: GitHub [add link] | Demo video [add link]
+
+
+==========================================================================
+2. DONATION MANAGEMENT SYSTEM (DMS)
+==========================================================================
+Tagline:   A full-stack platform that replaces paper and spreadsheets for
+           tracking donations to a Buddhist temple, with admin validation,
+           donor records and receipts.
+Category:  Full-stack web
+Context:   Personal project built for a real community organization [VERIFY]
+Role:      Solo Full-stack Developer
+Dates:     2026 - present
+Status:    In active development
+
+Tech stack
+- Frontend: React, TypeScript, Vite
+- Backend: Node.js, Express, TypeScript
+- Database: PostgreSQL 16, Prisma ORM 5.22
+- Tooling: Docker (Postgres container), pnpm, concurrently,
+  libphonenumber-js
+- Planned: Zod validation, role-based access control (RBAC), Redis,
+  BullMQ background jobs, MinIO file storage, Mailpit for email testing
+
+The problem
+Temple donations arrive in many forms: cash in person, cheques, cards,
+Interac e-transfers, EFT, CanadaHelps and in-kind gifts. Tracking them by
+hand makes it easy to lose records, double-count donors, and struggle at
+tax-receipt time.
+
+What I built
+A web app with a donor-facing submission flow and an admin validation
+workflow:
+
+  Donor submits donation -> PENDING_VALIDATION -> Admin reviews
+                                            -> VALIDATED (or denied)
+
+Donations are only treated as confirmed once an administrator has checked
+them against the actual payment.
+
+Key features
+- Donor profiles with contact info, address and family members
+- Eight donation types: Cash, Cheque, Credit, Debit, Interac, EFT,
+  CanadaHelps and In-kind
+- Configurable donation purposes (for example Aloka Puja and remembrance
+  events) stored in a Purpose table with code, name and active flag, so
+  admins can add purposes without a code change
+- Admin validation queue with approve / deny actions
+- Phone-number normalization with libphonenumber-js so "(905) 555-1234"
+  and "+19055551234" match the same donor instead of creating duplicates
+- One-command dev environment that starts the Express API and the Vite
+  frontend together
+- Planned: receipt generation, annual tax slips, email notifications,
+  RBAC for admin roles
+
+Technical challenges
+- Prisma schema required Donation.type even when some flows didn't supply
+  it; redesigned the field as optional and handled it in the API layer.
+- An Express requireAdmin middleware resolved to undefined because of an
+  import/export mismatch; fixed the module wiring.
+- Middleware that tried to reassign req.query failed (it is read-only in
+  newer Express); moved parsed values onto a separate request property.
+- Prisma generate failed with EPERM on Windows because the query engine
+  file was locked by a running process; resolved by stopping the dev server
+  before regenerating.
+- The frontend returned a 404 on port 5173 because the dev script wasn't
+  launching Vite correctly; rewrote the script with concurrently.
+
+What I'm learning through this project
+PostgreSQL schema design, Prisma migrations, validation with Zod, RBAC,
+and background jobs. I'm building these into a real system rather than
+following tutorials.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+3. PORTFOLIO v2 + SELF-HOSTED HOME SERVER
+==========================================================================
+Tagline:   My portfolio site, rebuilt as a real full-stack application and
+           self-hosted on a laptop I turned into a Linux server with
+           automatic deployments.
+Category:  Full-stack web / DevOps
+Role:      Solo Developer
+Dates:     September 2026
+Status:    Live on local network; public exposure in progress
+
+Tech stack
+- Frontend: React 18, TypeScript, Vite, GSAP ScrollTrigger (planned hero
+  animation)
+- Backend: Express, TypeScript, Prisma, PostgreSQL
+- Testing: Vitest, React Testing Library
+- CI/CD: GitHub Actions (tests run against a real Postgres service
+  container), cron-based auto-deploy script
+- Infrastructure: Ubuntu Server on repurposed HP laptop, Nginx, systemd,
+  SSH, Docker Compose (local dev), multi-stage Dockerfile, DuckDNS (in
+  progress)
+
+The problem
+My original portfolio was static HTML/CSS/JS, but it described me as a
+full-stack developer. The site itself was the best evidence I could give,
+so it needed to actually be built with the stack I claim.
+
+What I built
+- Rebuilt the site as a React + TypeScript frontend backed by an Express
+  API that serves project data from PostgreSQL through Prisma.
+- Wrote frontend and backend tests and a CI pipeline that runs them on
+  every push.
+- Wiped an old HP laptop, installed Ubuntu, and configured it as a
+  headless server: SSH access, lid-close suspend disabled, backend running
+  as a systemd service, and Nginx serving the production frontend build.
+- Wrote a deploy.sh script run by cron every 5 minutes that checks GitHub
+  for new commits and rebuilds and restarts the site automatically.
+
+Technical challenges
+- Fixed bugs found in the original site: wrong "NorthGrid" branding, a
+  scroll-spy ordering bug, a GitHub link pointing at a test branch, and a
+  canvas animation with an infinite requestAnimationFrame loop and no
+  accessibility fallback.
+- Windows Application Control blocked Rollup's native binary, stopping the
+  Vite dev server; resolved with a Windows Security exclusion / WSL2.
+- Nginx returned 500 errors because www-data couldn't read files in my home
+  directory; moved the build to /var/www/portfolio with correct ownership.
+- Ran Prisma migrations and seeds from the correct workspace directory
+  after the first attempt ran from the wrong folder.
+
+Next steps
+Public access through DuckDNS and router port forwarding (checking for
+CGNAT first), HTTPS with Let's Encrypt [VERIFY plan], and the GSAP pinned
+hero animation with prefers-reduced-motion support.
+
+Links: https://github.com/ManugaHewa/portfolio-v2 | Live site [add link]
+
+
+==========================================================================
+4. FLAKY TEST DETECTOR
+==========================================================================
+Tagline:   A machine-learning tool that reads CI history from real
+           open-source projects and predicts whether a failing test is a
+           real bug or just flaky.
+Category:  Machine learning / Developer tooling
+Role:      Solo Developer
+Dates:     August 2026 - present
+Status:    Pipeline built; scaling up data collection
+
+Tech stack
+- Python, GitHub REST API (Actions runs and job logs)
+- pandas, scikit-learn, XGBoost
+- Target repos: apache/airflow, scrapy/scrapy
+- CLI tooling, unit tests for log parsing
+
+The problem
+A "flaky" test fails randomly because of timing, network or environment
+issues, not because the code is broken. Engineers waste hours
+investigating these false alarms. Large projects rerun failing tests
+automatically, which leaves a useful trail: a test that failed and then
+passed on the same commit was almost certainly flaky.
+
+What I built
+A four-stage pipeline:
+1. collect_data.py - pulls GitHub Actions run history and raw job logs
+   through the API, with a --list-jobs helper to find the right test jobs.
+2. features.py - labels each failure as flaky or real using the
+   "failed, then passed on rerun, same commit" signal, then builds
+   features such as historical failure rate, error-message similarity and
+   duration z-score, using only data from before each failure so the model
+   can't see the future.
+3. train.py - trains logistic regression or XGBoost with a time-based
+   train/test split and reports precision and recall instead of accuracy.
+4. predict_cli.py - scores new failures and prints a readable flakiness
+   report.
+
+Key engineering decision
+The first plan was to parse JUnit XML reports, but I found (through an
+open upstream issue) that pytest's JUnit output does not reliably record
+rerun attempts. Using it would have silently produced wrong labels. I
+switched to parsing the raw GitHub Actions job logs, where
+pytest-rerunfailures prints explicit RERUN lines. Catching a data-quality
+problem before it corrupts the dataset is the kind of issue that makes or
+breaks an ML system.
+
+Current status
+100 runs of a single Scrapy job produced only one usable labelled row, so
+the next step is collecting 500+ runs across multiple Python-version job
+variants, where environment-dependent flakiness is more likely to show up.
+Planned: validate labels against the project's own flaky-test issue tags,
+report precision/recall on held-out commits, and package the tool as a
+GitHub Action.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+5. ALICE IN BRUSSELS DIGITAL EXHIBITION PLATFORM
+==========================================================================
+Tagline:   A bilingual digital museum exhibition about two Italian rural
+           schools at the 1910 Brussels World's Fair.
+Category:  Frontend web
+Context:   Paid work-study position, Department of Languages and Cultures,
+           Western University (supervised by Prof. Cristina Caracchini)
+Role:      Frontend Developer
+Dates:     June 2025 - September 2025
+Team:      4 student developers + faculty lead
+Status:    Completed and deployed
+
+Tech stack
+- HTML5, CSS3 (custom properties / theming), JavaScript, Bootstrap 5
+- GitHub Pages hosting, Git branching for team collaboration
+- Researched Cloudflare for hosting
+- Lighthouse for performance and accessibility audits
+(Note: not a React project.)
+
+The project
+In 1910 the Montesca and Rovigliano schools, founded by Alice Hallgarten
+Franchetti for the children of Umbrian farmers, exhibited their teaching
+approach at the Universal Exposition in Brussels. The 2024 exhibition in
+Città di Castello recreated that display, and this website brings it
+online for an international audience in English and Italian.
+
+What I built
+- Redesigned the landing page into a museum-style experience with a hero
+  video, "Choose Your View" cards and consistent navigation; the design
+  went through a gold / deep-blue version before settling on the final
+  bottle-green theme applied across every page.
+- An interactive hotspot system on photos of the exhibition's back wall:
+  clickable regions that scale correctly with the image at any screen size
+  and open enlarged views of each frame.
+- Flip-card popups so visitors can turn an artifact image over to read its
+  historical description, with Escape-key and click-outside closing.
+- A multi-panel "by components" section and fixes for panels that failed
+  to display (broken panel-index mapping and an invalid video embed).
+- Uniform card sizing and hover animations across the landing page.
+- A dedicated catalogues page replacing a raw PDF link, with a shared
+  external stylesheet for both languages.
+- Rebuilt the Italian landing page to match the English one, applied the
+  official translation spreadsheet, and fixed a double scrollbar caused by
+  horizontal overflow.
+- Diagnosed the background video failing on GitHub Pages (relative paths
+  under the repo subpath, file-size limits, case sensitivity) and added a
+  poster-image fallback.
+- Language switching between English and Italian, and accessibility work
+  (alt text, ARIA labels, keyboard navigation, reduced-motion support).
+
+Collaboration
+Worked on separate Git branches with three other developers to avoid
+conflicts, tracked tasks from team chats, and delivered final fixes
+(language switcher, PDF image cropping, Home link routing) before the
+August 30 contract end.
+
+Links: Live site [add link] | GitHub [add link]
+
+
+==========================================================================
+6. SHOPSENSE - PRODUCT RECOMMENDATION ENGINE
+==========================================================================
+Tagline:   A collaborative-filtering recommender that suggests products to
+           shoppers based on what similar customers bought.
+Category:  Data science / Python
+Context:   Academic project [VERIFY: course or personal]
+Role:      Developer [VERIFY: solo or team]
+Dates:     [VERIFY: likely 2023-2024]
+Status:    Completed
+
+Tech stack
+- Python, pandas, NumPy [VERIFY], scikit-learn
+- Command-line interface
+
+What I built
+- Merged purchase history with product metadata into a modeling dataset of
+  1,000+ transactions.
+- Built a user-product matrix from purchase quantities across 50+ product
+  categories.
+- Computed customer-to-customer cosine similarity and generated top-N
+  product recommendations for each user.
+- Served recommendations through an interactive CLI where you enter a
+  customer ID and get ranked suggestions.
+- Validated results with pivot tables and correlation checks and compared
+  them against a simple "most popular items" baseline.
+
+What I learned
+Why sparse user-item data is hard, why a popularity baseline is the bar
+any recommender has to beat, and how to structure a data pipeline from raw
+CSVs to a usable model.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+7. PIX2PIX GAN WITH SELF-ATTENTION
+==========================================================================
+Tagline:   An image-to-image translation model that improves on Pix2Pix
+           with self-attention and a multi-scale discriminator.
+Category:  Deep learning / Computer vision
+Context:   Academic project, AI course at Western [VERIFY: AI II]
+Role:      Developer [VERIFY: solo or team]
+Dates:     [VERIFY: 2024-2025]
+Status:    Completed
+
+Tech stack
+- Python, PyTorch
+- U-Net generator, PatchGAN discriminator
+- Dataset: [VERIFY: e.g. CMP Facades or Maps from the original Pix2Pix
+  paper]
+- Google Colab / GPU training [VERIFY]
+
+What I built
+Pix2Pix learns to turn one kind of image into another, such as a building
+layout sketch into a photo-realistic facade. A generator creates the output
+image and a discriminator tries to tell real from generated, and the two
+improve by competing.
+
+- Generator: a U-Net with skip connections so fine details from the input
+  survive into the output, extended with self-attention layers so the model
+  can relate distant regions of the image (for example keeping windows on
+  opposite sides of a building consistent).
+- Discriminator: a multi-scale PatchGAN that judges realism on small
+  patches at several resolutions, catching both fine texture and overall
+  structure.
+- Trained with the standard adversarial loss plus L1 reconstruction loss.
+- Compared results against a baseline Pix2Pix [VERIFY] visually and with
+  metrics such as SSIM / PSNR or FID [VERIFY which].
+
+What I learned
+How unstable GAN training can be, why architecture choices like attention
+and multi-scale discrimination matter, and how to evaluate generative
+models when "accuracy" doesn't apply.
+
+Links: GitHub [add link] | Sample outputs [add images]
+
+
+==========================================================================
+8. DURB ONBOARDING WEB APP
+==========================================================================
+Tagline:   A React onboarding experience that introduces new players to a
+           game's 20+ abilities.
+Category:  Frontend web
+Context:   [VERIFY: client, club, or personal project, and what DURB is]
+Role:      Frontend Developer
+Dates:     [VERIFY]
+Status:    Completed
+
+Tech stack
+- React, JavaScript [VERIFY TypeScript], react-slick, Docker
+
+What I built
+- An onboarding flow built around a react-slick carousel that walks new
+  users through more than 20 game abilities, each with its own card.
+- Responsive frontend UI components.
+- A Docker setup so the app runs the same way on any machine.
+- Performance work that improved load time by about 25% [VERIFY how this
+  was measured, for example image optimization or lazy loading].
+
+Note
+This project was left off your DMS-focused resume. It still works as a
+smaller portfolio card, but only keep it if you can explain what DURB is
+and how the 25% figure was measured.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+9. SUPERHERO REST API
+==========================================================================
+Tagline:   A cloud-hosted REST API for searching superheroes and building
+           custom hero lists.
+Category:  Backend / Cloud
+Context:   Academic project, web technologies course [VERIFY: SE3316]
+Role:      Developer
+Dates:     [VERIFY: 2023]
+Status:    Completed
+
+Tech stack
+- Node.js, Express [VERIFY]
+- JSON superhero dataset [VERIFY]
+- Frontend: HTML/CSS/JavaScript [VERIFY, possibly Angular]
+- Deployed on AWS EC2; related work on AWS Lightsail
+
+What I built
+- REST endpoints to search heroes by name, race, publisher and power, and
+  to fetch full hero details and power lists [VERIFY exact endpoints].
+- Create, update and delete endpoints for user-made hero lists
+  [VERIFY].
+- Input sanitization and validation on all endpoints [VERIFY].
+- Deployed the API and frontend on an AWS EC2 instance so it ran on the
+  public internet rather than only on localhost.
+
+What I learned
+REST design, input validation, and the basics of deploying and running a
+server in the cloud: security groups, SSH and keeping a Node process alive.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+10. iFINANCE ACCOUNTING APPLICATION
+==========================================================================
+Tagline:   A desktop double-entry accounting app for small businesses.
+Category:  Desktop software / Java
+Context:   Academic project [VERIFY course]
+Role:      Developer [VERIFY: team member]
+Dates:     [VERIFY]
+Status:    Completed
+
+Tech stack
+- Java, JavaFX
+- Database: [VERIFY, e.g. MySQL or SQLite]
+- Architecture: MVC [VERIFY]
+
+What I built
+- A JavaFX desktop app for managing a business's finances with
+  double-entry bookkeeping, where every transaction debits one account and
+  credits another [VERIFY].
+- Admin and regular user accounts with login [VERIFY].
+- A chart of accounts organized into groups such as assets, liabilities,
+  income and expenses [VERIFY].
+- Transaction entry with validation that debits equal credits [VERIFY].
+- Financial reports such as trial balance, balance sheet and profit and
+  loss statement [VERIFY].
+
+What I learned
+Designing a larger object-oriented Java application, separating UI from
+business logic, and modelling real-world rules (accounting) accurately in
+code.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+11. MAIL CLIENT
+==========================================================================
+Tagline:   An email client that talks directly to mail servers using the
+           underlying protocols.
+Category:  Networking
+Context:   Academic networking course [VERIFY: CS3357]
+Role:      Developer
+Dates:     [VERIFY]
+Status:    Completed
+
+Tech stack
+- Python [VERIFY], TCP sockets
+- SMTP for sending, POP3 or IMAP for receiving [VERIFY]
+- Encryption / TLS [VERIFY]
+
+What I built
+- A client that opens raw socket connections to a mail server and speaks
+  the protocol command by command instead of using a mail library.
+- Sending messages over SMTP and retrieving/listing messages from the
+  server [VERIFY].
+- User authentication with the server [VERIFY].
+- Handling of server responses and error codes.
+
+What I learned
+How application-layer protocols actually work underneath the libraries
+that normally hide them, and how client/server communication is structured.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+12. DISTANCE-VECTOR ROUTING SIMULATOR
+==========================================================================
+Tagline:   An implementation of the distance-vector routing algorithm that
+           lets simulated routers discover the shortest paths through a
+           network.
+Category:  Networking / Algorithms
+Context:   Academic networking course [VERIFY: CS3357]
+Role:      Developer
+Dates:     [VERIFY]
+Status:    Completed
+
+Tech stack
+- Python [VERIFY], sockets or simulated message passing [VERIFY]
+- Bellman-Ford algorithm
+
+What I built
+- Router nodes that each start knowing only the cost to their direct
+  neighbours.
+- Routers exchange distance vectors with neighbours and update their
+  routing tables using the Bellman-Ford equation until the whole network
+  converges on shortest paths.
+- Handling of link-cost changes and re-convergence [VERIFY], and
+  protection against the count-to-infinity problem such as poisoned reverse
+  [VERIFY].
+- Output of each router's routing table as it converges.
+
+What I learned
+How the routing protocols behind the internet work at the algorithm level,
+and how distributed systems reach agreement without a central controller.
+
+Links: GitHub [add link]
+
+
+==========================================================================
+SUMMARY TABLE
+==========================================================================
+#  | Project                    | Area                  | Main tech                                   | Status
+---|----------------------------|-----------------------|---------------------------------------------|-----------
+1  | RxFlow (Hand Therapy Can.) | Mobile / Full-stack   | React Native, TS, Node, MongoDB, GCP, Docker| Completed
+2  | Donation Management System | Full-stack            | React, TS, Express, PostgreSQL, Prisma      | Active
+3  | Portfolio v2 + Home Server | Full-stack / DevOps   | React, Express, Prisma, Nginx, Ubuntu, CI   | Live (LAN)
+4  | Flaky Test Detector        | ML / Dev tooling      | Python, scikit-learn, XGBoost, GitHub API   | In progress
+5  | Alice in Brussels          | Frontend              | HTML, CSS, JS, Bootstrap 5, GitHub Pages    | Completed
+6  | ShopSense                  | Data science          | Python, pandas, scikit-learn                | Completed
+7  | Pix2Pix GAN                | Deep learning         | PyTorch, U-Net, PatchGAN, self-attention    | Completed
+8  | DURB Onboarding App        | Frontend              | React, react-slick, Docker                  | Completed
+9  | Superhero REST API         | Backend / Cloud       | Node, Express, AWS EC2                      | Completed
+10 | iFINANCE                   | Desktop               | Java, JavaFX                                | Completed
+11 | Mail Client                | Networking            | Python, sockets, SMTP                       | Completed
+12 | Distance-Vector Routing    | Networking            | Python, Bellman-Ford                        | Completed
+
+
+==========================================================================
+SUGGESTIONS FOR THE PORTFOLIO SITE
+==========================================================================
+- Feature projects 1 to 4 as large cards with screenshots. They show
+  real clients, real infrastructure and real engineering decisions.
+- Put 5 to 7 in a secondary row, and group 8 to 12 under an "Other work"
+  or "Coursework" section with one or two sentences each.
+- Label coursework honestly (capstone, course project). It costs nothing
+  and protects your credibility in interviews.
+- Every card should have a GitHub link, and ideally a live demo or a short
+  video. A link signals you shipped something even if nobody clicks it.
+- Before publishing, search this file for [VERIFY] and resolve every one.

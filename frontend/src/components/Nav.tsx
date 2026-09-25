@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 
-// Order matches the page: the skills map comes first, before the prose.
+// Order matches the page: the work comes first, then the supporting material.
 const LINKS = [
+  { href: "#projects", label: "Work" },
   { href: "#skills", label: "Skills" },
-  { href: "#about", label: "About" },
-  { href: "#projects", label: "Projects" },
   { href: "#contact", label: "Contact" },
 ];
 
 export function Nav() {
-  const [active, setActive] = useState("#skills");
+  const [active, setActive] = useState("#projects");
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);

@@ -1,3 +1,5 @@
+import { motion, useReducedMotion } from "framer-motion";
+
 export type CapabilityIconId =
   | "layers"
   | "shield"
@@ -23,9 +25,21 @@ const PATHS: Record<CapabilityIconId, string[]> = {
   lock: ["M7 10V7a5 5 0 0 1 10 0v3", "M4.5 10h15v10.5h-15z"],
 };
 
+/**
+ * The glyph draws itself the first time its card scrolls into view: each
+ * stroke runs from nothing to its full length, one after the next, the way
+ * you would draw it by hand.
+ *
+ * pathLength is the right tool rather than a hand-computed stroke-dasharray,
+ * because it normalises every path to 0..1 regardless of its real length, so
+ * a one-stroke glyph and a three-stroke glyph take the same time.
+ */
 export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
+  const reduceMotion = useReducedMotion();
+  const paths = PATHS[id];
+
   return (
-    <svg
+    <motion.svg
       className="capability-icon"
       viewBox="0 0 24 24"
       fill="none"
@@ -35,10 +49,27 @@ export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
+      initial={reduceMotion ? false : "hidden"}
+      whileInView="drawn"
+      viewport={{ once: true, amount: 0.6 }}
     >
-      {PATHS[id].map((d) => (
-        <path key={d} d={d} />
+      {paths.map((d, i) => (
+        <motion.path
+          key={d}
+          d={d}
+          variants={{
+            hidden: { pathLength: 0, opacity: 0 },
+            drawn: {
+              pathLength: 1,
+              opacity: 1,
+              transition: {
+                pathLength: { duration: 0.65, delay: 0.15 + i * 0.22, ease: [0.16, 1, 0.3, 1] },
+                opacity: { duration: 0.01, delay: 0.15 + i * 0.22 },
+              },
+            },
+          }}
+        />
       ))}
-    </svg>
+    </motion.svg>
   );
 }

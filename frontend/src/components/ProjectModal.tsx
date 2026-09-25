@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { ProjectDetail } from "../types";
+import type { ProjectDetail, ProjectLink } from "../types";
 import { lockScroll, unlockScroll } from "../lib/scrollLock";
 
 interface Props {
@@ -22,6 +22,30 @@ function ListSection({ title, items }: { title: string; items: string[] }) {
           <li key={item}>{item}</li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * Links, with the placeholders the source list marks "[add link]" rendered as
+ * muted labels rather than anchors: `<a href="">` reloads the page, and
+ * inventing a destination would be worse than admitting one is still to come.
+ */
+function LinkList({ links }: { links: ProjectLink[] }) {
+  return (
+    <div className="project-links">
+      {links.map((link) =>
+        link.url ? (
+          <a className="link" key={link.label} href={link.url} target="_blank" rel="noreferrer">
+            {link.label}
+          </a>
+        ) : (
+          <span className="link link-pending" key={link.label}>
+            {link.label}
+            <span className="visually-hidden"> (link not published yet)</span>
+          </span>
+        ),
+      )}
     </div>
   );
 }
@@ -81,8 +105,14 @@ export function ProjectModal({ project, onClose }: Props) {
     ? [
         { label: "Role", value: project.role },
         { label: "Timeline", value: project.timeline },
+        { label: "Category", value: project.category },
+        { label: "Status", value: project.status },
       ].filter((f) => f.value)
     : [];
+
+  // A placeholder link has a label but no destination yet, so it cannot stand
+  // in for a repository: the note below keys off a real url, not off the count.
+  const hasPublishedLink = project?.links.some((link) => link.url) ?? false;
 
   return (
     <AnimatePresence>
@@ -106,6 +136,12 @@ export function ProjectModal({ project, onClose }: Props) {
             ref={cardRef}
             tabIndex={-1}
             role="document"
+            // Lenis keeps a global wheel listener and calls preventDefault on
+            // every event while it is stopped, which is what a scroll lock
+            // does - so the wheel died inside the dialog and only the
+            // scrollbar drag worked. This attribute makes Lenis bail out of
+            // the handler before that, handing the wheel back to the browser.
+            data-lenis-prevent
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -157,26 +193,33 @@ export function ProjectModal({ project, onClose }: Props) {
               <ListSection title="Key requirements" items={project.requirements} />
               <ListSection title="Non-functional targets" items={project.nonFunctional} />
               <ListSection title="How it was delivered" items={project.deliveryProcess} />
+              <ListSection title="Technical challenges" items={project.challenges} />
               <ListSection title="Risks handled" items={project.risks} />
               <ListSection title="Outcomes" items={project.outcomes} />
+              <ListSection title="Next steps" items={project.nextSteps} />
+
+              {project.learned && (
+                <div className="modal-section">
+                  <div className="modal-section-title">What I learned</div>
+                  <p>{project.learned}</p>
+                </div>
+              )}
 
               {project.links.length > 0 && (
                 <div className="modal-section">
                   <div className="modal-section-title">Links</div>
-                  <div className="project-links">
-                    {project.links.map((link) => (
-                      <a
-                        className="link"
-                        key={link.url}
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {link.label}
-                      </a>
-                    ))}
-                  </div>
+                  <LinkList links={project.links} />
                 </div>
+              )}
+
+              {/* Several of these have no published repository yet. Saying so
+                  beats rendering nothing, which just looks like a link that
+                  failed to load. */}
+              {!hasPublishedLink && (
+                <p className="project-no-repo">
+                  No public repository linked for this one yet. Happy to walk through the code
+                  directly.
+                </p>
               )}
             </div>
           </motion.div>

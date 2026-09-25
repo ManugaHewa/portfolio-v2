@@ -13,13 +13,27 @@ model Project {
   title    String
   subtitle String
 
+  // Display order on the Selected work grid. Ordering by createdAt meant the
+  // order was an accident of when a row was first seeded, so newly added work
+  // always landed last however strong it was. The seed array is the source of
+  // truth for the running order; this carries it into the database.
+  position Int @default(0)
+
+  // How much weight the entry carries on the page: 1 is a full case-study
+  // card, 2 a secondary card, 3 a one-line row under Other work. A column
+  // rather than a slice of the position ordering, so re-ranking a project
+  // within its band cannot silently promote it out of that band.
+  tier Int @default(1)
+
   // Card-level fields.
   stack String[]
 
-  // Framing: who it was for, what I did, and when.
+  // Framing: who it was for, what I did, when, and where it stands now.
   role     String?
   timeline String?
   context  String?
+  category String?
+  status   String?
 
   // The case study itself. Every list is optional in practice: a small
   // project fills in two of them, a capstone fills in most.
@@ -30,8 +44,11 @@ model Project {
   nonFunctional   String[]
   deliveryProcess String[]
   risks           String[]
+  challenges      String[]
   outcomes        String[]
   highlights      String[]
+  nextSteps       String[]
+  learned         String?
 
   links ProjectLink[]
 
@@ -42,6 +59,10 @@ model Project {
 // One project can have several labelled links (the capstone has a separate
 // frontend and backend repository), which a pair of githubUrl/liveUrl columns
 // could not represent without inventing a third.
+//
+// An empty url is meaningful: it marks a link that is planned but has no
+// address yet, which the UI renders as a muted label rather than inventing a
+// destination for it.
 model ProjectLink {
   id       String @id @default(cuid())
   label    String
