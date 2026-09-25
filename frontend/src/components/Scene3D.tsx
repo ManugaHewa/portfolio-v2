@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AdditiveBlending,
   BackSide,
@@ -19,6 +19,7 @@ import {
 } from "three";
 import { mountScene } from "../lib/threeScene";
 import type { SceneDef } from "../lib/threeScene";
+import { sceneBudget, scaled } from "../lib/sceneQuality";
 
 export type SceneVariant =
   | "core"
@@ -31,13 +32,16 @@ export type SceneVariant =
 const SKY = "#6ab9e7";
 const EMBER = "#e98e49";
 
+// Far enough ahead that a scene finishes building before it scrolls into view.
+const APPROACH = "600px 0px 600px 0px";
+
 /**
  * Every WebGL scene on the site, behind one lazy import.
  *
  * Deliberately one module rather than a component per scene: each would
  * otherwise pull Three into its own chunk, and the library is roughly the
  * size of the entire rest of the bundle. One entry point means one shared
- * chunk, fetched once, reused by all four.
+ * chunk, fetched once, reused by all six.
  */
 export default function Scene3D({
   variant,
@@ -47,12 +51,35 @@ export default function Scene3D({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Desktop mounts once and keeps the context for the life of the page.
+  const [near, setNear] = useState(() => !sceneBudget().mountOnApproach);
+
+  // Phones only: build the scene as its section approaches and drop it well
+  // after the section leaves, so six GPU contexts are never live together.
+  // mountScene's own observer still handles pausing the frame loop; this wider
+  // one decides whether the context should exist at all.
+  useEffect(() => {
+    if (!sceneBudget().mountOnApproach || typeof IntersectionObserver !== "function") {
+      setNear(true);
+      return;
+    }
+    const el = ref.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), {
+      rootMargin: APPROACH,
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    return mountScene(el, BUILDERS[variant]());
-  }, [variant]);
+    if (!el || !near) return;
+    // Detail is read at build time, so a scene rebuilt after a rotation picks
+    // up the budget for the orientation it is actually in.
+    return mountScene(el, BUILDERS[variant](sceneBudget().detail));
+  }, [variant, near]);
 
   return <div className={`scene-3d ${className ?? ""}`} ref={ref} aria-hidden="true" />;
 }
@@ -73,16 +100,20 @@ function makeTracker() {
   };
 }
 
-const BUILDERS: Record<SceneVariant, () => SceneDef> = {
+const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   /* ---------------------------------------------------------------
      Hero: a gyroscope core. Three nested rings on orthogonal axes,
      each turning at its own rate, with a shell of particles orbiting
      outside them. Reads as a precision instrument rather than a radar,
      and the differing rates mean the silhouette never repeats.
   --------------------------------------------------------------- */
-  core: () => {
+  core: (detail) => {
     const t = makeTracker();
     const R_CORE = 0.88;
+    // The sphere is opaque and read against its own wireframe, so it can
+    // lose a lot of segments before the silhouette starts to show facets.
+    const SEG_W = scaled(48, detail, 24);
+    const SEG_H = scaled(32, detail, 16);
     return {
       fov: 42,
       dispose: t.disposeAll,
@@ -103,7 +134,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
         scene.add(core);
 
         const body = new Mesh(
-          t.track(new SphereGeometry(R_CORE, 48, 32)),
+          t.track(new SphereGeometry(R_CORE, SEG_W, SEG_H)),
           t.track(new MeshBasicMaterial({ color: new Color("#0f171b") }))
         );
         core.add(body);
@@ -129,7 +160,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
         // the rim survives. Gives the silhouette a lit edge instead of a
         // hard cut against the card.
         const limb = new Mesh(
-          t.track(new SphereGeometry(R_CORE * 1.022, 48, 32)),
+          t.track(new SphereGeometry(R_CORE * 1.022, SEG_W, SEG_H)),
           t.track(
             new MeshBasicMaterial({
               color: new Color(EMBER),
@@ -316,7 +347,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
 
         // A faint atmosphere so the core sits in something.
         const haloPts: number[] = [];
-        const N = 90;
+        const N = scaled(90, detail, 40);
         for (let i = 0; i < N; i++) {
           const phi = Math.acos(1 - (2 * (i + 0.5)) / N);
           const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
@@ -376,7 +407,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
      it. The section asks someone to make contact, so the backdrop is
      that gesture rather than another abstract field.
   --------------------------------------------------------------- */
-  signal: () => {
+  signal: (detail) => {
     const t = makeTracker();
     const RING_COUNT = 5;
     const PERIOD = 6.5;
@@ -419,7 +450,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
 
         // Rings expanding from the origin. One material each, because each
         // has to fade on its own schedule as it travels out.
-        const ringGeo = t.track(ringsGeometry([1], 96));
+        const ringGeo = t.track(ringsGeometry([1], scaled(96, detail, 48)));
         const rings: Array<{ o: LineSegments; m: LineBasicMaterial; phase: number }> = [];
         for (let i = 0; i < RING_COUNT; i++) {
           const m = t.track(
@@ -439,7 +470,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
         // A drift of motes above the plane, so the space has volume rather
         // than being a floor with nothing over it.
         const motes: number[] = [];
-        const N = 70;
+        const N = scaled(70, detail, 30);
         for (let i = 0; i < N; i++) {
           const a = (i / N) * Math.PI * 2 * 4.7;
           const r = 1 + ((i * 37) % 100) / 100 * 6;
@@ -508,7 +539,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
      travelling down it. The section's claim is that a type crosses the
      whole stack, so the backdrop is that journey given an actual Z axis.
   --------------------------------------------------------------- */
-  corridor: () => {
+  corridor: (detail) => {
     const t = makeTracker();
     return {
       fov: 58,
@@ -520,7 +551,8 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
         const world = new Group();
         scene.add(world);
 
-        const RINGS = 26;
+        // Fewer frames is a shorter corridor, so this floor is generous.
+        const RINGS = scaled(26, detail, 18);
         const SPACING = 1.25;
         const frames: Group[] = [];
         // One material per frame, not one shared: each has to fade on its
@@ -578,7 +610,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
      atmospheric - the readable data stays on the 2D canvas in front,
      because that legibility was the whole point of that redesign.
   --------------------------------------------------------------- */
-  globe: () => {
+  globe: (detail) => {
     const t = makeTracker();
     return {
       fov: 45,
@@ -593,7 +625,9 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
 
         // Slightly wider than the viewport box is tall, so it reads as a
         // backdrop the cards sit on rather than a ball behind the middle one.
-        const sphere = t.track(new SphereGeometry(2.35, 26, 16));
+        const sphere = t.track(
+          new SphereGeometry(2.35, scaled(26, detail, 16), scaled(16, detail, 10))
+        );
         world.add(
           new LineSegments(
             t.track(wireframeFrom(sphere)),
@@ -603,8 +637,9 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
 
         // A scatter of points on the shell, so it reads as populated.
         const pts: number[] = [];
-        for (let i = 0; i < 90; i++) {
-          const phi = Math.acos(1 - (2 * (i + 0.5)) / 90);
+        const DOTS = scaled(90, detail, 44);
+        for (let i = 0; i < DOTS; i++) {
+          const phi = Math.acos(1 - (2 * (i + 0.5)) / DOTS);
           const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
           pts.push(
             Math.sin(phi) * Math.cos(theta) * 2.35,
@@ -644,7 +679,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
      without anything sweeping across the content - the page-wide radar
      that came before this was removed for exactly that reason.
   --------------------------------------------------------------- */
-  starfield: () => {
+  starfield: (detail) => {
     const t = makeTracker();
     return {
       fov: 62,
@@ -658,11 +693,13 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
 
         // Three bands: far ones smaller, dimmer and slower.
         const bands: Array<{ g: Group; rate: number }> = [];
+        // The page-wide layer, and the only one that is always on screen,
+        // so it is the one worth thinning most on a phone.
         const LAYERS: Array<[number, number, number, number]> = [
           // count, spread, size, opacity
-          [190, 16, 0.028, 0.34],
-          [120, 12, 0.042, 0.46],
-          [60, 9, 0.058, 0.6],
+          [scaled(190, detail, 70), 16, 0.028, 0.34],
+          [scaled(120, detail, 50), 12, 0.042, 0.46],
+          [scaled(60, detail, 28), 9, 0.058, 0.6],
         ];
 
         LAYERS.forEach(([count, spread, size, opacity], li) => {
@@ -710,7 +747,7 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
      Projects / contact: a slow drifting point field, giving the flat
      card grids something with parallax behind them.
   --------------------------------------------------------------- */
-  field: () => {
+  field: (detail) => {
     const t = makeTracker();
     return {
       fov: 60,
@@ -725,9 +762,10 @@ const BUILDERS: Record<SceneVariant, () => SceneDef> = {
         const pts: number[] = [];
         // Deterministic scatter: a fixed pattern beats Math.random here
         // because the layout then looks identical on every load.
-        for (let i = 0; i < 160; i++) {
+        const MOTES = scaled(160, detail, 70);
+        for (let i = 0; i < MOTES; i++) {
           const a = i * 2.399963; // golden angle
-          const r = Math.sqrt(i / 160) * 7;
+          const r = Math.sqrt(i / MOTES) * 7;
           pts.push(Math.cos(a) * r, Math.sin(a) * r * 0.55, -((i % 12) * 0.55));
         }
         const g = t.track(new BufferGeometry());

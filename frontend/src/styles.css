@@ -2182,8 +2182,16 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 .hero-inner{ padding: 12px 0 24px; }
 .hero-frame{
-  grid-template-columns: 1.25fr 0.75fr;
   gap: clamp(24px, 3vw, 48px);
+}
+/* Two columns only where there is room for two.
+   This rule used to set grid-template-columns unconditionally, and because it
+   sits further down the file than the single-column rule at the 768px
+   breakpoint, it won everywhere. A phone was getting a two-column grid whose
+   second column collapsed to 15px, so .hero-visual, .hero-photo and the 3D
+   core inside them were all rendering into roughly a 13px box. */
+@media (min-width: 769px){
+  .hero-frame{ grid-template-columns: 1.25fr 0.75fr; }
 }
 .hero-title{
   /* 18ch rather than 16: the headline should set two lines, and 16ch sat close
@@ -3176,6 +3184,11 @@ body::before{
   top: 0;
   height: 100vh;
   margin-bottom: -100vh;
+  /* svh is the viewport actually visible on a phone, where vh counts the space
+     behind the browser's toolbars. Height and margin have to use the same unit
+     or the negative margin stops cancelling the space this takes in flow. */
+  height: 100svh;
+  margin-bottom: -100svh;
   transform: none;
 }
 .skills-canvas-wrap{ position: relative; }
@@ -3608,4 +3621,46 @@ a.project-compact{
   /* Tap targets: a row is the whole hit area, so it gets height rather than
      relying on the text inside it to be big enough to hit. */
   .project-compact{ padding: 13px 12px 14px 14px; }
+}
+
+/* ===== Scenes on a phone ==============================================
+   The 3D layers run on mobile too - they are most of what the site looks
+   like - but two of them were sized in a way that only made sense on a
+   desktop. The budget itself (pixel ratio, particle counts, antialiasing)
+   is decided in src/lib/sceneQuality.ts; this is the part CSS owns.
+   ================================================================== */
+@media (max-width: 760px){
+  /* The projects section is the tallest thing on the page once six cards and
+     nine rows are stacked in one column - around 3,600px. scene-field is
+     absolute with inset:0, so its canvas was being sized to match, which is a
+     3,600px drawing buffer for a backdrop you only ever see one screen of.
+     Pinning it to one viewport is the same trick scene-globe already uses. */
+  .scene-field{
+    position: sticky;
+    inset: auto;
+    top: 0;
+    height: 100svh;
+    margin-bottom: -100svh;
+  }
+}
+
+/* A cursor-tracking sheen needs a cursor. On touch the springs never leave
+   their 0.5 rest position, so the glare sat as a permanent blob in the middle
+   of every card instead of tracking anything. The tilt self-cancels the same
+   way and costs nothing, but this one is visible. */
+@media (hover: none){
+  .project-glare{ display: none; }
+}
+
+/* The headline at 40px needs about 330px of measure to set "Real clients, real"
+   on one line, and a 390px phone gives the hero copy roughly 294px. It was
+   breaking as "Real clients," / "real" / "infrastructure.", stranding one word
+   on a line of its own. Smaller type on a small screen buys the two-line break
+   the line was written for. max-width goes because the frame is already the
+   narrower constraint here, and 18ch of a smaller font is not. */
+@media (max-width: 560px){
+  .hero-title{
+    font-size: clamp(29px, 8.4vw, 36px);
+    max-width: none;
+  }
 }

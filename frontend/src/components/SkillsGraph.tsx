@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { CATEGORIES, CATEGORY_BY_ID, SKILLS } from "../skills";
 import type { CategoryId } from "../skills";
+import { sceneBudget } from "../lib/sceneQuality";
 
 export interface SkillsGraphProps {
   /** Name of the currently selected skill, or null. Controlled by the parent. */
@@ -101,7 +102,9 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
     const byName = new Map<string, number>();
     dots.forEach((d, i) => byName.set(SKILLS[d.skill].name, i));
 
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Same budget the WebGL scenes use, so every canvas on the page agrees
+    // about what a phone should be asked to draw.
+    let dpr = sceneBudget().pixelRatio;
     let hoverIdx: number | null = null;
     // Screen positions in CSS pixels, refreshed each frame for hit testing.
     let hits: Array<{ i: number; x: number; y: number; r: number }> = [];
@@ -112,7 +115,7 @@ export function SkillsGraph({ selected, onSelect, onHover, active }: SkillsGraph
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = sceneBudget().pixelRatio;
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
       canvas.style.width = `${rect.width}px`;

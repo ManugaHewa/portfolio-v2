@@ -11,9 +11,11 @@ import { useSceneEnabled } from "../lib/useSceneEnabled";
 const Scene3D = lazy(() => import("./Scene3D"));
 
 /**
- * A WebGL backdrop, or nothing at all on a device that should not be asked to
- * run one. Returning before `Scene3D` is ever referenced is the point: that is
- * what keeps the Three chunk off the wire on a phone rather than merely idle.
+ * A WebGL backdrop, unless the viewer has asked for less motion.
+ *
+ * Screen size is not a factor here any more. How hard a scene works on a small
+ * screen is decided inside Scene3D from sceneQuality.ts, which also handles
+ * building and tearing scenes down as their sections approach on a phone.
  */
 export function Scene({ variant, className }: { variant: SceneVariant; className?: string }) {
   const enabled = useSceneEnabled();

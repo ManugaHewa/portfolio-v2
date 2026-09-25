@@ -1,4 +1,5 @@
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import { sceneBudget } from "./sceneQuality";
 
 export interface SceneHandle {
   scene: Scene;
@@ -40,7 +41,14 @@ export function mountScene(el: HTMLElement, def: SceneDef): () => void {
 
   let renderer: WebGLRenderer;
   try {
-    renderer = new WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
+    renderer = new WebGLRenderer({
+      alpha: true,
+      // Off on small screens. MSAA costs real fill rate on a mobile GPU and
+      // these scenes are soft, additive-blended backdrops at half opacity, so
+      // it buys almost nothing visible.
+      antialias: sceneBudget().antialias,
+      powerPreference: "low-power",
+    });
   } catch {
     // No WebGL: the CSS layer underneath is the whole experience.
     return () => {};
@@ -61,7 +69,11 @@ export function mountScene(el: HTMLElement, def: SceneDef): () => void {
     // 383px buffer into a 392px box, which is why it looked soft.
     const w = Math.max(1, el.clientWidth);
     const h = Math.max(1, el.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // Re-read the budget on every resize, so rotating a phone into landscape
+    // and crossing the breakpoint changes the ratio rather than keeping
+    // whichever one happened to apply at mount. A phone reporting DPR 3 would
+    // otherwise render a 400px canvas into a 1200px buffer, six times over.
+    renderer.setPixelRatio(sceneBudget().pixelRatio);
     // updateStyle false: the element is already sized by CSS, and letting
     // three write inline px here is what desyncs buffer from box.
     renderer.setSize(w, h, false);
