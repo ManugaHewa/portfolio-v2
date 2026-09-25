@@ -149,7 +149,7 @@ export function Hero() {
                   - a real industry client on the capstone, and a server this
                   site is actually deployed on. The line it replaced spent a
                   whole sentence claiming what the work below already proves. */}
-              <MaskedWords text="Real clients, real infrastructure." delay={0.15} />
+              <MaskedWords text="Real clients, real infrastructure. Auto-deploy test" delay={0.15} />
             </h1>
             <p className="hero-subtitle hero-stagger">Manuga Hewa Pathirana</p>
             <div className="hero-actions hero-stagger">
