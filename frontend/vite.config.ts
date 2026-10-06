@@ -1,10 +1,19 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+
+const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
+      // Two pages, each with its own entry: the privacy page shares the React
+      // chunk and loads none of the animation or WebGL code.
+      input: {
+        main: page("./index.html"),
+        privacy: page("./privacy/index.html"),
+      },
       output: {
         // React, the animation libraries and the app's own code changed at very
         // different rates but shipped as one 474 kB file, so editing a single
@@ -14,17 +23,26 @@ export default defineConfig({
         //
         // Three is deliberately absent: it is already its own lazy chunk and
         // naming it here would pull it back into the static graph.
-        manualChunks: {
-          react: ["react", "react-dom"],
-          motion: ["framer-motion", "gsap", "gsap/ScrollTrigger", "lenis"],
+        //
+        // Matched by path rather than listed by package name. The list form
+        // missed React's JSX runtime (a CommonJS file reached through a proxy
+        // module), so it landed in the motion chunk, framer-motion being the
+        // first thing to import it - and every page, the privacy page
+        // included, then had to download the animation libraries to render.
+        manualChunks(id) {
+          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react";
+          if (/[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils|gsap|lenis)[\\/]/.test(id)) {
+            return "motion";
+          }
         },
       },
     },
   },
   server: {
     proxy: {
-      // Lets the frontend call `/api/...` in dev without CORS juggling;
-      // in production these are separate deployed services (see README).
+      // Lets the frontend call `/api/...` in dev without CORS juggling. In
+      // production Nginx serves the pages and proxies /api from one origin
+      // (deploy/nginx/portfolio.conf), so it is same-origin there too.
       "/api": "http://localhost:4000",
     },
   },

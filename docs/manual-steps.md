@@ -356,6 +356,15 @@ backup (only if something was lost):
 docker exec -i portfolio-v2-db-1 psql -U postgres portfolio < /home/manuga/portfolio-db-backup-2026-10.sql
 ```
 
+### 4.9 Delete the backup once all is well
+
+The backup holds every contact message, and the privacy page promises they go
+after 12 months. Once the site has run normally for a few days:
+
+```bash
+rm /home/manuga/portfolio-db-backup-2026-10.sql
+```
+
 ## 5. A least-privilege database role for the API (optional, recommended)
 
 The API no longer needs to read contact messages back (it inserts them
@@ -513,6 +522,64 @@ Expected: `404`.
 `.github/dependabot.yml` asks for weekly update PRs. Also switch on alerts:
 **Settings > Code security > Dependabot alerts: Enable** and **Dependabot
 security updates: Enable**. Remember that merging any PR deploys it.
+
+## 8. Contact messages: retention and deletion requests
+
+Do this **after** the Phase 2 commit is deployed (it adds the scripts). Both
+scripts run from the repo folder, so they pick up the owner credentials in
+the repo-root `.env`; the API's own role cannot read or delete messages.
+
+### 8.1 Delete messages older than 12 months, daily
+
+The privacy page promises this, so it has to actually run. See what it would
+do first:
+
+```bash
+npm --prefix /home/manuga/portfolio-v2 run --silent contact:prune -- --dry-run
+```
+
+Then add it to your crontab, next to the deploy job:
+
+```bash
+crontab -e
+```
+
+Paste this line at the bottom (it runs at 03:17 every night), save and exit:
+
+`17 3 * * * /usr/bin/npm --prefix /home/manuga/portfolio-v2 run --silent contact:prune >> /home/manuga/contact-prune.log 2>&1`
+
+Check it is there:
+
+```bash
+crontab -l
+```
+
+The log only ever holds a timestamp and a count. To keep messages for a
+different period, add `CONTACT_RETENTION_DAYS=` to the repo-root `.env`, and
+tell me so the privacy page and the line under the form say the same.
+
+### 8.2 When someone asks for their messages to be deleted
+
+See how many there are:
+
+```bash
+npm --prefix /home/manuga/portfolio-v2 run --silent contact:delete -- someone@example.com --dry-run
+```
+
+Delete them:
+
+```bash
+npm --prefix /home/manuga/portfolio-v2 run --silent contact:delete -- someone@example.com
+```
+
+Then reply to say it is done. The address matches regardless of capitals.
+
+### 8.3 Keep the privacy page true
+
+`/privacy` describes the server after sections 1, 6.1 and 8.1: anonymised
+logs, no analytics, deletion after 12 months. Do those three before or soon
+after deploying Phase 2. It also says the server is in Ontario, Canada;
+tell me if that is wrong.
 
 ---
 

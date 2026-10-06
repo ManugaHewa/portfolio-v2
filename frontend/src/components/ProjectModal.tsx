@@ -61,6 +61,19 @@ export function ProjectModal({ project, onClose }: Props) {
     returnFocusRef.current = document.activeElement as HTMLElement | null;
     lockScroll();
 
+    // Everything beside the dialog goes inert while it is open. The Tab trap
+    // below covers the keyboard, but a screen reader's own cursor ignores
+    // focus and could walk straight out of the dialog into the page behind.
+    const modal = cardRef.current?.closest<HTMLElement>(".modal");
+    const background = modal?.parentElement
+      ? Array.from(modal.parentElement.children).filter(
+          (el): el is HTMLElement => el instanceof HTMLElement && el !== modal && !el.inert,
+        )
+      : [];
+    background.forEach((el) => {
+      el.inert = true;
+    });
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -95,6 +108,10 @@ export function ProjectModal({ project, onClose }: Props) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       unlockScroll();
+      // Before the focus hand-back: nothing inside an inert subtree can take focus.
+      background.forEach((el) => {
+        el.inert = false;
+      });
       // Send focus back where it came from, so closing does not dump a
       // keyboard user at the top of the document.
       returnFocusRef.current?.focus?.();
@@ -135,7 +152,6 @@ export function ProjectModal({ project, onClose }: Props) {
             className="modal-card"
             ref={cardRef}
             tabIndex={-1}
-            role="document"
             // Lenis keeps a global wheel listener and calls preventDefault on
             // every event while it is stopped, which is what a scroll lock
             // does - so the wheel died inside the dialog and only the

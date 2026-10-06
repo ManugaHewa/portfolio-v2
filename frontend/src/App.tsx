@@ -11,6 +11,7 @@ import { ContactSection } from "./components/ContactSection";
 import { Reveal } from "./components/Reveal";
 import { SectionHead } from "./components/SectionHead";
 import { SmoothScroll } from "./components/SmoothScroll";
+import { Footer } from "./components/Footer";
 
 /**
  * Smaller public repositories that are not projects in their own right. They
@@ -244,6 +245,8 @@ export default function App() {
 
         <ContactSection />
       </main>
+
+      <Footer />
 
       <ProjectModal project={activeProject} onClose={() => setActiveProject(null)} />
     </MotionConfig>

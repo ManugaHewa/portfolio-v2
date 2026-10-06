@@ -546,7 +546,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   opacity: 1;
 }
 
-.panel h3{
+.panel h4{
   margin:0 0 12px;
   font-size: 18px;
   font-weight: 600;
@@ -794,7 +794,8 @@ main > section[id]{ scroll-margin-top: 84px; }
   padding: 1px 7px;
   border-radius: 999px;
   background: rgba(255,255,255,0.08);
-  color: var(--muted2);
+  /* --text-2, not --text-3: on the tinted chip --text-3 measured 3.5:1. */
+  color: var(--text-2);
 }
 
 /* --- Detail panel beside the graph -------------------------------- */
@@ -1538,7 +1539,8 @@ main > section[id]{ scroll-margin-top: 84px; }
 }
 .contact-form input::placeholder,
 .contact-form textarea::placeholder{
-  color: rgba(255,255,255,0.32);
+  /* White at 32% measured 2.85:1 on the field. */
+  color: var(--text-3);
 }
 .contact-form input:hover,
 .contact-form textarea:hover{
@@ -1599,6 +1601,18 @@ main > section[id]{ scroll-margin-top: 84px; }
   color: var(--muted2);
   line-height: 1.5;
   flex: 1 1 220px;
+}
+
+.contact-privacy-note{
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.contact-privacy-note a{
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* The honeypot: moved off screen rather than display:none, because some form
@@ -1701,7 +1715,9 @@ main > section[id]{ scroll-margin-top: 84px; }
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   text-align: center;
-  color: var(--cat);
+  /* Lifted toward the text colour: the raw violet (Delivery) measured
+     4.3:1 on its own 14% tint, and this keeps every hue above 6:1. */
+  color: color-mix(in srgb, var(--cat) 65%, var(--text));
   background: color-mix(in srgb, var(--cat) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--cat) 32%, transparent);
 }
@@ -1809,7 +1825,7 @@ main > section[id]{ scroll-margin-top: 84px; }
   border-color: rgba(233,142,73,0.45);
   transform: scale(1.06) rotate(-3deg);
 }
-.panel-spotlight h3{
+.panel-spotlight h4{
   margin-bottom: 8px;
 }
 .panel-spotlight p{
@@ -2843,12 +2859,14 @@ body::before{
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: var(--line-strong);
+  /* Decorative and aria-hidden, so exempt, but at --line-strong it was
+     1.96:1 and an automated check cannot tell decoration from content. */
+  color: var(--text-3);
   transition: color var(--transition);
 }
 .capability-card.is-open .capability-index{ color: var(--accent); }
 
-.capability-card h3{
+.capability-card h4{
   margin-bottom: 8px;
 }
 .capability-card p{
@@ -3252,7 +3270,7 @@ main{ position: relative; z-index: 1; }
   border-radius: 11px;
 }
 .capability-icon{ width: 19px; height: 19px; }
-.capability-card h3{ font-size: 16px; margin-bottom: 6px; }
+.capability-card h4{ font-size: 16px; margin-bottom: 6px; }
 .capability-card p{ font-size: 13.5px; line-height: 1.5; }
 .capability-card.is-open .capability-proof{ margin-top: 12px !important; }
 .capability-proof strong{ font-size: 13px; }
@@ -3518,9 +3536,9 @@ a.project-compact{
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .project-compact:hover,
-.project-compact:focus-visible{ background: var(--surface-1); }
+.project-compact:focus-within{ background: var(--surface-1); }
 .project-compact:hover::before,
-.project-compact:focus-visible::before{ transform: scaleY(1); }
+.project-compact:focus-within::before{ transform: scaleY(1); }
 
 /* The row is a flex column, so this wrapper has to own the gap between the
    title and the note itself; without it the two sit flush. */
@@ -3675,3 +3693,115 @@ a.project-compact{
     max-width: none;
   }
 }
+
+/* ===== Footer =======================================================
+   Name, place and contact routes on every page. Deliberately plain: it is
+   the part of the page people look for when they want to reach a person.
+==================================================================== */
+.site-footer{
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--line-soft);
+  padding: 28px 0 40px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+.site-footer-inner{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
+}
+.site-footer-who{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+}
+.site-footer-name{ color: var(--text); font-weight: 600; }
+.site-footer-links{
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 0;
+}
+.site-footer-links a{
+  color: var(--text-2);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+.site-footer-links a:hover{ color: var(--text); }
+
+/* ===== Privacy page ================================================= */
+.legal-header .nav{ justify-content: space-between; }
+.legal-back{
+  font-size: 14px;
+  color: var(--text-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-back:hover{ color: var(--text); }
+
+.legal{
+  max-width: 70ch;
+  padding: clamp(40px, 7vw, 88px) 0 clamp(48px, 8vw, 96px);
+  line-height: 1.7;
+  color: var(--text-2);
+}
+.legal h1{
+  margin: 0 0 6px;
+  font-size: clamp(32px, 4vw, 44px);
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.legal h2{
+  margin: 40px 0 10px;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.legal p{ margin: 0 0 14px; }
+.legal-updated{ font-size: 13.5px; color: var(--text-3); }
+.legal-lead{ font-size: 17px; color: var(--text); margin-top: 22px; }
+.legal a{
+  color: var(--accent-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-credits{ margin: 0; padding-left: 20px; }
+.legal-credits li{ margin-bottom: 6px; }
+
+/* ===== Project cards: one real button per card =======================
+   The button's ::after covers the whole card (or row), so a click anywhere
+   still opens the case study, while the repository links are lifted above
+   that layer and stay separately clickable. This replaced an
+   <article role="button"> that had the links nested inside it.
+==================================================================== */
+.project-open{
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.project-open::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.project-compact-title .project-open{ font: inherit; }
+.project-links{
+  position: relative;
+  z-index: 2;
+}
+/* The focus ring sits on the button; the card answers too, so a keyboard
+   user can see which whole card the ring belongs to. */
+.project-card:focus-within{ border-color: var(--accent-line); }

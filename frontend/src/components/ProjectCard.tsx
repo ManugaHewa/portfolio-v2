@@ -35,14 +35,7 @@ function ProjectLinks({ links }: { links: ProjectLink[] }) {
     <div className="project-links">
       {links.map((link) =>
         link.url ? (
-          <a
-            className="link"
-            key={link.label}
-            href={link.url}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <a className="link" key={link.label} href={link.url} target="_blank" rel="noreferrer">
             {link.label}
           </a>
         ) : (
@@ -110,28 +103,26 @@ export function ProjectCard({ project, onOpen, variant = "featured" }: Props) {
     mouseY.set(0.5);
   };
 
-  // Every variant opens the same modal the same way, by pointer or by keyboard,
-  // so the interaction contract is written once.
-  const opens = {
-    tabIndex: 0,
-    role: "button",
-    "aria-label": `Open ${project.title} details`,
-    onClick: () => onOpen(project.slug),
-    onKeyDown: (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        onOpen(project.slug);
-      }
-    },
-  } as const;
+  // Each card has exactly one control that opens the case study: a real
+  // <button>, whose ::after the stylesheet stretches over the whole card (see
+  // .project-open), so the card is still one big target. The card itself used
+  // to be an <article role="button">, which put the repository links inside a
+  // button: invalid nesting that screen readers announce unpredictably, and
+  // an accessible name ("Open X details") that matched none of the visible
+  // text. The links now sit above the stretched layer and work on their own.
+  const open = () => onOpen(project.slug);
 
   // No tilt and no glare on a row: the 3D lift reads as a mistake at this size,
   // and there is no card face for a highlight to travel across.
   if (variant === "compact") {
     return (
-      <article className="project-compact" {...opens}>
+      <article className="project-compact">
         <div className="project-compact-main">
-          <h4 className="project-compact-title">{project.title}</h4>
+          <h4 className="project-compact-title">
+            <button type="button" className="project-open" onClick={open}>
+              {project.title}
+            </button>
+          </h4>
           <p className="project-compact-desc">{project.subtitle}</p>
         </div>
         <div className="project-compact-aside">
@@ -145,7 +136,6 @@ export function ProjectCard({ project, onOpen, variant = "featured" }: Props) {
   return (
     <motion.article
       className="project-card"
-      {...opens}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
       style={{ rotateX, rotateY, transformPerspective: 900 }}
@@ -178,12 +168,13 @@ export function ProjectCard({ project, onOpen, variant = "featured" }: Props) {
         <StackChips stack={project.stack} limit={CHIP_LIMIT[variant]} />
 
         <div className="project-foot">
-          <span className="project-cta" aria-hidden="true">
+          <button type="button" className="project-cta project-open" onClick={open}>
             Read the case study
-            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <span className="visually-hidden"> for {project.title}</span>
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" />
             </svg>
-          </span>
+          </button>
           <ProjectLinks links={project.links} />
         </div>
       </div>

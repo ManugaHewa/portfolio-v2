@@ -69,8 +69,13 @@ export function Nav() {
   return (
     <header className={`site-header${scrolled ? " is-scrolled" : ""}`}>
       <nav className="nav" ref={navRef} aria-label="Primary">
-        <a className="brand" href="#top" aria-label="Home">
-          <span className="brand-mark">MH</span>
+        {/* Named by its visible text. aria-label="Home" replaced that text
+            for screen readers, so a voice-control user saying the name they
+            could see had nothing to match. */}
+        <a className="brand" href="#top">
+          <span className="brand-mark" aria-hidden="true">
+            MH
+          </span>
           <span className="brand-text">Manuga Hewa Pathirana</span>
         </a>
 

@@ -1,14 +1,62 @@
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
+import axe from "axe-core";
 import App from "../App";
+import { PrivacyPage } from "../components/PrivacyPage";
+import type { ProjectSummary } from "../types";
+
+const base: Omit<ProjectSummary, "slug" | "title" | "tier"> = {
+  subtitle: "One line of tagline.",
+  stack: ["TypeScript", "Node.js"],
+  role: "Solo developer",
+  timeline: "2026",
+  category: "Full-stack web",
+  status: "Completed",
+  outcomes: ["Shipped to a real client."],
+  links: [{ label: "GitHub repository", url: "https://github.com/example/repo" }],
+};
+
+const PROJECTS: ProjectSummary[] = [
+  { ...base, slug: "rxflow", title: "RxFlow", tier: 1 },
+  { ...base, slug: "mail-client", title: "Mail Client", tier: 2 },
+];
 
 vi.mock("../api", () => ({
   api: {
-    getProjects: () => Promise.resolve([]),
-    getProject: () => Promise.resolve(null),
+    getProjects: () => Promise.resolve(PROJECTS),
+    getProject: (slug: string) =>
+      Promise.resolve({
+        ...PROJECTS.find((p) => p.slug === slug),
+        context: "Context.",
+        problem: "Problem.",
+        scope: ["One"],
+        stakeholders: [],
+        requirements: [],
+        nonFunctional: [],
+        deliveryProcess: [],
+        risks: [],
+        challenges: [],
+        highlights: [],
+        nextSteps: [],
+        learned: null,
+      }),
     sendContactMessage: () => Promise.resolve({ status: "received" }),
   },
 }));
+
+/**
+ * axe's structural rules: roles, names, nesting, landmarks, heading order.
+ * Contrast needs real layout and real colours, which jsdom does not have; it
+ * is measured in a browser instead (docs/audit-2026-10.md, appendix E).
+ */
+async function violations(root: Element = document.body) {
+  const result = await axe.run(root, {
+    rules: { "color-contrast": { enabled: false } },
+  });
+  return result.violations.map(
+    (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
+  );
+}
 
 describe("page landmarks", () => {
   it("offers a skip link pointing at the main landmark", async () => {
@@ -31,7 +79,41 @@ describe("page landmarks", () => {
       expect(section, `#${id} should exist`).not.toBeNull();
       const labelledBy = section?.getAttribute("aria-labelledby");
       expect(labelledBy, `#${id} should be labelled`).toBeTruthy();
-      expect(document.getElementById(labelledBy!)).not.toBeNull();
+      expect(document.getElementById(labelledBy ?? "")).not.toBeNull();
     }
+  });
+
+  it("names the person and a way to reach them in the footer", async () => {
+    await act(async () => { render(<App />); });
+    const footer = screen.getByRole("contentinfo");
+
+    expect(footer).toHaveTextContent("Manuga Hewa Pathirana");
+    expect(footer).toHaveTextContent("Milton, Ontario");
+    expect(screen.getByRole("link", { name: "Email" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^mailto:/),
+    );
+    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+  });
+});
+
+describe("axe, structural rules", () => {
+  it("finds nothing on the home page", async () => {
+    await act(async () => { render(<App />); });
+    expect(await violations()).toEqual([]);
+  });
+
+  it("finds nothing with a project open", async () => {
+    await act(async () => { render(<App />); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /read the case study for rxflow/i }));
+    });
+    await screen.findByRole("dialog");
+    expect(await violations()).toEqual([]);
+  });
+
+  it("finds nothing on the privacy page", async () => {
+    render(<PrivacyPage />);
+    expect(await violations()).toEqual([]);
   });
 });

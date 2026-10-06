@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { api } from "../api";
 import { SendTrace } from "./SendTrace";
 import { Turnstile, TURNSTILE_SITE_KEY } from "./Turnstile";
+import { RETENTION, SITE } from "../site";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -238,12 +239,18 @@ export function ContactForm() {
         </span>
       </div>
 
+      {/* What happens to the message, said where the decision to send is
+          made. No checkbox: there is nothing optional to consent to. */}
+      <p className="contact-privacy-note">
+        I use your name, email and message only to reply to you, and delete them after{" "}
+        {RETENTION.label}. <a href="/privacy">How your message is handled</a>.
+      </p>
+
       {sending && stage >= 0 && <SendTrace stage={stage} />}
 
       {status === "error" && (
         <p className="field-error field-error-block" role="alert">
-          Something went wrong sending that. Try again, or email me directly at
-          Manugaginodh2@gmail.com.
+          Something went wrong sending that. Try again, or email me directly at {SITE.email}.
         </p>
       )}
     </form>

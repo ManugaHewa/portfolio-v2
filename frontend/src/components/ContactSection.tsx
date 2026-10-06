@@ -4,24 +4,25 @@ import { SectionHead } from "./SectionHead";
 import { CapabilityCard } from "./CapabilityCard";
 import { CAPABILITIES, IMPACT } from "../capabilities";
 import { Scene } from "./Scene";
+import { SITE } from "../site";
 
 const ROUTES = [
   {
     label: "Email",
-    value: "Manugaginodh2@gmail.com",
-    href: "mailto:Manugaginodh2@gmail.com",
+    value: SITE.email,
+    href: `mailto:${SITE.email}`,
     note: "Anything detailed.",
   },
   {
     label: "GitHub",
-    value: "github.com/ManugaHewa",
-    href: "https://github.com/ManugaHewa",
+    value: SITE.github.label,
+    href: SITE.github.url,
     note: "Every project here, in full.",
   },
   {
     label: "LinkedIn",
-    value: "linkedin.com/in/manugahewa",
-    href: "https://www.linkedin.com/in/manugahewa",
+    value: SITE.linkedin.label,
+    href: SITE.linkedin.url,
     note: "The formal version.",
   },
 ];
@@ -55,7 +56,7 @@ export function ContactSection() {
             <span className="contact-status-dot" aria-hidden="true" />
             Open to full-stack roles
           </span>
-          <span className="availability-meta">Milton, Ontario · hybrid or remote</span>
+          <span className="availability-meta">{SITE.location} · hybrid or remote</span>
           <span className="availability-reply">Replies in a day or two, from me, not a bot.</span>
         </div>
       </Reveal>

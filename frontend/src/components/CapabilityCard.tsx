@@ -54,7 +54,7 @@ export function CapabilityCard({ capability }: { capability: Capability }) {
         </span>
       </div>
 
-      <h3>{capability.title}</h3>
+      <h4>{capability.title}</h4>
       <p>{capability.body}</p>
 
       <p className="capability-proof">

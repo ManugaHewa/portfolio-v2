@@ -20,11 +20,11 @@ const project: ProjectDetail = {
   scope: ["Donor records", "Validation workflow"],
   stakeholders: ["Treasurers"],
   requirements: ["Audit logs"],
-  nonFunctional: ["WCAG 2.1"],
+  nonFunctional: ["Usable on a phone"],
   deliveryProcess: ["Schema first"],
   risks: ["Duplicate records on re-import"],
   challenges: ["requireAdmin resolved to undefined on an import mismatch"],
-  outcomes: ["Faster release cycles"],
+  outcomes: ["Validated donations only"],
   highlights: [],
   nextSteps: [],
   learned: "Prisma migrations and schema design against a real system.",
@@ -101,6 +101,20 @@ describe("ProjectModal", () => {
     fireEvent.keyDown(window, { key: "Escape" });
     // Without the restore, a keyboard user is dumped at the top of the page.
     await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
+
+  it("makes the page behind it inert, and gives it back on close", async () => {
+    render(<Harness />);
+    const trigger = screen.getByRole("button", { name: /open project/i });
+    fireEvent.click(trigger);
+    await screen.findByRole("dialog");
+
+    // A screen reader's own cursor ignores focus traps, so the background
+    // has to be taken out of reach, not just out of the Tab order.
+    expect(trigger.inert).toBe(true);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(trigger.inert).toBe(false));
   });
 
   it("keeps Tab inside the dialog", async () => {

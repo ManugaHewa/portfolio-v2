@@ -15,8 +15,8 @@ const project: ProjectSummary = {
   status: "In active development",
   tier: 1,
   outcomes: [
-    "Around thirty percent faster release cycles.",
-    "Automated acknowledgements within twenty-four hours.",
+    "Donations wait for an administrator before they can be receipted.",
+    "Duplicate donors are merged by phone number.",
   ],
   links: [{ label: "GitHub repository", url: "https://github.com/example/dms" }],
 };
@@ -28,8 +28,23 @@ describe("ProjectCard", () => {
 
     expect(screen.getByText("Donation Management System")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /open donation management system/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /read the case study for donation management system/i }),
+    );
     expect(onOpen).toHaveBeenCalledWith("dms");
+  });
+
+  it("nests no control inside another", () => {
+    // The card used to be <article role="button"> with the repository links
+    // inside it. Now the article is plain, the open control is a real button
+    // whose name starts with its visible text, and the links sit beside it.
+    const { container } = render(<ProjectCard project={project} onOpen={vi.fn()} />);
+
+    const card = container.querySelector("article");
+    expect(card).not.toHaveAttribute("role");
+    expect(card).not.toHaveAttribute("tabindex");
+    expect(container.querySelector("button a, a button, button button")).toBeNull();
+    expect(screen.getByRole("link", { name: /github repository/i })).toBeInTheDocument();
   });
 
   it("shows the stack as individual chips", () => {
@@ -117,7 +132,7 @@ describe("ProjectCard", () => {
     expect(screen.queryByText(/read the case study/i)).not.toBeInTheDocument();
     expect(screen.queryByText(project.outcomes[0])).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /open donation management system/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Donation Management System" }));
     expect(onOpen).toHaveBeenCalledWith("dms");
   });
 });

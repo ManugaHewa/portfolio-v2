@@ -20,8 +20,8 @@ describe("CountUp", () => {
   });
 
   it("applies a prefix and suffix around the number", () => {
-    render(<CountUp value={30} prefix="~" suffix="%" />);
-    expect(screen.getByText("~30%")).toBeInTheDocument();
+    render(<CountUp value={48} prefix="#" suffix=" skills" />);
+    expect(screen.getByText("#48 skills")).toBeInTheDocument();
   });
 });
 
