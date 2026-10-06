@@ -141,7 +141,11 @@ export function Hero() {
             <p className="kicker hero-stagger">
               Software Engineering graduate · full-stack developer
             </p>
-            <h1 className="hero-title hero-stagger">
+            {/* Display type, but not the page's heading: the <h1> below is the
+                name, which is what anyone searching for this page types. The
+                two used to be the other way round, so the only h1 on the site
+                did not contain the name at all. */}
+            <p className="hero-title hero-stagger">
               {/* The site's own thesis in its own words: portfolio_projects.txt
                   argues that the strongest entries "show real clients, real
                   infrastructure and real engineering decisions". Both halves
@@ -150,8 +154,8 @@ export function Hero() {
                   site is actually deployed on. The line it replaced spent a
                   whole sentence claiming what the work below already proves. */}
               <MaskedWords text="Real Clients, Real Infrastructure" delay={0.15} />
-            </h1>
-            <p className="hero-subtitle hero-stagger">Manuga Hewa Pathirana</p>
+            </p>
+            <h1 className="hero-subtitle hero-stagger">Manuga Hewa Pathirana</h1>
             <div className="hero-actions hero-stagger">
               <a className="btn btn-primary" href="#projects">
                 See the work

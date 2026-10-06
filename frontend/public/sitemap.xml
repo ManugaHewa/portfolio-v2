@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Every page with a URL of its own. Case studies open in a dialog on the
+     home page, so there is nothing per project to list or generate. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://manugahewa.dev/</loc>
+  </url>
+  <url>
+    <loc>https://manugahewa.dev/privacy</loc>
+  </url>
+</urlset>

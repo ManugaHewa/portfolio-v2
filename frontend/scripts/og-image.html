@@ -1,0 +1,43 @@
+<!doctype html>
+<!--
+  Source of frontend/public/og.png, the 1200x630 image link previews show.
+  Regenerate after editing (PowerShell, from the repo root):
+
+    & "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless --disable-gpu --hide-scrollbars --window-size=1200,630 --screenshot="$PWD\frontend\public\og.png" "$PWD\frontend\scripts\og-image.html"
+
+  Plain type on the site's ink and ember: no claims, nothing that dates.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+      body {
+        background: #0d1518;
+        color: #e7eaeb;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-sizing: border-box;
+        padding: 88px 96px 76px;
+      }
+      .rule { width: 72px; height: 6px; border-radius: 3px; background: #e98e49; }
+      h1 { margin: 40px 0 0; font-size: 92px; line-height: 1.02; letter-spacing: -0.03em; font-weight: 700; }
+      .role { margin: 26px 0 0; font-size: 38px; color: #aab6bb; letter-spacing: -0.01em; }
+      .foot { display: flex; justify-content: space-between; align-items: baseline; font-size: 28px; color: #89999f; }
+      .domain { color: #e98e49; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <div class="rule"></div>
+      <h1>Manuga Hewa<br />Pathirana</h1>
+      <p class="role">Full-stack developer</p>
+    </div>
+    <div class="foot">
+      <span>Milton, Ontario</span>
+      <span class="domain">manugahewa.dev</span>
+    </div>
+  </body>
+</html>

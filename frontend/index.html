@@ -4,29 +4,60 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>Manuga Hewa Pathirana | Full-Stack Engineer</title>
+    <!-- "developer", as the page itself says, rather than "engineer": see
+         docs/audit-2026-10.md, claim C1. -->
+    <title>Manuga Hewa Pathirana | Full-stack developer, Milton, ON</title>
     <meta
       name="description"
-      content="Full-stack engineer building fast, accessible web and mobile products with TypeScript, React, Node.js, and production-grade DevOps."
+      content="Manuga Hewa Pathirana, full-stack developer in Milton, Ontario: case studies of web, mobile and machine-learning projects in TypeScript, React, Node.js and Python."
     />
+    <link rel="canonical" href="https://manugahewa.dev/" />
     <meta name="theme-color" content="#0d1518" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230d1518'/><text x='32' y='43' font-family='system-ui,sans-serif' font-size='30' font-weight='700' fill='%23e98e49' text-anchor='middle'>MH</text></svg>" />
 
-    <!-- Link previews. No og:image yet: pointing at an asset that does not
-         exist renders worse than omitting the tag, so add one here once a
-         real preview image is in place. -->
+    <!-- Link previews. Absolute URLs on the real domain: the previous tags
+         pointed at an old github.io address and an og.png that did not
+         exist. The image's source is frontend/scripts/og-image.html. -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Manuga Hewa Pathirana | Full-Stack Engineer" />
+    <meta property="og:site_name" content="Manuga Hewa Pathirana" />
+    <meta property="og:locale" content="en_CA" />
+    <meta property="og:url" content="https://manugahewa.dev/" />
+    <meta property="og:title" content="Manuga Hewa Pathirana, full-stack developer" />
     <meta
       property="og:description"
-      content="Typed, tested, full-stack products end to end. React, Node, PostgreSQL, and CI that proves it works."
+      content="Case studies of web, mobile and machine-learning projects in TypeScript, React, Node.js and Python."
     />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Manuga Hewa Pathirana | Full-Stack Engineer" />
+    <meta property="og:image" content="https://manugahewa.dev/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Manuga Hewa Pathirana, full-stack developer, Milton, Ontario. manugahewa.dev" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Manuga Hewa Pathirana, full-stack developer" />
     <meta
       name="twitter:description"
-      content="Typed, tested, full-stack products end to end. React, Node, PostgreSQL, and CI that proves it works."
+      content="Case studies of web, mobile and machine-learning projects in TypeScript, React, Node.js and Python."
     />
+    <meta name="twitter:image" content="https://manugahewa.dev/og.png" />
+    <meta name="twitter:image:alt" content="Manuga Hewa Pathirana, full-stack developer, Milton, Ontario. manugahewa.dev" />
+
+    <!-- Structured data: who this page is about. Only facts the page itself
+         states. A data block, so the CSP's script-src does not apply. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Manuga Hewa Pathirana",
+        "url": "https://manugahewa.dev/",
+        "jobTitle": "Full-stack developer",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "Milton",
+          "addressRegion": "ON",
+          "addressCountry": "CA"
+        },
+        "sameAs": ["https://github.com/ManugaHewa", "https://www.linkedin.com/in/manugahewa"]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

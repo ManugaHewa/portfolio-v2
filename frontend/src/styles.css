@@ -358,6 +358,8 @@ main > section[id]{ scroll-margin-top: 84px; }
   max-width: 70ch;
   color:rgba(255,255,255,0.72);
   font-size: 16px;
+  /* It is the page's <h1> now; this keeps it looking as it did. */
+  font-weight: 400;
   line-height:1.65;
 }
 
