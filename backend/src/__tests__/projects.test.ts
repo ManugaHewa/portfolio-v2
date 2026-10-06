@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
-import { app } from "../index.js";
+import { createApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
 
 vi.mock("../lib/prisma.js", () => ({
@@ -9,9 +9,17 @@ vi.mock("../lib/prisma.js", () => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
     },
-    contactMessage: { create: vi.fn() },
+    contactMessage: { createMany: vi.fn() },
   },
 }));
+
+const app = createApp();
+const findUnique = vi.mocked(prisma.project.findUnique);
+
+beforeEach(() => {
+  vi.mocked(prisma.project.findMany).mockReset();
+  findUnique.mockReset();
+});
 
 describe("GET /api/projects", () => {
   it("returns the fields the cards are built from", async () => {
@@ -56,7 +64,7 @@ describe("GET /api/projects", () => {
 
 describe("GET /api/projects/:slug", () => {
   it("returns the case-study fields the modal renders", async () => {
-    vi.mocked(prisma.project.findUnique).mockResolvedValue({
+    findUnique.mockResolvedValue({
       slug: "dms",
       title: "Donation Management System (DMS)",
       challenges: ["requireAdmin resolved to undefined"],
@@ -68,11 +76,43 @@ describe("GET /api/projects/:slug", () => {
     const res = await request(app).get("/api/projects/dms");
 
     expect(res.status).toBe(200);
-    // The three fields added for the source-list rewrite. They ride along on
-    // the detail route's include rather than being selected one by one, which
-    // is exactly the kind of thing that silently stops being true.
     expect(res.body.challenges).toHaveLength(1);
     expect(res.body.nextSteps).toHaveLength(1);
     expect(res.body.learned).toContain("Prisma");
+  });
+
+  it("asks for the public fields by name and nothing else", async () => {
+    // This route used `include`, which returns every column, so anything added
+    // to the table went public with the migration. The exact list is pinned
+    // here: publishing a new field means changing this test on purpose.
+    findUnique.mockResolvedValue(null);
+
+    await request(app).get("/api/projects/dms");
+
+    const { select } = findUnique.mock.calls[0][0] as { select: Record<string, unknown> };
+    expect(Object.keys(select).sort()).toEqual(
+      [
+        "slug", "title", "subtitle", "stack", "role", "timeline", "category", "status", "tier",
+        "outcomes", "links", "context", "problem", "scope", "stakeholders", "requirements",
+        "nonFunctional", "deliveryProcess", "risks", "challenges", "highlights", "nextSteps",
+        "learned",
+      ].sort(),
+    );
+    for (const internal of ["id", "position", "createdAt", "updatedAt"]) {
+      expect(select, `${internal} must stay private`).not.toHaveProperty(internal);
+    }
+  });
+
+  it.each([
+    ["an uppercase slug", "DMS"],
+    ["path traversal", "..%2F..%2Fetc%2Fpasswd"],
+    ["a quote", "dms'"],
+    ["an overlong slug", "a".repeat(81)],
+  ])("answers %s with a 404 and no query", async (_label, slug) => {
+    const res = await request(app).get(`/api/projects/${slug}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("Project not found");
+    expect(findUnique).not.toHaveBeenCalled();
   });
 });

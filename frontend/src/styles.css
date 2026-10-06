@@ -1601,6 +1601,17 @@ main > section[id]{ scroll-margin-top: 84px; }
   flex: 1 1 220px;
 }
 
+/* The honeypot: moved off screen rather than display:none, because some form
+   bots skip fields that are not rendered at all. aria-hidden and
+   tabindex="-1" in the markup keep people from ever meeting it. */
+.hp-field{
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 /* --- Success state: keeps the panel instead of collapsing to a line - */
 .contact-success{
   display: flex;

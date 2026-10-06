@@ -24,7 +24,7 @@ vi.mock("../api", () => ({
   api: {
     getProjects: () => Promise.resolve(PROJECTS),
     getProject: () => Promise.resolve(null),
-    sendContactMessage: () => Promise.resolve({ id: "1", status: "received" }),
+    sendContactMessage: () => Promise.resolve({ status: "received" }),
   },
 }));
 

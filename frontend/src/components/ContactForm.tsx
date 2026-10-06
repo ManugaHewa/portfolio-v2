@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { api } from "../api";
 import { SendTrace } from "./SendTrace";
+import { Turnstile, TURNSTILE_SITE_KEY } from "./Turnstile";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -46,6 +47,16 @@ export function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
   // Which hop of the send trace is in flight. -1 when idle.
   const [stage, setStage] = useState(-1);
+  // The honeypot's value. Kept out of `values` because it is not a field
+  // anyone is meant to fill in, validate, or see.
+  const [website, setWebsite] = useState("");
+  // When the form appeared. The API drops anything sent within a few seconds
+  // of that, which no person typing a message manages.
+  const shownAt = useRef(Date.now());
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // Bumped to remount the widget, because each token is good for one send.
+  const [turnstileRound, setTurnstileRound] = useState(0);
+  const [turnstileMissing, setTurnstileMissing] = useState(false);
 
   const errors = validate(values);
   const showError = (field: keyof Fields) =>
@@ -61,6 +72,11 @@ export function ContactForm() {
     e.preventDefault();
     setSubmitted(true);
     if (Object.keys(errors).length > 0) return;
+    if (TURNSTILE_SITE_KEY && !turnstileToken) {
+      setTurnstileMissing(true);
+      return;
+    }
+    setTurnstileMissing(false);
 
     setStatus("sending");
     // Validation has genuinely already passed at this point, so the first
@@ -70,7 +86,18 @@ export function ContactForm() {
       // The trace advances to the network hop on the next frame, so the
       // first segment is visibly drawn even on a fast local response.
       requestAnimationFrame(() => setStage(1));
-      await api.sendContactMessage(values);
+      const token = turnstileToken;
+      if (TURNSTILE_SITE_KEY) {
+        // Spent by this send either way, so ask the widget for a new one now.
+        setTurnstileToken(null);
+        setTurnstileRound((round) => round + 1);
+      }
+      await api.sendContactMessage({
+        ...values,
+        website,
+        elapsedMs: Date.now() - shownAt.current,
+        ...(token ? { turnstileToken: token } : {}),
+      });
       // The server answered, which means it parsed and persisted. Walk the
       // last two hops at a readable pace before switching to the success view.
       setStage(2);
@@ -176,6 +203,31 @@ export function ContactForm() {
           </p>
         )}
       </div>
+
+      {/* The honeypot. Off screen, out of the tab order and hidden from
+          assistive tech, so nobody using the form ever meets it; the API
+          quietly drops anything that arrives with it filled in. */}
+      <div className="hp-field" aria-hidden="true">
+        <label htmlFor="website">Leave this field empty</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={website}
+          onChange={(e) => setWebsite(e.target.value)}
+        />
+      </div>
+
+      {TURNSTILE_SITE_KEY && (
+        <div className="field">
+          <Turnstile key={turnstileRound} siteKey={TURNSTILE_SITE_KEY} onToken={setTurnstileToken} />
+          {turnstileMissing && !turnstileToken && (
+            <p className="field-error">Give the spam check a moment to finish, then send again.</p>
+          )}
+        </div>
+      )}
 
       <div className="contact-actions">
         <button className="btn btn-primary" type="submit" disabled={sending}>
