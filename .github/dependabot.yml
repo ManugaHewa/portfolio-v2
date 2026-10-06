@@ -1,0 +1,21 @@
+# Weekly dependency PRs. Merging one into main deploys it within five
+# minutes, like any other push, so read the changelog of anything major.
+#
+# Docker images are left out on purpose: a Postgres major version bump in
+# docker-compose.yml would need a dump and restore, not a merge.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for routine minor and patch bumps instead of one per package.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

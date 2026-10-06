@@ -1,0 +1,4 @@
+# These run on the Linux server, so they keep LF line endings even when the
+# repo is checked out and edited on Windows.
+*.sh   text eol=lf
+*.conf text eol=lf

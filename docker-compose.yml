@@ -1,15 +1,28 @@
-version: "3.9"
-
+# Postgres for local development, and the database the server runs.
+#
+# The password comes from a .env file next to this one (git-ignored), e.g.
+#   POSTGRES_PASSWORD=<long random string>
+# Compose refuses to start without it rather than falling back to a default.
+#
+# The backend service is for running the whole stack in containers. The
+# server does not use it: the API runs there under systemd.
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      # Only read when the data volume is first created. Changing it later
+      # does not change the password of an existing database; that is done
+      # inside Postgres (docs/manual-steps.md).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env file next to docker-compose.yml}
       POSTGRES_DB: portfolio
     ports:
-      - "5432:5432"
+      # Loopback only. A bare "5432:5432" listens on every interface, and
+      # ports Docker publishes bypass UFW, so the database was reachable from
+      # anything on the home network. Connect to 127.0.0.1, not localhost:
+      # localhost can resolve to ::1, which this does not publish.
+      - "127.0.0.1:5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
 
@@ -19,11 +32,11 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/portfolio?schema=public
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env file next to docker-compose.yml}@db:5432/portfolio?schema=public
       PORT: 4000
       NODE_ENV: production
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
 
 volumes:
   db-data:
