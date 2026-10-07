@@ -3,6 +3,7 @@ import type { MotionValue } from "framer-motion";
 import { motion, useScroll, useSpring, useTransform, useReducedMotion } from "framer-motion";
 import { Reveal } from "./Reveal";
 import { Scene } from "./Scene";
+import { useHydrated } from "../lib/useHydrated";
 
 const LINES = [
   "Every claim on this page is backed by code you can open.",
@@ -89,7 +90,11 @@ function Line({ text, index, progress }: { text: string; index: number; progress
 
 export function Statement() {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const reduceMotion = useReducedMotion();
+  // The prerendered HTML is the scrubbed version, because the build cannot
+  // know a visitor's motion setting; the static one takes over right after
+  // hydration. Switching during the first render would not match the HTML.
+  const hydrated = useHydrated();
+  const reduceMotion = useReducedMotion() && hydrated;
   const { scrollYProgress } = useScroll({ target: wrapRef, offset: ["start start", "end end"] });
 
   // The raw value tracks scroll exactly, which reads as twitchy on a diagram

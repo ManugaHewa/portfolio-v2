@@ -43,20 +43,36 @@ const ALSO_ON_GITHUB = [
 import { api } from "./api";
 import type { ProjectDetail, ProjectSummary } from "./types";
 
-export default function App() {
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+interface AppProps {
+  /**
+   * The card summaries the build-time prerender wrote into the page, so the
+   * first render shows the projects instead of skeletons, and matches the
+   * HTML React is hydrating. Absent in development, where nothing is
+   * prerendered and the list arrives from the API alone.
+   */
+  initialProjects?: ProjectSummary[];
+}
+
+export default function App({ initialProjects }: AppProps) {
+  const [projects, setProjects] = useState<ProjectSummary[]>(initialProjects ?? []);
   const [activeProject, setActiveProject] = useState<ProjectDetail | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [loadingProjects, setLoadingProjects] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(!initialProjects);
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Still asked for with prerendered cards on screen: the data lives in
+    // Postgres, and this is the live read. CI checks the API returns exactly
+    // what the prerender used, so the swap changes nothing on screen. If the
+    // API is down, the prerendered cards stay and only opening one fails.
     api
       .getProjects()
       .then(setProjects)
-      .catch(() => setLoadError(true))
+      .catch(() => {
+        if (!initialProjects) setLoadError(true);
+      })
       .finally(() => setLoadingProjects(false));
-  }, []);
+  }, [initialProjects]);
 
   useEffect(() => {
     const doc = document.documentElement;

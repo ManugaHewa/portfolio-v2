@@ -29,6 +29,8 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/portfolio_test?schema=public
+      # Switches on content.integration.test.ts, which needs the seeded database.
+      RUN_DB_TESTS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,9 +41,13 @@ jobs:
       - run: npm ci
       - run: npx prisma generate --schema backend/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
+      # Seeded, as the deploy does, so the integration test can check that
+      # GET /api/projects returns exactly what the prerendered HTML is built
+      # from (content/projects.ts).
+      - run: npx tsx backend/prisma/seed.ts
       - run: npm run lint --workspace backend
-      # Tests, admin scripts and the seed: none of them are compiled by the
-      # build, and tsx and Vitest do not check types.
+      # Tests, admin scripts, the seed and content/projects.ts: none of them
+      # are compiled by the build, and tsx and Vitest do not check types.
       - run: npm run typecheck --workspace backend
       - run: npm run test --workspace backend
       # Vitest strips types without checking them, and the deploy compiles

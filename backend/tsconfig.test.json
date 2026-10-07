@@ -1,13 +1,13 @@
 {
   // Type-checks what the build does not compile: the tests, the admin
-  // scripts and the seed. Vitest and tsx strip types without checking them,
-  // so without this a type error in any of these would only show up at run
-  // time. `npm run typecheck`.
+  // scripts, the seed, and content/projects.ts, which the seed imports.
+  // Vitest and tsx strip types without checking them, so without this a type
+  // error in any of these would only show up at run time. `npm run typecheck`.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
     "rootDir": ".."
   },
-  "include": ["src", "scripts", "prisma"],
+  "include": ["src", "scripts", "prisma", "../content"],
   "exclude": []
 }

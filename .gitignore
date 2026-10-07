@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# The frontend's build-time render bundle (vite build --ssr). Never deployed.
+dist-server/
 *.tsbuildinfo
 .env
 # Any other env file too (.env.local, .env.production...), except the template.

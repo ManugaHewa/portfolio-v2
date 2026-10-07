@@ -17,22 +17,18 @@ import { useEffect, useState } from "react";
  */
 const MOTION_OK = "(prefers-reduced-motion: no-preference)";
 
-function allowed(): boolean {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-  return window.matchMedia(MOTION_OK).matches;
-}
-
 export function useSceneEnabled(): boolean {
-  const [enabled, setEnabled] = useState(allowed);
+  // Starts false everywhere and is decided in the effect below, never during
+  // the first render: the prerendered HTML has no scenes in it, so the
+  // browser's first render must not either, or hydration fails. The cost is
+  // one frame before the lazy Three chunk is requested.
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia(MOTION_OK);
     const onChange = () => setEnabled(mq.matches);
     mq.addEventListener("change", onChange);
-    // The first render read the same query, but a change landing between that
-    // render and this effect would otherwise stick until the next one.
     onChange();
     return () => mq.removeEventListener("change", onChange);
   }, []);

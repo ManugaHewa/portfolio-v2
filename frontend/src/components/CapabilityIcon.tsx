@@ -49,7 +49,10 @@ export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
-      initial={reduceMotion ? false : "hidden"}
+      // Always starts hidden, so the prerendered HTML and the browser's first
+      // render agree; reduced motion is honoured in the transition instead,
+      // which is read when the drawing starts, long after hydration.
+      initial="hidden"
       whileInView="drawn"
       viewport={{ once: true, amount: 0.6 }}
     >
@@ -62,10 +65,12 @@ export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
             drawn: {
               pathLength: 1,
               opacity: 1,
-              transition: {
-                pathLength: { duration: 0.65, delay: 0.15 + i * 0.22, ease: [0.16, 1, 0.3, 1] },
-                opacity: { duration: 0.01, delay: 0.15 + i * 0.22 },
-              },
+              transition: reduceMotion
+                ? { duration: 0 }
+                : {
+                    pathLength: { duration: 0.65, delay: 0.15 + i * 0.22, ease: [0.16, 1, 0.3, 1] },
+                    opacity: { duration: 0.01, delay: 0.15 + i * 0.22 },
+                  },
             },
           }}
         />

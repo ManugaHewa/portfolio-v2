@@ -114,6 +114,14 @@ npm ci --silent
 npx prisma generate       --schema "$SCHEMA"
 npx prisma migrate deploy --schema "$SCHEMA"
 
+# The project copy lives in content/projects.ts. The frontend build below
+# writes it into the HTML; the seed writes it to Postgres, which the API
+# serves. Both in the same deploy, or a reworded case study would reach the
+# page and never the API. Idempotent (upserts, then deletes projects no longer
+# in the file), leaves contact messages alone, and reads the repo-root .env,
+# which holds the owner credentials.
+npx tsx backend/prisma/seed.ts
+
 npm run build --workspace backend
 npm run build --workspace frontend
 

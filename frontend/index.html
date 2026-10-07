@@ -58,6 +58,21 @@
         "sameAs": ["https://github.com/ManugaHewa", "https://www.linkedin.com/in/manugahewa"]
       }
     </script>
+
+    <!-- The page is prerendered with the entrance animations at their
+         starting point (faded, shifted, masked). Without JavaScript nothing
+         moves them on, so show the finished state instead. -->
+    <noscript>
+      <style>
+        [style*="opacity:0"] { opacity: 1 !important; }
+        [style*="transform"] { transform: none !important; }
+        [style*="blur("] { filter: none !important; }
+        [style*="stroke-dasharray"] { stroke-dasharray: none !important; }
+        .statement { height: auto !important; }
+        .statement-sticky { position: static !important; height: auto !important; }
+        .statement-line { grid-area: auto !important; }
+      </style>
+    </noscript>
   </head>
   <body>
     <div id="root"></div>

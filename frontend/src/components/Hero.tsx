@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import gsap from "gsap";
 import { MaskedWords } from "./MaskedWords";
+import { useIsomorphicLayoutEffect } from "../lib/useHydrated";
 
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 // Lazy, and skipped outright on a small screen: see Scene.tsx. The CSS scope
@@ -16,7 +17,7 @@ const EASE = "power3.out";
 export function Hero() {
   const rootRef = useRef<HTMLElement>(null);
 
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 

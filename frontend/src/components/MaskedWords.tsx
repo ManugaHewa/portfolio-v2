@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { useHydrated } from "../lib/useHydrated";
 
 interface Props {
   text: string;
@@ -21,7 +22,10 @@ interface Props {
  * spaces sit outside the wrappers so real word spacing and wrapping survive.
  */
 export function MaskedWords({ text, className = "", delay = 0, stagger = 0.045 }: Props) {
-  const reduceMotion = useReducedMotion();
+  // After hydration only: the prerendered HTML has the masked words, and the
+  // browser's first render has to match it.
+  const hydrated = useHydrated();
+  const reduceMotion = useReducedMotion() && hydrated;
   const words = text.split(" ");
 
   if (reduceMotion) return <span className={className}>{text}</span>;
