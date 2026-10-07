@@ -14,34 +14,64 @@ Conventions:
   **Ctrl+X** to exit.
 - Each section says when to do it relative to pushing, and how to undo it.
 
+## In order
+
+| Step | What | Where |
+|---|---|---|
+| 1 | Push stage 1 | section 0 |
+| 2 | Replace the Nginx config | section 1 |
+| 3 | `NODE_ENV=production`, `HOST=127.0.0.1`, restart the API | section 3 |
+| 4 | Postgres on loopback with a real password (backup first) | section 4 |
+| 5 | Insert-only database role for the API (optional) | section 5 |
+| 6 | Cloudflare: Web Analytics off, HTTPS settings | section 6 |
+| 7 | GitHub: unpublish the github.io copy, Dependabot alerts | section 7 |
+| 8 | Push stage 2 | section 0 |
+| 9 | Daily retention cron | section 8.1 |
+| 10 | Cloudflare: email obfuscation off | section 10.1 |
+| 11 | Push stage 3 | section 0 |
+| 12 | Search Console: verify, sitemap, indexing | section 9 |
+| 13 | A day or two after step 2: enforce the CSP | section 2 |
+| 14 | A few days after step 4: delete the database backup | section 4.9 |
+
 ---
 
 ## 0. Pushing
 
-Every commit in this round is safe to deploy before any of the steps below:
-nothing requires a new environment variable, and the one schema-free database
-change (the insert-only role) is optional.
+Nothing has been pushed. The deploy script only ever deploys the newest
+commit on `main`, so to deploy in stages and see which stage a failure
+belongs to, push to each of these three points in turn, waiting for the
+"Deployed" phone alert in between. Run these from the repo folder on your PC.
 
-The deploy script only ever deploys the newest commit on `main`. To deploy one
-phase at a time and see which one a failure belongs to, push one commit at a
-time and wait for the "Deployed" phone alert in between. From the repo folder
-on your PC, list the commits:
+**Stage 1, security** (Phase 0, the dependency fixes, Phase 1):
 
 ```powershell
-git log --oneline origin/main..main
+git push origin f638487:main
 ```
 
-Then push them oldest first, replacing `SHA` each time:
+**Stage 2, privacy, accessibility, search tags** (Phase 2, Phase 3a and the
+build fix). Do not push `5b39ff6` or `fce1a1a` on their own: the backend does
+not build at those two commits, and `fc40fce` is the fix.
 
 ```powershell
-git push origin SHA:main
+git push origin fc40fce:main
 ```
 
-Or push everything at once:
+**Stage 3, prerendering, plus these docs.** Do section 10.1 (Cloudflare email
+obfuscation) first or straight after.
 
 ```powershell
 git push origin main
 ```
+
+No commit needs a new environment variable or a schema change, so each stage
+deploys safely before any of the server steps below. Two things change on the
+server by themselves when stage 3 deploys:
+
+- The deploy now runs the seed. Project rows in Postgres are rewritten from
+  `content/projects.ts` on every deploy, so any edit made directly in the
+  database would be overwritten. Edit `content/projects.ts` instead.
+- Unknown URLs only become real 404s once the new Nginx config (section 1)
+  is in place.
 
 ---
 
@@ -580,6 +610,85 @@ Then reply to say it is done. The address matches regardless of capitals.
 logs, no analytics, deletion after 12 months. Do those three before or soon
 after deploying Phase 2. It also says the server is in Ontario, Canada;
 tell me if that is wrong.
+
+## 9. Getting found: Search Console
+
+Any time, but the sitemap only exists once stage 2 is deployed.
+
+### 9.1 Check what Google will see
+
+The page should answer with your name in the HTML itself, no JavaScript
+needed (after stage 3):
+
+```bash
+curl -s https://manugahewa.dev/ | grep -o "<h1[^>]*>[^<]*</h1>"
+```
+
+Expected: `<h1 class="hero-subtitle hero-stagger">Manuga Hewa Pathirana</h1>`.
+
+```bash
+curl -s https://manugahewa.dev/robots.txt
+```
+
+```bash
+curl -s -o /dev/null -w "%{http_code} %{content_type}\n" https://manugahewa.dev/sitemap.xml
+```
+
+Expected: `200 text/xml` (it was the home page's HTML before).
+
+### 9.2 Verify the domain
+
+1. Open https://search.google.com/search-console and choose **Add property**,
+   then the **Domain** option (left side), and enter `manugahewa.dev`.
+2. Google shows a TXT record starting `google-site-verification=`. Copy it.
+3. In the Cloudflare dashboard: **manugahewa.dev > DNS > Records > Add
+   record**. Type `TXT`, Name `@`, Content: paste the value, TTL Auto. Save.
+4. Back in Search Console, press **Verify**. If it fails, wait ten minutes
+   and press it again; DNS takes a moment.
+
+Keep the TXT record: removing it un-verifies the property.
+
+### 9.3 Submit the sitemap and ask for indexing
+
+1. In the property: **Sitemaps** (left menu), enter `sitemap.xml`, **Submit**.
+2. **URL inspection** (top search bar): enter `https://manugahewa.dev/`,
+   then **Request indexing**. Do the same for `https://manugahewa.dev/privacy`.
+3. Optional: Bing Webmaster Tools (https://www.bing.com/webmasters) can import
+   the property straight from Search Console.
+
+Indexing takes days to weeks. Searching `site:manugahewa.dev` shows what is in.
+
+### 9.4 Check the link preview
+
+Paste `https://manugahewa.dev` into LinkedIn's Post Inspector
+(https://www.linkedin.com/post-inspector/). It should show the dark card with
+your name, from `og.png`. LinkedIn caches previews, so the inspector is also
+how to refresh an old one.
+
+## 10. Cloudflare settings that interfere with prerendered pages
+
+### 10.1 Email Address Obfuscation: off
+
+Do this before or straight after deploying stage 3. Cloudflare rewrites any
+email address it finds in HTML into `[email protected]` and inserts a script
+to decode it. Until now the address only existed after JavaScript ran, so it
+never applied. With the pages prerendered, it would rewrite the HTML React is
+about to hydrate, React would find it does not match, and it would discard
+the server HTML and render the page again.
+
+In the dashboard: **manugahewa.dev > Scrape Shield** (on newer dashboards,
+**Security > Settings**), **Email Address Obfuscation: Off**. Then check:
+
+```bash
+curl -s https://manugahewa.dev/ | grep -c "email-protection"
+```
+
+Expected: `0`.
+
+### 10.2 Rocket Loader and HTML minification: off
+
+They rewrite scripts and markup the same way. Neither is on today (the live
+HTML has no sign of them); leave them off: **Speed > Optimization**.
 
 ---
 
