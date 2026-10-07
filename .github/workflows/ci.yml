@@ -40,6 +40,9 @@ jobs:
       - run: npx prisma generate --schema backend/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema backend/prisma/schema.prisma
       - run: npm run lint --workspace backend
+      # Tests, admin scripts and the seed: none of them are compiled by the
+      # build, and tsx and Vitest do not check types.
+      - run: npm run typecheck --workspace backend
       - run: npm run test --workspace backend
       # Vitest strips types without checking them, and the deploy compiles
       # with tsc, so a type error would otherwise first show up as a failed

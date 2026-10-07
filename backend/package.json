@@ -10,7 +10,8 @@
     "test": "vitest run",
     "lint": "eslint src scripts --ext .ts",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "typecheck": "tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",
