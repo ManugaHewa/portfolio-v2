@@ -1,4 +1,7 @@
 import "@testing-library/jest-dom/vitest";
+import { afterAll } from "vitest";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 // jsdom ships no matchMedia. Anything that checks prefers-reduced-motion
 // (Hero, SmoothScroll) or uses gsap.matchMedia needs it to exist. Reports
@@ -80,3 +83,15 @@ if (!window.PointerEvent) {
 // "this environment cannot draw, skip the render loop", which is the correct
 // behaviour here, so return null quietly and keep real failures visible.
 HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+
+// ScrollTrigger starts a 250 ms setInterval the moment it is registered (Hero
+// and SmoothScroll do that on import) and never clears it. Whenever a tick
+// landed after Vitest had torn jsdom down, it called requestAnimationFrame,
+// which no longer existed, and the run failed with an unhandled error even
+// though every test passed. Registered here, after the stubs it reads, so it
+// is registered in every file and the disable() below, which clears the
+// interval, is always safe to call.
+gsap.registerPlugin(ScrollTrigger);
+afterAll(() => {
+  ScrollTrigger.disable();
+});
