@@ -16,58 +16,241 @@ Conventions:
 
 ## In order
 
+Updated 2026-11-10. Phases 0 to 3 went out in one push that morning, so the
+three-stage plan this table used to start with is history. What is left:
+
 | Step | What | Where |
 |---|---|---|
-| 1 | Push stage 1 | section 0 |
-| 2 | Replace the Nginx config | section 1 |
-| 3 | `NODE_ENV=production`, `HOST=127.0.0.1`, restart the API | section 3 |
-| 4 | Postgres on loopback with a real password (backup first) | section 4 |
-| 5 | Insert-only database role for the API (optional) | section 5 |
-| 6 | Cloudflare: Web Analytics off, HTTPS settings | section 6 |
-| 7 | GitHub: unpublish the github.io copy, Dependabot alerts | section 7 |
-| 8 | Push stage 2 | section 0 |
-| 9 | Daily retention cron | section 8.1 |
-| 10 | Cloudflare: email obfuscation off | section 10.1 |
-| 11 | Push stage 3 | section 0 |
+| 1 | **The site is down (Cloudflare error 1033): bring the tunnel back** | section A |
+| 2 | Check the server's Node version | section B |
+| 3 | Push stage 4, then stage 5 | section 0 |
+| 4 | Replace the Nginx config | section 1 |
+| 5 | `NODE_ENV=production`, `HOST=127.0.0.1`, restart the API | section 3 |
+| 6 | Postgres on loopback with a real password (backup first) | section 4 |
+| 7 | Insert-only database role for the API (optional) | section 5 |
+| 8 | Cloudflare: Web Analytics off, HTTPS settings | section 6 |
+| 9 | GitHub: Dependabot alerts (the github.io copy is already unpublished) | section 7 |
+| 10 | Daily retention cron | section 8.1 |
+| 11 | Cloudflare: email obfuscation off | section 10.1 |
 | 12 | Search Console: verify, sitemap, indexing | section 9 |
-| 13 | A day or two after step 2: enforce the CSP | section 2 |
-| 14 | A few days after step 4: delete the database backup | section 4.9 |
+| 13 | A day or two after step 4: enforce the CSP | section 2 |
+| 14 | A few days after step 6: delete the database backup | section 4.9 |
+
+If you already did some of steps 4 to 14, skip them: none of them could be
+checked from outside while the site was down.
+
+---
+
+## A. The site is down: Cloudflare error 1033
+
+Since at least 2026-11-10 05:25 UTC every request to https://manugahewa.dev
+returns HTTP 530 with "error code: 1033". That is Cloudflare saying no
+connector is attached to the `portfolio` tunnel: `cloudflared` is not
+running, or the server is off or offline. It is not caused by a deploy:
+`deploy.sh` never touches `cloudflared`, and a failed deploy leaves the old
+site in place.
+
+The deployment notes say `cloudflared` was run by hand and that installing it
+as a service failed once; whether it was ever installed is unverified. If it
+was not, any reboot takes the site down until someone starts it again, which
+fits what is happening.
+
+### A.1 Can you reach the server at all?
+
+SSH in as usual. If that fails, the machine is off or off the network:
+power and network first, then come back here.
+
+### A.2 Is cloudflared a service, and is it running?
+
+```bash
+systemctl status cloudflared --no-pager
+```
+
+- **active (running)**: the process is up but not connected. Read its log
+  (A.3), then restart it (A.4).
+- **inactive** or **failed**: restart it (A.4).
+- **Unit cloudflared.service could not be found**: it was never installed as
+  a service. Install it (A.5).
+
+### A.3 Its log
+
+```bash
+sudo journalctl -u cloudflared -n 50 --no-pager
+```
+
+### A.4 Restart it
+
+```bash
+sudo systemctl restart cloudflared
+```
+
+```bash
+systemctl status cloudflared --no-pager
+```
+
+Then check from your PC (A.7).
+
+### A.5 Install it as a service, so it survives reboots
+
+The service runs as root, which reads its configuration from
+`/etc/cloudflared`, not from your home directory. That is why the first
+`service install` failed.
+
+```bash
+sudo mkdir -p /etc/cloudflared
+```
+
+```bash
+sudo cp /home/manuga/.cloudflared/config.yml /etc/cloudflared/config.yml
+```
+
+The copied file still points at the credentials in
+`/home/manuga/.cloudflared/`, which root can read, so nothing else changes.
+
+```bash
+sudo cloudflared service install
+```
+
+```bash
+sudo systemctl enable --now cloudflared
+```
+
+```bash
+systemctl status cloudflared --no-pager
+```
+
+Expected: `active (running)`, and the log (A.3) mentions registered
+connections.
+
+### A.6 If the tunnel is up and the site is still broken
+
+Everything behind the tunnel, from the server itself:
+
+```bash
+curl -sS -o /dev/null -w "%{http_code}\n" http://localhost/api/projects
+```
+
+Expected: `200`. If not, check each piece:
+
+```bash
+systemctl status nginx --no-pager
+```
+
+```bash
+systemctl status portfolio-backend --no-pager
+```
+
+```bash
+docker ps
+```
+
+The Postgres container restarts on its own (`restart: unless-stopped`); the
+other two are systemd units and start on boot if they are enabled.
+
+The deploy log says whether the 2026-11-10 push deployed:
+
+```bash
+tail -n 30 /home/manuga/deploy.log
+```
+
+### A.7 Check from your PC
+
+```powershell
+curl.exe -s -o NUL -w "%{http_code}" https://manugahewa.dev/
+```
+
+Expected: `200`.
+
+---
+
+## B. The server's Node version
+
+The deployment notes say the server runs Node 20 from NodeSource. Two
+reasons to look:
+
+- **Vite 8** (stage 5 below) needs Node 20.19 or later to build. On an older
+  20.x the deploy's frontend build fails; the old site stays up and you get
+  a "Deploy FAILED" alert, so it is safe, just not deployed.
+- **Node 20 reached end of life on 2026-04-30** and no longer gets security
+  fixes. The API runs on it.
+
+```bash
+node -v
+```
+
+- `v20.19.0` or later: stage 5 is fine as is. Upgrading (below) is still
+  recommended, at a time of your choosing.
+- Anything older than `v20.19.0`: upgrade before pushing stage 5.
+
+### B.1 Upgrade to Node 22 (optional, recommended)
+
+Node 22 is supported until April 2027. NodeSource's setup script adds its
+Node 22 repository; apt then replaces Node 20.
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh
+```
+
+```bash
+sudo -E bash /tmp/nodesource_setup.sh
+```
+
+```bash
+sudo apt-get install -y nodejs
+```
+
+```bash
+node -v
+```
+
+Expected: `v22.` something. Then make the next cron run rebuild everything
+with it, which also restarts the API on the new Node:
+
+```bash
+rm /home/manuga/.portfolio-deploy-state
+```
+
+Within five minutes you should get a "Deployed" alert. Tell me when the
+server is on 22 and I will move CI to 22 as well, so tests run on what
+production runs.
 
 ---
 
 ## 0. Pushing
 
-Nothing has been pushed. The deploy script only ever deploys the newest
-commit on `main`, so to deploy in stages and see which stage a failure
-belongs to, push to each of these three points in turn, waiting for the
-"Deployed" phone alert in between. Run these from the repo folder on your PC.
+Phases 0 to 3 were pushed on 2026-11-10 in a single push. CI then failed on
+`main` (a flaky test teardown and four new dependency advisories); both are
+fixed in the commits below, which are local until you push them. The deploy
+only ever deploys the newest commit on `main`, so push in two stages and wait
+for the "Deployed" alert in between. Bring the site back first (section A),
+or you will not see whether a stage worked. From the repo folder on your PC:
 
-**Stage 1, security** (Phase 0, the dependency fixes, Phase 1):
-
-```powershell
-git push origin f638487:main
-```
-
-**Stage 2, privacy, accessibility, search tags** (Phase 2, Phase 3a and the
-build fix). Do not push `5b39ff6` or `fce1a1a` on their own: the backend does
-not build at those two commits, and `fc40fce` is the fix.
+**Stage 4: CI fixes and runtime dependencies** (the test teardown fix; zod 4,
+body-parser, qs and ip-address for the new advisories; the minor and patch
+updates; helmet 8 with unchanged headers; Dependabot grouping; Actions v7):
 
 ```powershell
-git push origin fc40fce:main
+git push origin 5155bf0:main
 ```
 
-**Stage 3, prerendering, plus these docs.** Do section 10.1 (Cloudflare email
-obfuscation) first or straight after.
+**Stage 5: build tooling and docs** (Vite 8, Vitest 5, typescript-eslint 8,
+the claims review). Check section B first.
 
 ```powershell
 git push origin main
 ```
 
-No commit needs a new environment variable or a schema change, so each stage
-deploys safely before any of the server steps below. Two things change on the
-server by themselves when stage 3 deploys:
+Neither stage needs an environment variable or a schema change. After
+stage 5, Dependabot closes the PRs these commits supersede (#1 to #5). Do
+not merge #6 (react-dom 19 without react 19) or #7 (the prisma 7 CLI
+without its client): neither can work alone, and the new grouping in
+`.github/dependabot.yml` replaces them with combined PRs. Close them if they
+are still open a week later.
 
-- The deploy now runs the seed. Project rows in Postgres are rewritten from
+Two things that changed on the server with the 2026-11-10 push, once it
+deploys:
+
+- The deploy runs the seed. Project rows in Postgres are rewritten from
   `content/projects.ts` on every deploy, so any edit made directly in the
   database would be overwritten. Edit `content/projects.ts` instead.
 - Unknown URLs only become real 404s once the new Nginx config (section 1)
@@ -536,16 +719,17 @@ curl -sI https://manugahewa.dev/ | grep -i strict-transport
 
 ### 7.1 Take down the old github.io copy
 
-The Phase 1 commits delete the Jekyll workflow, but the site it already
-published stays up until you unpublish it: **Settings > Pages**, then next to
-"Your site is live at", the **...** menu > **Unpublish site**. Check after a few
-minutes, from your PC:
+Done on 2026-11-10: GitHub Pages was unpublished through the API
+(`gh api -X DELETE repos/ManugaHewa/portfolio-v2/pages`). GitHub's CDN can
+keep serving the old copy for a while; check from your PC:
 
 ```powershell
 curl.exe -s -o NUL -w "%{http_code}" https://manugahewa.github.io/portfolio-v2/
 ```
 
-Expected: `404`.
+Expected: `404`. `portfolio_projects.txt` was deleted from the repository in
+`4dba61a`, but it is still in the public git history. Removing it from
+history means rewriting `main`; say if you want that.
 
 ### 7.2 Dependabot
 
