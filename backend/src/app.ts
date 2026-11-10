@@ -46,7 +46,10 @@ export function createApp(options: AppOptions = {}) {
   // every visitor shares 127.0.0.1 and one rate-limit bucket.
   app.set("trust proxy", "loopback");
 
-  app.use(helmet());
+  // HSTS pinned at 180 days, helmet 7's default. helmet 8 raised it to a
+  // year, which would have outrun the six months docs/manual-steps.md sets in
+  // Cloudflare as the easy-to-back-out starting point. Raise both together.
+  app.use(helmet({ strictTransportSecurity: { maxAge: 15_552_000, includeSubDomains: true } }));
 
   // The frontend is served from the same origin, so a browser never needs
   // CORS to reach this API. The allow-list is for anything deliberate beyond

@@ -32,6 +32,13 @@ describe("CORS", () => {
   });
 });
 
+describe("HSTS", () => {
+  it("stays at the six months Cloudflare is set to, not helmet 8's year", async () => {
+    const res = await request(createApp()).get("/api/health");
+    expect(res.headers["strict-transport-security"]).toBe("max-age=15552000; includeSubDomains");
+  });
+});
+
 describe("request bodies", () => {
   const app = createApp({ contactLimit: 100 });
 
