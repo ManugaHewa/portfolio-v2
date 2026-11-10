@@ -8,5 +8,4 @@ dist-server/
 .env.*
 !.env.example
 *.log
-portfolio-deployment-context.txt
-portfolio-improvements-context.md
+portfolio-*
