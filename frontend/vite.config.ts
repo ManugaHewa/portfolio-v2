@@ -13,7 +13,7 @@ export default defineConfig(({ isSsrBuild }) => ({
   build: isSsrBuild
     ? {}
     : {
-        rollupOptions: {
+        rolldownOptions: {
           // Two pages, each with its own entry: the privacy page shares the React
           // chunk and loads none of the animation or WebGL code.
           input: {
@@ -30,16 +30,29 @@ export default defineConfig(({ isSsrBuild }) => ({
             // Three is deliberately absent: it is already its own lazy chunk and
             // naming it here would pull it back into the static graph.
             //
-            // Matched by path rather than listed by package name. The list form
+            // Matched by path rather than listed by package name: a name list
             // missed React's JSX runtime (a CommonJS file reached through a proxy
-            // module), so it landed in the motion chunk, framer-motion being the
-            // first thing to import it - and every page, the privacy page
-            // included, then had to download the animation libraries to render.
-            manualChunks(id: string) {
-              if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react";
-              if (/[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils|gsap|lenis)[\\/]/.test(id)) {
-                return "motion";
-              }
+            // module). Two groups, React first, rather than the manualChunks
+            // function this used under Rollup: Rolldown turns that function into
+            // one group, a group takes its modules' dependencies with it, and
+            // React (which framer-motion imports) ended up in the motion chunk,
+            // so every page, the privacy page included, had to download the
+            // animation libraries to render. The priorities make React's claim
+            // win regardless of order; scripts/check-chunks.mjs, run by CI after
+            // the build, fails if the privacy page loads motion or WebGL code.
+            codeSplitting: {
+              groups: [
+                {
+                  name: "react",
+                  test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+                  priority: 2,
+                },
+                {
+                  name: "motion",
+                  test: /[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils|gsap|lenis)[\\/]/,
+                  priority: 1,
+                },
+              ],
             },
           },
         },

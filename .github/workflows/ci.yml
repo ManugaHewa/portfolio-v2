@@ -67,6 +67,9 @@ jobs:
       - run: npm run lint --workspace frontend
       - run: npm run test --workspace frontend
       - run: npm run build --workspace frontend
+      # The privacy page must not download the animation or WebGL chunks;
+      # a bundler change has broken that twice. See the script's header.
+      - run: node frontend/scripts/check-chunks.mjs
 
   dependencies:
     runs-on: ubuntu-latest
