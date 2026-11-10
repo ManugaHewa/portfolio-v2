@@ -11,6 +11,15 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # Packages that only work at matching versions, so they move in one PR,
+      # majors included. Separately, Dependabot offered react-dom 19 on its own,
+      # which cannot run against react 18, and the prisma 7 CLI without the
+      # @prisma/client it generates code for. A package goes to the first group
+      # that matches, so these come before minor-and-patch.
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      prisma:
+        patterns: ["prisma", "@prisma/client"]
       # One PR for routine minor and patch bumps instead of one per package.
       minor-and-patch:
         update-types: [minor, patch]
