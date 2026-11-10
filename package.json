@@ -15,6 +15,6 @@
     "contact:prune": "tsx backend/scripts/contact-prune.ts"
   },
   "devDependencies": {
-    "prettier": "^3.3.3"
+    "prettier": "^3.9.10"
   }
 }
