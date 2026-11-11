@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ContactForm } from "../components/ContactForm";
+import { ContactForm, countBucket } from "../components/ContactForm";
 import { api } from "../api";
 
 vi.mock("../api", () => ({
@@ -116,5 +116,54 @@ describe("ContactForm", () => {
     render(<ContactForm />);
     fill(/^message$/i, "hello");
     expect(screen.getByText("5 / 2000")).toBeInTheDocument();
+  });
+  it("announces the count only when it crosses 200 left, 50 left and over", () => {
+    const { container } = render(<ContactForm />);
+    const note = () =>
+      [...container.querySelectorAll('[role="status"]')].map((n) => n.textContent).join("");
+
+    fill(/^message$/i, "a".repeat(1500));
+    expect(note()).toBe("");
+    fill(/^message$/i, "a".repeat(1800));
+    expect(note()).toBe("200 characters left");
+    // Typing on inside the same bucket stays quiet.
+    fill(/^message$/i, "a".repeat(1810));
+    expect(note()).toBe("200 characters left");
+    fill(/^message$/i, "a".repeat(1960));
+    expect(note()).toBe("40 characters left");
+    fill(/^message$/i, "a".repeat(2003));
+    expect(note()).toBe("3 characters over the limit");
+    // Deleting back under the limit is not narrated.
+    fill(/^message$/i, "a".repeat(1500));
+    expect(note()).toBe("");
+  });
+
+  it("buckets the remaining count", () => {
+    expect(countBucket(500)).toBeNull();
+    expect(countBucket(200)).toBe(200);
+    expect(countBucket(51)).toBe(200);
+    expect(countBucket(50)).toBe(50);
+    expect(countBucket(0)).toBe(50);
+    expect(countBucket(-1)).toBe("over");
+  });
+
+  it("says Sending, ignores a second press and shows the trace while the request is out", async () => {
+    let resolve: (v: { status: string }) => void = () => {};
+    sendMock.mockImplementation(() => new Promise((r) => (resolve = r)) as never);
+    render(<ContactForm />);
+    fillValid();
+    const button = screen.getByRole("button", { name: /send message/i });
+    fireEvent.click(button);
+
+    const busy = await screen.findByRole("button", { name: /^sending$/i });
+    expect(busy).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByLabelText(/^name$/i)).toBeDisabled();
+    expect(screen.getByText(/Sending: step/)).toBeInTheDocument();
+
+    fireEvent.click(busy);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+
+    resolve({ status: "received" });
+    expect(await screen.findByText(/message received/i)).toBeInTheDocument();
   });
 });

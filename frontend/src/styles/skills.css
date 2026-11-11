@@ -1,1 +1,138 @@
-/* skills.css: written by the pipeline-skills agent (redesign SPEC.md, section 9). */
+/*
+ * Skills (redesign SPEC.md, section 5.6). Skills.tsx.
+ *
+ * Seven groups in CSS columns, so they pack top to bottom and no group is
+ * left alone on a last row: three columns on a wide screen, two from 720px,
+ * one below. A group never splits across a column break. Each row is a name,
+ * a dotted leader and the project number it was used in, like an index at
+ * the back of a book. No ratings, meters or colours: the categories are told
+ * apart by their headings and their place on the page.
+ */
+
+.skills-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.skills-groups {
+  columns: 1;
+  column-gap: var(--s8);
+}
+
+@media (min-width: 720px) {
+  .skills-groups {
+    columns: 2;
+  }
+}
+
+@media (min-width: 1100px) {
+  .skills-groups {
+    columns: 3;
+    column-gap: var(--s7);
+  }
+}
+
+/* The globe turns behind the groups. A wash of the page colour under each
+   group keeps the small mono notes on (nearly) plain background, which is
+   what their contrast was measured against, without boxing the groups in:
+   no border, and the wash fades into the page at its edges. */
+.skills-group {
+  break-inside: avoid;
+  margin-bottom: var(--s7);
+  padding: var(--s3) var(--s4) var(--s4);
+  margin-inline: calc(-1 * var(--s4));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
+
+/* The heading and its count on one baseline, over a hairline. */
+.skills-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line);
+}
+
+.skills-group-title {
+  color: var(--text);
+}
+
+.skills-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--sky);
+  font-variant-numeric: tabular-nums;
+}
+
+.skills-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.skills-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-height: 40px;
+  padding-block: var(--s2);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.skills-name {
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* The dotted leader from the name to its number. Decoration only. */
+.skills-leader {
+  flex: 1 1 var(--s5);
+  min-width: var(--s5);
+  height: 1px;
+  border-bottom: 1px dotted var(--line-strong);
+  transform: translateY(-0.3em);
+}
+
+.skills-evidence {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A project number is a link to the project, so it looks like one: sky and
+   underlined, with a target big enough to hit on a phone. */
+.skills-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 24px;
+  color: var(--sky);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.skills-number:hover {
+  color: var(--sky-hover);
+}
+
+/* Evidence that is not a project on the page ("coursework" and the like). */
+.skills-note {
+  color: var(--text-3);
+  text-align: right;
+}

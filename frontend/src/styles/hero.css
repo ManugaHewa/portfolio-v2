@@ -1,1 +1,532 @@
-/* hero.css: written by the hero agent (redesign SPEC.md, section 9). */
+/*
+ * The hero, the work index that rises over it, and the tech band (redesign
+ * SPEC.md, sections 5.2 and 5.4).
+ *
+ * Every layout decision here is CSS, under media queries alone, so the
+ * prerendered HTML is laid out right for every visitor before a script runs:
+ * - below 1100px: one stack (copy, the gyroscope, the work index);
+ * - from 1100px: the stage in two columns, copy on the left (columns 1-7)
+ *   and the gyroscope on the right (8-12);
+ * - under the pin query (the same string as PIN_QUERY in motion/hooks.ts):
+ *   the stage sticks under the header and the work index, in the same
+ *   twelve columns, rises over the copy while the gyroscope stays beside it.
+ *   The pin lasts exactly as long as the work index is tall.
+ * Hero.tsx only adds the scroll-linked hand-off (the copy's drift and fade,
+ * the gyroscope's scale, the ring's turn) on top of the pinned layout.
+ */
+
+/* ------------------------------------------------------------ the hero */
+
+/* clip, not hidden: hidden would make #top a scroll container and the
+   sticky stage would stop sticking to the page. */
+.hero {
+  position: relative;
+  overflow: clip;
+}
+
+.hero-stage {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--s5);
+  row-gap: var(--s7);
+  align-items: center;
+  padding-block: var(--s8) var(--s6);
+}
+
+/* The copy column is the container the name is sized against (13cqi), so
+   the name fills the column it is given rather than the window. */
+.hero-copy {
+  grid-column: 1 / -1;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+/* A keyboard user's focus in the copy holds it at full strength whatever
+   the hand-off has done to it (Hero.tsx scrolls it back into view as
+   well). !important to beat Motion's inline opacity. */
+.hero-copy.is-focused {
+  opacity: 1 !important;
+}
+
+.hero-place {
+  color: var(--text-3);
+  margin-bottom: var(--s5);
+}
+
+/*
+ * The name. Flex rather than inline flow so the last word can take a line
+ * of its own ("Manuga Hewa" / "Pathirana") at every width the first two
+ * words fit on one; on a narrow phone they wrap as they need to. The spaces
+ * stay in the DOM as text, so the name still reads and copies as one line.
+ */
+.hero-name {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.24em;
+  font-size: var(--fs-hero);
+  font-weight: 800;
+  font-stretch: 118%;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  text-wrap: wrap;
+}
+
+.hero-name .hero-name-mask:last-child {
+  flex-basis: 100%;
+}
+
+.hero-lede {
+  margin-top: var(--s6);
+  color: var(--text-2);
+}
+
+/* The rotating word has a line of its own, a step larger and in full
+   white, with the sky underline on the word itself (the slot is as wide as
+   the longest item, so an underline on the slot would overhang). */
+.hero-lede .text-loop {
+  display: block;
+  margin-top: var(--s1);
+  font-size: 1.2em;
+  font-weight: 600;
+  font-stretch: 104%;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.hero-lede .text-loop-word {
+  text-decoration: underline;
+  text-decoration-color: var(--sky);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.hero-lede-2 {
+  max-width: 40ch;
+  margin-top: var(--s4);
+  color: var(--text-2);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s4);
+  margin-top: var(--s7);
+}
+
+.hero-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: var(--s5) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-small);
+}
+
+/* ------------------------------------------------------- the gyroscope */
+
+.hero-gyro {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+/* A square with no frame and no border: the instrument stands on the page
+   itself. The scene host inside it is absolute, inset 0 (scenes.css). */
+.hero-gyro-stage {
+  position: relative;
+  width: min(100%, 420px);
+  aspect-ratio: 1;
+  transform-origin: 50% 50%;
+}
+
+/* The calibration scale behind the gyroscope: hairlines in text-3 at 40%,
+   sized a little past the instrument so its outer ring sits inside it. */
+.hero-ring {
+  position: absolute;
+  inset: -5%;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.hero-ring-svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 1;
+  overflow: visible;
+}
+
+.hero-ring-svg circle,
+.hero-ring-svg line {
+  vector-effect: non-scaling-stroke;
+}
+
+.hero-ring-svg line.is-major {
+  stroke: var(--text-2);
+}
+
+/* The still: what the hero shows under reduced motion, on weak devices,
+   without WebGL, and until the live scene has drawn its first frame. */
+.hero-still {
+  position: absolute;
+  inset: 0;
+  background: url("/gyroscope.webp") center / contain no-repeat;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+
+.hero-gyro-stage.is-live .hero-still {
+  opacity: 0;
+}
+
+/* -------------------------------------------------------- the work index */
+
+.work-index {
+  position: relative;
+  z-index: 2;
+}
+
+.work-index-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--s5);
+}
+
+.work-index-sheet {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-block: var(--s8) var(--s9);
+}
+
+.work-index-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4) var(--s6);
+  margin-bottom: var(--s6);
+}
+
+.work-index-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+}
+
+.work-index-reading {
+  white-space: nowrap;
+}
+
+.work-index-readout .readout-num {
+  margin-right: 0.3em;
+  font-size: clamp(1.5rem, 1.1rem + 0.9vw, 2rem);
+}
+
+.work-index-sep {
+  color: var(--text-3);
+}
+
+.work-index-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.work-index-item {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/*
+ * One link per row. The number and the title share a baseline; the meta and
+ * the problem hang under the title. The row's padding is taken back with a
+ * negative margin, so at rest the text lines up with the heading above and
+ * only the hover fill reaches past it.
+ */
+.work-index-row {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    "num title go"
+    ". meta go"
+    ". problem go";
+  column-gap: var(--s4);
+  row-gap: 6px;
+  margin-inline: calc(-1 * var(--s3));
+  padding: var(--s4) var(--s3);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  text-decoration: none;
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.work-index-row:hover,
+.work-index-row:focus-visible {
+  background: var(--surface-1);
+  color: var(--text);
+}
+
+.work-index-num {
+  grid-area: num;
+  align-self: baseline;
+  color: var(--ember);
+  font-size: 0.8125rem;
+}
+
+.work-index-title {
+  grid-area: title;
+  align-self: baseline;
+  font-size: var(--fs-sub);
+  font-weight: 650;
+  font-stretch: 104%;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.work-index-row:hover .work-index-title,
+.work-index-row:focus-visible .work-index-title {
+  color: var(--sky);
+}
+
+.work-index-meta {
+  grid-area: meta;
+  color: var(--text-2);
+}
+
+.work-index-problem {
+  grid-area: problem;
+  color: var(--text-2);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* A small down arrow: these rows jump to the case studies below. Drawn in
+   CSS and hidden from screen readers; the link's name is the title. */
+.work-index-go {
+  grid-area: go;
+  align-self: center;
+  position: relative;
+  width: 12px;
+  height: 16px;
+  color: var(--text-3);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.work-index-go::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 1px;
+  width: 1px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+
+.work-index-go::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 7px;
+  height: 7px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: translateX(-50%) rotate(45deg);
+  transform-origin: 50% 50%;
+}
+
+.work-index-row:hover .work-index-go,
+.work-index-row:focus-visible .work-index-go {
+  color: var(--sky);
+}
+
+/* The one hover movement in the index: the number steps 4px toward the
+   title. Off under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .work-index-num {
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+
+  .work-index-row:hover .work-index-num,
+  .work-index-row:focus-visible .work-index-num {
+    transform: translateX(4px);
+  }
+}
+
+/* --------------------------------------------------------------- tablet */
+
+@media (min-width: 720px) {
+  .hero-grid {
+    padding-block: var(--s9) var(--s7);
+  }
+
+  /* One line each from here up: the row is wide enough to say what the
+     project is in a sentence's opening words. */
+  .work-index-meta,
+  .work-index-problem {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+/* -------------------------------------------------------------- desktop */
+
+@media (min-width: 1100px) {
+  .hero-grid {
+    min-height: min(calc(100svh - var(--header-h)), 860px);
+    padding-block: var(--s8);
+  }
+
+  .hero-copy {
+    grid-column: 1 / span 7;
+  }
+
+  .hero-gyro {
+    grid-column: 8 / span 5;
+  }
+
+  /* As large as the column allows, up to 560px, and never taller than the
+     stage leaves room for. */
+  .hero-gyro-stage {
+    width: min(100%, 560px, calc(100svh - var(--header-h) - 2 * var(--s8)));
+  }
+
+  .work-index-sheet {
+    grid-column: 1 / span 7;
+    max-width: 880px;
+  }
+}
+
+/* ------------------------------------------------------------- the pin */
+
+/* PIN_QUERY (motion/hooks.ts). Keep the two strings identical. */
+@media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
+  /* Pinned just under the sticky header, one visible screen tall. */
+  .hero-stage {
+    position: sticky;
+    top: var(--header-h);
+    height: calc(100svh - var(--header-h));
+  }
+
+  .hero-grid {
+    height: 100%;
+    min-height: 0;
+  }
+
+  /*
+   * The sheet that rises: one visible screen tall at least, on the page's own
+   * background so the copy it passes over goes under it. The fill reaches
+   * left to the window's edge (the hero clips it), so it reads as a sheet
+   * sliding up the page rather than a box; a hairline marks its top edge,
+   * with a short tick where the sheet ends beside the gyroscope.
+   */
+  .work-index-sheet {
+    position: relative;
+    isolation: isolate;
+    min-height: calc(100svh - var(--header-h));
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+
+  .work-index-sheet::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -1px;
+    bottom: 0;
+    right: 100%;
+    width: 100vw;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+  }
+
+  .work-index-sheet::after {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: 0;
+    width: 1px;
+    height: var(--s3);
+    background: var(--line-strong);
+  }
+}
+
+/* ------------------------------------------------------------ tech band */
+
+/*
+ * Full-bleed: the moving row runs edge to edge, faded at both ends
+ * (motion.css), with its pause toggle in the right-hand gutter. Paused,
+ * under reduced motion or without JavaScript, it is a static list that
+ * wraps, set smaller and inside the page's column.
+ */
+.tech-band {
+  position: relative;
+  z-index: 1;
+  padding-block: var(--s7);
+  border-block: 1px solid var(--line-soft);
+}
+
+.tech-band-caption {
+  margin-bottom: var(--s4);
+  color: var(--text-3);
+}
+
+.tech-band .marquee {
+  --marquee-gap: var(--s6);
+  padding-right: var(--gutter);
+}
+
+.tech-band .marquee-item {
+  font-family: var(--font-sans);
+  font-size: 1.75rem;
+  font-weight: 600;
+  font-stretch: 112%;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--text-2);
+}
+
+.tech-band .marquee:not(.is-running) {
+  --marquee-gap: var(--s4);
+  align-items: flex-start;
+  width: 100%;
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.tech-band .marquee:not(.is-running) .marquee-item {
+  font-size: 1.25rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 719.98px) {
+  .tech-band .marquee-item {
+    font-size: 1.375rem;
+  }
+
+  .tech-band .marquee:not(.is-running) .marquee-item {
+    font-size: 1.0625rem;
+  }
+}

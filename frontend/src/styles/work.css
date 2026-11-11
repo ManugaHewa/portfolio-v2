@@ -1,1 +1,717 @@
-/* work.css: written by the work agent (redesign SPEC.md, section 9). */
+/*
+ * Work: the case studies and the other work (redesign SPEC.md, section 5.3).
+ *
+ * Each case card has two layers. The figure is the only thing that tilts;
+ * the text beside it never moves. The spotlight and the glow border are
+ * drawn on the figure and follow the cursor through --vx / --vy, which
+ * TiltSurface writes on its root; both show only while the tilt is live
+ * (.tilt-surface[data-tilt]), and the glow also shows, still, while
+ * anything in the card has keyboard focus.
+ */
+
+/* ------------------------------------------------------------ section */
+
+/* The field scene is pinned one viewport tall (scenes.css). It is the
+   section's first child, so on its own it would start below the section's
+   top padding; pulled up by that padding it covers the section from its top
+   edge, and the bottom margin gives the same length back so nothing after
+   it moves. */
+.work > .scene-field {
+  margin-top: calc(-1 * var(--section-pad));
+  margin-bottom: calc(-100svh + var(--section-pad));
+}
+
+.work-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.work-state {
+  max-width: 62ch;
+  padding: var(--s6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: var(--fs-lede);
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------- grid */
+
+/* Phone and tablet: one column. From 960px the twelve-column pairings
+   (7 + 5, 5 + 7, 6 + 6), so no row repeats the one above it. Each card is
+   as tall as its own content. */
+.case-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s6);
+  align-items: start;
+}
+
+@media (min-width: 960px) {
+  .case-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: var(--s7) var(--s5);
+  }
+
+  .case-grid > .case-cell:nth-child(6n + 1),
+  .case-grid > .case-cell:nth-child(6n + 4) {
+    grid-column: span 7;
+  }
+
+  .case-grid > .case-cell:nth-child(6n + 2),
+  .case-grid > .case-cell:nth-child(6n + 3) {
+    grid-column: span 5;
+  }
+
+  .case-grid > .case-cell:nth-child(6n + 5),
+  .case-grid > .case-cell:nth-child(6n + 6) {
+    grid-column: span 6;
+  }
+}
+
+.case-cell {
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------- card */
+
+/* The root is positioned so the "Read the case study" button can stretch
+   its target over the whole card. Its radius is set in style (CaseCard.tsx)
+   so Motion can correct it mid-morph; the one here covers the skeleton. */
+.case-card {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.case-card:hover,
+.case-card:focus-within {
+  border-color: var(--line-strong);
+}
+
+.case-tilt {
+  display: grid;
+  gap: var(--s5);
+  padding: var(--s3);
+}
+
+/* The figure's own box, for the spotlight and the glow drawn over it. */
+.case-tilt > .tilt-visual {
+  position: relative;
+  border-radius: var(--r-md);
+}
+
+/* ------------------------------------------------------------- figure */
+
+.case-figure {
+  position: relative;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--s4);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  /* Not in cqi: a box's own padding would resolve against an outer
+     container, not itself. */
+  padding: clamp(16px, 2.2vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+/* The project number, as large as the plate allows. Decoration, so it is
+   generated content rather than text: the number is in the readout row
+   below for anyone reading. Drawn as an ember outline, so the line set over
+   the plate keeps the strongest contrast on it. */
+.case-figure:not(.has-shot)::before {
+  content: attr(data-number);
+  position: absolute;
+  top: clamp(12px, 4cqi, 28px);
+  left: clamp(12px, 4.4cqi, 30px);
+  font-family: var(--font-mono);
+  font-size: 26cqi;
+  font-weight: 500;
+  line-height: 0.8;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ember-soft);
+  -webkit-text-stroke: 1px var(--ember);
+  pointer-events: none;
+}
+
+/* A narrow plate (a phone) gives the line more of the height. */
+@container (max-width: 400px) {
+  .case-figure:not(.has-shot)::before {
+    font-size: 21cqi;
+  }
+}
+
+/* A calibration scale along the top right: fine ticks every 8px, a longer
+   one every 40px, the same marks as the hero's ring and the index rail. */
+.case-scale {
+  position: absolute;
+  top: clamp(16px, 5cqi, 32px);
+  right: clamp(16px, 5cqi, 32px);
+  width: 34%;
+  height: 10px;
+  background:
+    repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 40px) top / 100% 10px no-repeat,
+    repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 8px) top / 100% 5px no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
+  mask-image: linear-gradient(90deg, transparent, #000 40%);
+}
+
+/* The first outcome, in the case title's type, three lines at most. Sized
+   to the plate so it fits a five-column card and a phone alike. */
+.case-figure-line {
+  position: relative;
+  max-width: 30ch;
+  font-size: clamp(1.0625rem, 4.6cqi, 2.25rem);
+  font-weight: 700;
+  font-stretch: 108%;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  text-wrap: balance;
+}
+
+/* The stack as a readout along the bottom edge: a hairline above, a tick
+   between names, cut off with a fade rather than wrapping onto a second
+   line. */
+.case-figure-stack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s3) 0 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
+  mask-image: linear-gradient(90deg, #000 85%, transparent);
+}
+
+.case-figure-stack li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+}
+
+.case-figure-stack li + li::before {
+  content: "";
+  width: 1px;
+  height: 9px;
+  background: var(--line-strong);
+}
+
+.case-figure.has-shot {
+  padding: 0;
+}
+
+.case-figure.has-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The cursor's spotlight on the plate. */
+.case-light {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(260px circle at var(--vx, 50%) var(--vy, 50%), rgba(106, 185, 231, 0.08), transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* A 1px ring over the figure's border: sky where the cursor is, the plain
+   hairline elsewhere. The mask keeps only the ring (the padding box is cut
+   out of the border box). */
+.case-glow {
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--sky-line);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+/* Keyboard focus anywhere in the card: the ring, still. */
+.case-card:focus-within .case-glow {
+  opacity: 1;
+}
+
+/* The live effect, only while TiltSurface is running. */
+.case-tilt[data-tilt]:hover .case-light {
+  opacity: 1;
+}
+
+.case-tilt[data-tilt]:hover .case-glow {
+  opacity: 1;
+  background: radial-gradient(240px circle at var(--vx, 50%) var(--vy, 50%), var(--sky), var(--line) 70%);
+}
+
+/* ------------------------------------------------------------ content */
+
+.case-content {
+  container-type: inline-size;
+  display: grid;
+  gap: var(--s5);
+  padding: 0 var(--s3) var(--s3);
+}
+
+.case-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2) var(--s4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.case-num {
+  color: var(--ember);
+}
+
+.case-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.case-status::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+
+.case-status.is-ongoing::before {
+  background: var(--sky);
+}
+
+.case-heading {
+  display: grid;
+  gap: var(--s2);
+}
+
+.case-title {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  font-stretch: 108%;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.case-role {
+  color: var(--text-2);
+}
+
+.case-blocks {
+  display: grid;
+  gap: var(--s4);
+}
+
+/* A wide card sets Problem and Result side by side. */
+@container (min-width: 560px) {
+  .case-blocks {
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: var(--s5);
+  }
+}
+
+.case-block {
+  display: grid;
+  gap: var(--s1);
+  align-content: start;
+}
+
+.case-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+
+.case-value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  color: var(--text);
+}
+
+.case-stack {
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+
+.case-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3) var(--s5);
+}
+
+/* The card's one action. Its ::after covers the whole card, so the card is
+   the target; the links beside it sit above that layer. */
+.case-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+  font-stretch: 104%;
+  text-align: left;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.case-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+}
+
+.case-card:hover .case-open {
+  color: var(--sky);
+}
+
+/* A right arrow: a stem and a head drawn with borders. */
+.case-open-arrow {
+  position: relative;
+  width: 14px;
+  height: 1.5px;
+  background: currentColor;
+}
+
+.case-open-arrow::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.case-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-small);
+}
+
+.case-link {
+  position: relative;
+  z-index: 1;
+}
+
+.case-link.is-pending {
+  color: var(--text-3);
+}
+
+/* ----------------------------------------------------------- skeleton */
+
+.case-skeleton {
+  display: grid;
+  gap: var(--s5);
+  padding: var(--s3);
+}
+
+.case-skeleton-figure {
+  aspect-ratio: 16 / 10;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+}
+
+.case-skeleton-body {
+  display: grid;
+  gap: var(--s3);
+  padding: 0 var(--s3) var(--s3);
+}
+
+.case-skeleton-line {
+  height: 14px;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+
+.case-skeleton-line.is-short {
+  width: 30%;
+}
+
+.case-skeleton-line.is-title {
+  width: 70%;
+  height: 28px;
+  margin-bottom: var(--s2);
+}
+
+.case-skeleton-line.is-mid {
+  width: 55%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .case-skeleton-figure,
+  .case-skeleton-line {
+    animation: work-pulse 1.6s var(--ease-in-out) infinite alternate;
+  }
+}
+
+@keyframes work-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+/* ---------------------------------------------------------- other work */
+
+.other-work {
+  margin-top: var(--s9);
+}
+
+.other-head {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s6);
+}
+
+.other-heading {
+  font-size: var(--fs-h3);
+  font-weight: 700;
+  font-stretch: 108%;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.other-intro {
+  color: var(--text-2);
+  font-size: var(--fs-lede);
+  line-height: 1.5;
+}
+
+.other-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--line);
+}
+
+/* One row per project: number, title, summary, then category and stack.
+   The title's control is stretched over the row (::after), so the row is
+   the target. Phone: stacked. */
+.other-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: var(--s2) var(--s4);
+  align-items: baseline;
+  padding: var(--s5) var(--s3);
+  border-top: 1px solid var(--line);
+  transition: background-color var(--dur-1) var(--ease-out);
+}
+
+.other-row > :not(.other-num) {
+  grid-column: 2;
+}
+
+.other-row:hover,
+.other-row:focus-within {
+  background: var(--surface-1);
+}
+
+.other-num {
+  grid-row: 1;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.other-row:hover .other-num,
+.other-row:focus-within .other-num {
+  color: var(--ember);
+}
+
+.other-title {
+  justify-self: start;
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: var(--fs-sub);
+  font-weight: 650;
+  font-stretch: 104%;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-align: left;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.other-title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.other-row:hover .other-title,
+.other-title:focus-visible {
+  color: var(--sky);
+}
+
+/* The focus ring goes round the row, which is the visible target. */
+.other-title:focus-visible {
+  outline: none;
+}
+
+.other-title:focus-visible::after {
+  outline: 2px solid var(--sky);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
+
+/* A link out: an arrow pointing up and to the right. */
+.other-arrow {
+  position: relative;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-top: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+  transform: translateY(-1px);
+}
+
+.other-arrow::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 12px;
+  height: 1.5px;
+  background: currentColor;
+  transform-origin: right center;
+  transform: rotate(-45deg);
+}
+
+.other-summary {
+  color: var(--text-2);
+}
+
+.other-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+
+/* From 720px: number | title | summary, with the category and stack under
+   the summary. From 1100px each gets its own column. */
+@media (min-width: 720px) {
+  .other-row {
+    grid-template-columns: 4rem minmax(0, 0.9fr) minmax(0, 1.4fr);
+    padding-inline: var(--s4);
+  }
+
+  .other-row > .other-title {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .other-row > .other-summary {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .other-row > .other-meta {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+@media (min-width: 1100px) {
+  .other-row {
+    grid-template-columns: 4rem minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 0.8fr);
+    gap: var(--s2) var(--s6);
+  }
+
+  .other-row > .other-meta {
+    grid-column: 4;
+    grid-row: 1;
+    flex-direction: column;
+  }
+}

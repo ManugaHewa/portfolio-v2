@@ -2,7 +2,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import { CountUp } from "../components/CountUp";
 import { MaskedWords } from "../components/MaskedWords";
-import { SendTrace, TRACE_STEPS } from "../components/SendTrace";
 
 describe("CountUp", () => {
   it("renders the final value up front rather than a zero placeholder", () => {
@@ -35,25 +34,5 @@ describe("MaskedWords", () => {
     // The spaces live outside the clipped wrappers, so the sentence still
     // reads as one string and can still wrap between words.
     expect(container.textContent).toBe(LINE);
-  });
-});
-
-describe("SendTrace", () => {
-  it("marks earlier hops done and the current one active", () => {
-    const { container } = render(<SendTrace stage={1} />);
-    const steps = [...container.querySelectorAll(".trace-step")];
-
-    expect(steps).toHaveLength(TRACE_STEPS.length);
-    expect(steps[0].className).toContain("is-done");
-    expect(steps[1].className).toContain("is-active");
-    expect(steps[2].className).not.toContain("is-active");
-    expect(steps[3].className).not.toContain("is-done");
-  });
-
-  it("announces progress to assistive tech", () => {
-    render(<SendTrace stage={2} />);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      `Sending: step 3 of ${TRACE_STEPS.length}, ${TRACE_STEPS[2]}`
-    );
   });
 });

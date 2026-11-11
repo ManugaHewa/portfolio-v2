@@ -1,1 +1,441 @@
-/* pipeline.css: written by the pipeline-skills agent (redesign SPEC.md, section 9). */
+/*
+ * How it's built (redesign SPEC.md, section 5.5). Pipeline.tsx.
+ *
+ * Two layouts from one piece of markup, switched here and never in script:
+ * - everywhere by default, a finished list: the nodes stacked down the left
+ *   with a connector between each, the second route and the CI check as
+ *   notes beside or under them;
+ * - under the pin query (wide, tall enough, motion allowed), a stage that
+ *   sticks under the header while its 200svh track scrolls past, with the
+ *   nodes in one row on a rail and the second route arching over them.
+ * Pipeline.tsx only drives the pinned drawing; the prerendered HTML is laid
+ * out correctly for every visitor before any script runs.
+ */
+
+.pipeline-inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* The stage hosts the corridor scene, so the tunnel is centred on what the
+   visitor is looking at rather than on the whole 200svh track. */
+.pipeline-stage {
+  position: relative;
+}
+
+/* ------------------------------------------------------- shared pieces */
+
+.pl-node {
+  display: grid;
+  align-content: start;
+  gap: var(--s2);
+  padding: var(--s4) var(--s4) var(--s5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface-1);
+  transition: border-color var(--dur-3) var(--ease-out);
+}
+
+.pl-node-label {
+  display: block;
+  color: var(--text);
+  transition: color var(--dur-3) var(--ease-out);
+}
+
+.pl-node-text {
+  color: var(--text-2);
+  transition: color var(--dur-3) var(--ease-out);
+}
+
+.pl-node[data-on="true"] {
+  border-color: var(--sky-line);
+}
+
+/* Not reached yet: the box is there, but dim. Only the pinned drawing ever
+   has unlit nodes. text-3 stays on the plain surface-1 ramp. */
+.pl-node[data-on="false"] .pl-node-label,
+.pl-node[data-on="false"] .pl-node-text {
+  color: var(--text-3);
+}
+
+/* Each node's citation: the file that makes it true. */
+.pl-cite {
+  display: block;
+  color: var(--text-3);
+}
+
+.pl-route-label {
+  display: block;
+  color: var(--text);
+}
+
+.pl-route-text,
+.pl-ci-text {
+  display: block;
+  color: var(--text-2);
+}
+
+/* "content/projects.ts -> This page", only in the list layout, where there is
+   no drawn line to say where the second route runs. */
+.pl-route-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  color: var(--sky);
+}
+
+/* A drawn arrow, so it is the same hairline as the connectors. */
+.pl-arrow {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  background: var(--sky-line);
+}
+
+.pl-arrow::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-top: 1px solid var(--sky);
+  border-right: 1px solid var(--sky);
+  transform: translateX(-1px) rotate(45deg);
+}
+
+/* --------------------------------------------- list layout (default) */
+
+.pl-diagram {
+  display: grid;
+  gap: var(--s7);
+  align-items: start;
+}
+
+.pl-nodes {
+  display: flex;
+  flex-direction: column;
+  max-width: 600px;
+}
+
+.pl-nodes .pl-cite {
+  margin-top: var(--s2);
+  padding-left: var(--s4);
+}
+
+/* The connector between two nodes: a short sky hairline, indented to sit
+   under the labels' first letters. */
+.pl-stem {
+  display: block;
+  width: 1px;
+  height: var(--s6);
+  margin: var(--s3) 0 var(--s3) calc(var(--s4) + 1px);
+  background: var(--sky-line);
+}
+
+.pl-stem.is-last,
+.pl-station,
+.pl-rail,
+.pl-route-line {
+  display: none;
+}
+
+.pl-route {
+  order: 1;
+}
+
+.pl-ci {
+  order: 2;
+}
+
+/* The second route and the check, as inset notes: a sky hairline on the
+   left says they belong to the drawing without boxing them in. */
+.pl-route-copy,
+.pl-ci {
+  display: grid;
+  gap: var(--s2);
+  max-width: 460px;
+  padding-left: var(--s5);
+  border-left: 1px solid var(--sky-line);
+}
+
+.pl-ci {
+  border-left-color: var(--line-strong);
+}
+
+.pl-ci .pl-cite {
+  overflow-wrap: anywhere;
+}
+
+/* Wide enough for two columns: the list on the left, the notes beside it. */
+@media (min-width: 900px) {
+  .pl-diagram {
+    grid-template-columns: minmax(0, 600px) minmax(0, 460px);
+    grid-template-areas:
+      "nodes route"
+      "nodes ci";
+    grid-template-rows: auto 1fr;
+    column-gap: var(--s9);
+    row-gap: var(--s7);
+    justify-content: start;
+  }
+
+  .pl-nodes {
+    grid-area: nodes;
+  }
+
+  .pl-route {
+    grid-area: route;
+    padding-top: var(--s2);
+  }
+
+  .pl-ci {
+    grid-area: ci;
+  }
+}
+
+/* ------------------------------------------------------ pinned stage */
+
+@media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
+  .pipeline.section {
+    padding-block: 0;
+  }
+
+  .pipeline-track {
+    height: 200svh;
+  }
+
+  .pipeline-stage {
+    position: sticky;
+    top: var(--header-h);
+    display: flex;
+    align-items: center;
+    height: calc(100svh - var(--header-h));
+    padding-block: var(--s6);
+  }
+
+  .pipeline .section-head {
+    margin-bottom: var(--s6);
+  }
+
+  /*
+   * The geometry. The five columns are weighted so the two long file names
+   * get the widest boxes (Pipeline.tsx, COLUMN_WEIGHTS, holds the same
+   * numbers). --c1 and --c5 are the distances from the diagram's edges to
+   * the centres of the first and last columns, which is where the rail and
+   * the second route start and end:
+   *   centre of column 1 = (1.1 / 2) / 5 of the width left after the gaps.
+   * Percentages here resolve against the diagram's width at the point of use.
+   */
+  .pl-diagram {
+    --g: 32px;
+    --band: 184px;
+    --line-y: 64px;
+    --c1: calc((100% - 4 * var(--g)) * 0.11);
+    --c5: calc((100% - 4 * var(--g)) * 0.08);
+    position: relative;
+    display: block;
+    padding-top: var(--band);
+  }
+
+  /* ----- second route, drawn over the row */
+
+  .pl-route {
+    position: absolute;
+    inset: 0 0 auto 0;
+    z-index: 2;
+    height: var(--band);
+    padding: 0;
+  }
+
+  .pl-route-line {
+    position: absolute;
+    display: block;
+    left: var(--c1);
+    top: var(--line-y);
+    width: calc(100% - var(--c1) - var(--c5));
+    height: calc(var(--band) - var(--line-y));
+    overflow: visible;
+    fill: none;
+  }
+
+  .pl-route-line path {
+    stroke: var(--sky);
+    stroke-width: 1;
+    fill: none;
+  }
+
+  .pl-route-dot {
+    fill: var(--sky);
+  }
+
+  /* The copy rides on the line, just past the first bend. */
+  .pl-route-copy {
+    position: absolute;
+    left: calc(var(--c1) + var(--s6));
+    bottom: calc(var(--band) - var(--line-y) + var(--s3));
+    max-width: none;
+    gap: var(--s1);
+    padding: 0;
+    border: 0;
+    transition: opacity var(--dur-4) var(--ease-out), transform var(--dur-4) var(--ease-out);
+  }
+
+  .pl-route-path {
+    display: none;
+  }
+
+  .pl-route[data-on="false"] .pl-route-copy {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  /* ----- the CI check, hung under the line where the routes join */
+
+  .pl-ci {
+    position: absolute;
+    top: calc(var(--line-y) + var(--s4));
+    right: calc(var(--c5) + var(--s6));
+    z-index: 2;
+    max-width: min(440px, 46%);
+    gap: var(--s1);
+    padding: 0 var(--s4) 0 0;
+    border-left: 0;
+    border-right: 1px solid var(--line-strong);
+    text-align: right;
+    transition: opacity var(--dur-4) var(--ease-out), transform var(--dur-4) var(--ease-out);
+  }
+
+  .pl-ci[data-on="false"] {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  /* ----- the row of nodes on its rail */
+
+  .pl-nodes {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.1fr 1.25fr 0.85fr 1fr 0.8fr;
+    grid-template-rows: auto 36px auto;
+    column-gap: var(--g);
+    max-width: none;
+  }
+
+  .pl-node {
+    grid-row: 1;
+    grid-column: var(--i);
+    min-width: 0;
+  }
+
+  .pl-nodes .pl-cite {
+    grid-row: 3;
+    grid-column: var(--i);
+    margin-top: var(--s3);
+    padding-left: 0;
+    text-align: center;
+  }
+
+  /* The stem drops from each node to its station on the rail. */
+  .pl-stem,
+  .pl-stem.is-last {
+    position: relative;
+    z-index: 2;
+    display: block;
+    grid-row: 2;
+    grid-column: var(--i);
+    justify-self: center;
+    width: 1px;
+    height: 24px;
+    margin: 0;
+    background: var(--line-strong);
+    transition: background-color var(--dur-3) var(--ease-out);
+  }
+
+  .pl-station {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    display: block;
+    width: 9px;
+    height: 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    background: var(--bg);
+    transform: translate(-50%, -50%);
+    transition: background-color var(--dur-3) var(--ease-out), border-color var(--dur-3) var(--ease-out);
+  }
+
+  .pl-stem[data-on="true"] {
+    background: var(--sky-line);
+  }
+
+  .pl-stem[data-on="true"] .pl-station {
+    border-color: var(--sky);
+    background: var(--sky);
+  }
+
+  /* The rail runs from the first station to the last. Percentage margins on
+     a grid item resolve against its grid area, which spans the full row. */
+  .pl-rail {
+    position: relative;
+    display: block;
+    grid-row: 2;
+    grid-column: 1 / -1;
+    align-self: start;
+    height: 1px;
+    margin: 24px var(--c5) 0 var(--c1);
+    background: var(--line);
+  }
+
+  /* The filled part: sky only, scaled from the left. */
+  .pl-rail-fill {
+    position: absolute;
+    inset: 0;
+    display: block;
+    z-index: 1;
+    background: var(--sky);
+    transform-origin: left center;
+  }
+
+  /* A full-width track whose right end is the token: moving the track by
+     (fill - 1) x 100% of its own width keeps the token on the fill's front
+     edge with nothing but a transform. */
+  .pl-token-track {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: block;
+  }
+
+  /* The one warm element in the section. */
+  .pl-token {
+    position: absolute;
+    right: 0;
+    top: 0;
+    display: block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--ember);
+    transform: translate(50%, -50%);
+  }
+
+  .pl-token::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    background: var(--ember-soft);
+  }
+}
+
+/* A wider gap once there is room, so the rail reads between the boxes. */
+@media (min-width: 1280px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
+  .pl-diagram {
+    --g: 48px;
+  }
+}

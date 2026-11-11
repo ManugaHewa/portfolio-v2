@@ -1,10 +1,13 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectModal } from "../components/ProjectModal";
-import type { ProjectDetail } from "../types";
+import type { ProjectDetail, ProjectSummary } from "../types";
+import { projectNumber } from "../stats";
+import { Wrap } from "./motion/helpers";
 
-const project: ProjectDetail = {
+const detail: ProjectDetail = {
   slug: "dms",
   title: "Donation Management System",
   subtitle: "Centralized donation operations.",
@@ -30,96 +33,193 @@ const project: ProjectDetail = {
   learned: "Prisma migrations and schema design against a real system.",
 };
 
-/** Mounts the modal behind a trigger, so focus return can be observed. */
+/** What the list endpoint knows: the dialog opens with this, before the detail. */
+const summary: ProjectSummary = {
+  slug: detail.slug,
+  title: detail.title,
+  subtitle: detail.subtitle,
+  stack: detail.stack,
+  links: detail.links,
+  role: detail.role,
+  timeline: detail.timeline,
+  category: detail.category,
+  status: detail.status,
+  tier: detail.tier,
+  problem: detail.problem,
+  outcomes: detail.outcomes,
+};
+
+type ModalProps = Partial<Parameters<typeof ProjectModal>[0]>;
+
+const renderModal = (props: ModalProps = {}) => {
+  const all = {
+    project: summary,
+    detail,
+    onClose: vi.fn(),
+    returnFocusTo: null,
+    ...props,
+  };
+  const view = render(
+    <Wrap>
+      <ProjectModal {...all} />
+    </Wrap>,
+  );
+  const rerender = (next: ModalProps) =>
+    view.rerender(
+      <Wrap>
+        <ProjectModal {...all} {...next} />
+      </Wrap>,
+    );
+  return { ...view, rerender, onClose: all.onClose };
+};
+
+/** The page around the dialog: a trigger that opens it and is handed back focus. */
 function Harness() {
-  const [open, setOpen] = useState(false);
+  const [trigger, setTrigger] = useState<HTMLElement | null>(null);
   return (
-    <>
-      <button onClick={() => setOpen(true)}>Open project</button>
-      <ProjectModal project={open ? project : null} onClose={() => setOpen(false)} />
-    </>
+    <Wrap>
+      <button type="button" onClick={(e) => setTrigger(e.currentTarget)}>
+        Open project
+      </button>
+      <ProjectModal
+        project={trigger ? summary : null}
+        detail={trigger ? detail : null}
+        onClose={() => setTrigger(null)}
+        returnFocusTo={trigger}
+      />
+    </Wrap>
   );
 }
 
-describe("ProjectModal", () => {
-  it("renders only the sections that have content", () => {
-    render(<ProjectModal project={project} onClose={vi.fn()} />);
+afterEach(() => {
+  document.documentElement.style.overflow = "";
+});
 
-    expect(screen.getByText("Scope")).toBeInTheDocument();
-    expect(screen.getByText("Outcomes")).toBeInTheDocument();
-    expect(screen.getByText("Technical challenges")).toBeInTheDocument();
-    expect(screen.getByText("What I learned")).toBeInTheDocument();
-    // highlights and nextSteps are empty, so their headings must not appear.
-    expect(screen.queryByText("Highlights")).not.toBeInTheDocument();
-    expect(screen.queryByText("Next steps")).not.toBeInTheDocument();
+describe("ProjectModal", () => {
+  it("renders nothing on the server: the prerendered HTML has no dialog", () => {
+    const html = renderToString(
+      <Wrap>
+        <ProjectModal project={summary} detail={detail} onClose={() => {}} returnFocusTo={null} />
+      </Wrap>,
+    );
+    expect(html).not.toContain("dialog");
   });
 
-  it("lists the category and status alongside the role and timeline", () => {
-    render(<ProjectModal project={project} onClose={vi.fn()} />);
+  it("is portalled to <body>, outside the page", () => {
+    const { container } = renderModal();
+    const dialog = screen.getByRole("dialog");
+    expect(container.contains(dialog)).toBe(false);
+    expect(document.body.contains(dialog)).toBe(true);
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAccessibleName(detail.title);
+  });
 
-    for (const label of ["Role", "Timeline", "Category", "Status"]) {
-      expect(screen.getByText(label)).toBeInTheDocument();
+  it("opens with the summary and a loading state, then fills in the detail", () => {
+    const { rerender } = renderModal({ detail: null });
+
+    expect(screen.getByRole("heading", { level: 2, name: detail.title })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/loading the full case study/i);
+    // The summary already carries the problem and the outcomes.
+    expect(screen.getByText("Problem")).toBeInTheDocument();
+    expect(screen.queryByText("Scope")).not.toBeInTheDocument();
+
+    rerender({ detail });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByText("Scope")).toBeInTheDocument();
+  });
+
+  it("ignores a detail that belongs to another project", () => {
+    renderModal({ detail: { ...detail, slug: "alice" } });
+    expect(screen.queryByText("Scope")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("says so when the detail fails to load", () => {
+    renderModal({ detail: null, detailError: true });
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn’t load the full case study. Try again in a moment.",
+    );
+  });
+
+  it("renders only the sections that have content", () => {
+    renderModal();
+
+    for (const title of ["Context", "Problem", "Scope", "Technical challenges", "Outcomes", "What I learned", "Links"]) {
+      expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
     }
+    // highlights and nextSteps are empty, so their headings must not appear.
+    expect(screen.queryByRole("heading", { name: "Highlights" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Next steps" })).not.toBeInTheDocument();
+  });
+
+  it("shows the number and category as a readout, and role, timeline and status as facts", () => {
+    renderModal();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector(".dialog-readout")).toHaveTextContent(`${projectNumber("dms")} · Full-stack web`);
+    for (const label of ["Role", "Timeline", "Status"]) {
+      expect(screen.getByText(label, { selector: "dt" })).toBeInTheDocument();
+    }
+    expect(dialog.querySelector(".dialog-status")).toHaveClass("is-ongoing");
   });
 
   it("treats a link with no url as unpublished rather than as a repository", () => {
     // A placeholder has a label but no destination, so it cannot stand in for
     // a repository: the note has to key off a real url, not off the count.
-    const pending: ProjectDetail = {
-      ...project,
-      links: [{ label: "GitHub repository", url: "" }],
-    };
-    render(<ProjectModal project={pending} onClose={vi.fn()} />);
+    const pending = { ...detail, links: [{ label: "GitHub repository", url: "" }] };
+    renderModal({ project: { ...summary, links: pending.links }, detail: pending });
 
     expect(screen.queryByRole("link", { name: /github repository/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/link not published yet/i)).toBeInTheDocument();
     expect(screen.getByText(/no public repository linked/i)).toBeInTheDocument();
   });
 
   it("locks the page behind it and releases on close", async () => {
-    const { rerender } = render(<ProjectModal project={project} onClose={vi.fn()} />);
-    expect(document.body.style.overflow).toBe("hidden");
+    const { rerender } = renderModal();
+    expect(document.documentElement.style.overflow).toBe("hidden");
 
-    rerender(<ProjectModal project={null} onClose={vi.fn()} />);
-    await waitFor(() => expect(document.body.style.overflow).not.toBe("hidden"));
+    rerender({ project: null, detail: null });
+    await waitFor(() => expect(document.documentElement.style.overflow).not.toBe("hidden"));
   });
 
-  it("closes on Escape", () => {
-    const onClose = vi.fn();
-    render(<ProjectModal project={project} onClose={onClose} />);
+  it("makes the closing layer inert the moment its exit starts", async () => {
+    const { rerender } = renderModal();
+    const root = document.querySelector(".dialog-root") as HTMLElement;
+    expect(root).not.toHaveAttribute("inert");
+
+    rerender({ project: null, detail: null });
+    // Still on screen while it fades or shrinks back, but out of reach.
+    if (root.isConnected) expect(root).toHaveAttribute("inert");
+    await waitFor(() => expect(document.querySelector(".dialog-root")).toBeNull());
+  });
+
+  it("closes on Escape and from the Close button", () => {
+    const { onClose } = renderModal();
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /close project details/i }));
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it("returns focus to whatever opened it", async () => {
+  it("moves focus into the dialog and returns it to whatever opened it", async () => {
     render(<Harness />);
     const trigger = screen.getByRole("button", { name: /open project/i });
     trigger.focus();
-    fireEvent.click(trigger);
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.contains(document.activeElement)).toBe(true);
 
     fireEvent.keyDown(window, { key: "Escape" });
     // Without the restore, a keyboard user is dumped at the top of the page.
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 
-  it("makes the page behind it inert, and gives it back on close", async () => {
-    render(<Harness />);
-    const trigger = screen.getByRole("button", { name: /open project/i });
-    fireEvent.click(trigger);
-    await screen.findByRole("dialog");
-
-    // A screen reader's own cursor ignores focus traps, so the background
-    // has to be taken out of reach, not just out of the Tab order.
-    expect(trigger.inert).toBe(true);
-
-    fireEvent.keyDown(window, { key: "Escape" });
-    await waitFor(() => expect(trigger.inert).toBe(false));
-  });
-
-  it("keeps Tab inside the dialog", async () => {
-    render(<ProjectModal project={project} onClose={vi.fn()} />);
-    const dialog = await screen.findByRole("dialog");
+  it("keeps Tab inside the dialog", () => {
+    renderModal();
+    const dialog = screen.getByRole("dialog");
     const focusable = dialog.querySelectorAll<HTMLElement>("a[href], button");
     const first = focusable[0];
     const last = focusable[focusable.length - 1];

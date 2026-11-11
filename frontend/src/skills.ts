@@ -1,8 +1,7 @@
-// Every skill here maps to something that actually exists in this repository.
-// That's a deliberate constraint borrowed from the README: the graph is a map
-// of provable claims, not a wishlist. `evidence` is the file or workflow a
-// reviewer can open to check the claim. Keep it accurate, and if a technology
-// leaves the stack, drop its node too.
+// Every skill here names the project it was used in (`evidence`), and the
+// skills section turns that into a link to the project on the page. Keep it
+// accurate: if a technology leaves the stack, its entry goes too (GSAP,
+// Lenis and Canvas 2D left with the redesign).
 
 export type CategoryId =
   | "language"
@@ -36,11 +35,9 @@ export interface Skill {
   evidence: string;
 }
 
-// Hues chosen to stay >=45deg clear of both site accents (orange ~23deg,
-// blue ~218deg - see --accent/--accent-2 in styles.css) so a domain colour in
-// the skills graph never reads as "this is a button" or gets lost against
-// the new blue chrome. Cloud and Delivery moved the furthest: their old hues
-// (204deg, 225deg) sat almost on top of the new blue accent.
+// The redesign reads only id and label. short, color, rgb, tagline and
+// Skill.level are still read by the old skills components, which stay until
+// they are deleted; the fields go with them.
 export const CATEGORIES: Category[] = [
   {
     id: "language",
@@ -177,35 +174,11 @@ export const SKILLS: Skill[] = [
     evidence: "Smart Grocery App",
   },
   {
-    name: "GSAP",
-    category: "frontend",
-    level: 4,
-    blurb:
-      "ScrollTrigger driving the pinned hero, scrubbed off scroll position and context-scoped so it cleans up after itself.",
-    evidence: "This portfolio",
-  },
-  {
     name: "Framer Motion",
     category: "frontend",
     level: 4,
     blurb:
       "Declarative reveals and scroll-linked transforms, with reducedMotion wired straight to the OS preference.",
-    evidence: "This portfolio",
-  },
-  {
-    name: "Lenis",
-    category: "frontend",
-    level: 3,
-    blurb:
-      "Smooth scrolling driven from a single GSAP ticker, so there is exactly one animation loop on the page.",
-    evidence: "This portfolio",
-  },
-  {
-    name: "Canvas 2D",
-    category: "frontend",
-    level: 4,
-    blurb:
-      "This graph: hand-rolled 3D projection, depth sorting, label de-collision and pointer hit testing at 60fps.",
     evidence: "This portfolio",
   },
   {
