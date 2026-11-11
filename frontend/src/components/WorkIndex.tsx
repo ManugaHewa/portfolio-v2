@@ -48,27 +48,27 @@ export function WorkIndex({ cases }: WorkIndexProps) {
 
           <ol className="work-index-list">
             {cases.map((p, i) => {
-              const titleId = `work-index-${p.slug}-title`;
-              const problemId = `work-index-${p.slug}-problem`;
               const meta = [p.category, p.status].filter(Boolean).join(" · ");
               return (
                 <Reveal as="li" className="work-index-item" index={i} stagger={0.06} y={16} key={p.slug}>
-                  <a
-                    className="work-index-row"
-                    href={`#${morphId(p.slug)}`}
-                    aria-labelledby={titleId}
-                    aria-describedby={p.problem ? problemId : undefined}
-                  >
+                  {/*
+                    Named by its own text: title, then category and status, then
+                    the problem. Naming it by the title alone (aria-labelledby)
+                    would leave visible words out of the name, which fails
+                    WCAG 2.5.3 Label in Name (axe label-content-name-mismatch).
+                    The number is decoration; the title says which project.
+                  */}
+                  <a className="work-index-row" href={`#${morphId(p.slug)}`}>
                     <span className="work-index-num mono" aria-hidden="true">
                       {projectNumber(p.slug)}
                     </span>
-                    <span className="work-index-title" id={titleId}>
+                    <span className="work-index-title">
                       {p.title}
                     </span>
                     <span className="work-index-go" aria-hidden="true" />
                     {meta && <span className="work-index-meta mono">{meta}</span>}
                     {p.problem && (
-                      <span className="work-index-problem" id={problemId}>
+                      <span className="work-index-problem">
                         {p.problem}
                       </span>
                     )}

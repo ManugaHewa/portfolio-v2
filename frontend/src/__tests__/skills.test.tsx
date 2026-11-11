@@ -74,7 +74,7 @@ describe("Skills section", () => {
         expect(row).toHaveTextContent(s.name);
         const p = evidenceProject(s.evidence);
         if (p) {
-          const link = within(row).getByRole("link", { name: `${s.name}, used in ${p.title}` });
+          const link = within(row).getByRole("link", { name: `${s.name}, used in project ${projectNumber(p.slug)}, ${p.title}` });
           expect(link).toHaveAttribute("href", projectAnchor(p));
           expect(link).toHaveTextContent(projectNumber(p.slug));
         } else {

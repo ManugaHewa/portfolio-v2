@@ -40,7 +40,11 @@ it("hydrates for a visitor who prefers reduced motion, then switches to the stat
   const serverLog = vi.spyOn(console, "error").mockImplementation(() => {});
   const { html, projects } = renderHome();
   serverLog.mockRestore();
-  expect(html).not.toContain("statement-static");
+  // The server HTML is the moving version's starting point: the tech band
+  // is a plain list until the browser says motion is allowed.
+  const serverDoc = new DOMParser().parseFromString(html, "text/html");
+  expect(serverDoc.querySelector(".marquee")).not.toBeNull();
+  expect(serverDoc.querySelector(".marquee.is-running")).toBeNull();
 
   const container = document.createElement("div");
   container.innerHTML = html;
@@ -60,5 +64,18 @@ it("hydrates for a visitor who prefers reduced motion, then switches to the stat
 
   expect(recoverable).toEqual([]);
   expect(errors.mock.calls.map((c) => String(c[0])).filter((e) => /hydrat|did not match/i.test(e))).toEqual([]);
-  expect(container.querySelector(".statement-static")).not.toBeNull();
+  // After hydration the reduced preference holds: the tech band stays a
+  // static wrapped list with no copy and no pause control, the counts show
+  // their final digits without reels, and every hidden-until-revealed
+  // element has been shown in place.
+  expect(container.querySelector(".marquee")).not.toBeNull();
+  expect(container.querySelector(".marquee.is-running")).toBeNull();
+  expect(container.querySelectorAll(".marquee-list")).toHaveLength(1);
+  expect(container.querySelector(".marquee-toggle")).toBeNull();
+  expect(container.querySelector(".odometer-slot")).toBeNull();
+  const reveals = [...container.querySelectorAll<HTMLElement>("[data-reveal]")];
+  expect(reveals.length).toBeGreaterThan(0);
+  await vi.waitFor(() => {
+    expect(reveals.filter((el) => el.style.opacity === "0")).toEqual([]);
+  });
 });

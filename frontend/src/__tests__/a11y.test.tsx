@@ -1,4 +1,4 @@
-import { render, screen, act, fireEvent } from "@testing-library/react";
+import { render, screen, act, fireEvent, within } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import axe from "axe-core";
 import App from "../App";
@@ -12,6 +12,7 @@ const base: Omit<ProjectSummary, "slug" | "title" | "tier"> = {
   timeline: "2026",
   category: "Full-stack web",
   status: "Completed",
+  problem: "The problem it solved.",
   outcomes: ["Shipped to a real client."],
   links: [{ label: "GitHub repository", url: "https://github.com/example/repo" }],
 };
@@ -72,15 +73,22 @@ describe("page landmarks", () => {
 
   it("gives every section a heading that names it", async () => {
     await act(async () => { render(<App />); });
-    // "about" is gone: the six capability cards were merged into #contact,
-    // so the page is Work / Skills / Contact.
-    for (const id of ["skills", "projects", "contact"]) {
+    // The redesign's sections (SPEC.md section 5): the work index under the
+    // hero, the case studies with Other work inside, how it's built, skills
+    // and contact. Each is labelled by a real heading with a real name.
+    for (const id of ["work-index", "work", "other-work", "pipeline", "skills", "contact"]) {
       const section = document.getElementById(id);
       expect(section, `#${id} should exist`).not.toBeNull();
       const labelledBy = section?.getAttribute("aria-labelledby");
       expect(labelledBy, `#${id} should be labelled`).toBeTruthy();
-      expect(document.getElementById(labelledBy ?? "")).not.toBeNull();
+      const heading = document.getElementById(labelledBy ?? "");
+      expect(heading, `#${id}'s label should exist`).not.toBeNull();
+      expect(heading?.tagName, `#${id} should be labelled by a heading`).toMatch(/^H[2-4]$/);
+      expect(heading?.textContent?.trim(), `#${id}'s heading should have text`).toBeTruthy();
     }
+    // One h1, and it is the name.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1, name: "Manuga Hewa Pathirana" })).toBeInTheDocument();
   });
 
   it("names the person and a way to reach them in the footer", async () => {
@@ -89,11 +97,12 @@ describe("page landmarks", () => {
 
     expect(footer).toHaveTextContent("Manuga Hewa Pathirana");
     expect(footer).toHaveTextContent("Milton, Ontario");
-    expect(screen.getByRole("link", { name: "Email" })).toHaveAttribute(
+    // Contact offers an Email link too, so look inside the footer.
+    expect(within(footer).getByRole("link", { name: "Email" })).toHaveAttribute(
       "href",
       expect.stringMatching(/^mailto:/),
     );
-    expect(screen.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
+    expect(within(footer).getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
   });
 });
 

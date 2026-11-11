@@ -25,9 +25,3 @@ export function unlockScroll() {
   if (locks > 0) return;
   document.documentElement.style.overflow = restoreOverflow;
 }
-
-/**
- * Left only so the old SmoothScroll.tsx, no longer imported anywhere, still
- * compiles until it is deleted. Does nothing.
- */
-export function registerLenis(_lenis: unknown) {}

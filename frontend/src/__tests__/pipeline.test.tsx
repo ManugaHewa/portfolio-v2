@@ -103,7 +103,7 @@ describe("Pipeline: markup", () => {
   it("shows every citation under its node", () => {
     const { container } = renderPipeline();
     const cites = Array.from(container.querySelectorAll(".pl-nodes .pl-cite")).map((c) =>
-      c.textContent!.replace(/​/g, ""),
+      c.textContent!.replace(/\u200b/g, ""),
     );
     expect(cites).toEqual(PIPELINE_NODES.map((n) => n.source));
   });

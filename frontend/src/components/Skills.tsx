@@ -71,7 +71,7 @@ export function Skills() {
                           <a
                             className="skills-evidence skills-number"
                             href={projectAnchor(project)}
-                            aria-label={`${s.name}, used in ${project.title}`}
+                            aria-label={`${s.name}, used in project ${projectNumber(project.slug)}, ${project.title}`}
                           >
                             {projectNumber(project.slug)}
                           </a>

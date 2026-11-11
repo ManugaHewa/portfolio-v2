@@ -1,11 +1,58 @@
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, transformWithOxc, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
+const PROJECT_INDEX_ID = "virtual:project-index";
+const PROJECTS_FILE = page("../content/projects.ts");
+
+/** The fields of a project that src/stats.ts reads (see projectIndex). */
+const INDEX_FIELDS = ["slug", "title", "tier", "category", "status", "stack"] as const;
+
+/**
+ * Serves `virtual:project-index`: the few fields of each project that the
+ * page's numbers, project numbering and tech band are derived from
+ * (src/stats.ts), in content order. Importing content/projects.ts itself
+ * would ship every case study's full copy in the main bundle, though the
+ * page already gets that copy from the prerendered HTML and the API.
+ *
+ * The file is read, stripped of its types and evaluated here, at dev and
+ * build time, rather than imported by this config: the config loader would
+ * bundle it as CommonJS (the repo root has no "type": "module") and warn on
+ * every run, and Node 20, which CI uses, cannot import TypeScript itself.
+ * Evaluated from a data: URL, it can have no imports of its own; it has none.
+ * The same plugin serves the dev server, both builds and Vitest, and the
+ * watch on the file means an edit to it reloads the module in dev.
+ */
+function projectIndex(): Plugin {
+  // The \0 prefix is the convention that marks a virtual module, so no
+  // other plugin tries to read it from disk.
+  const resolved = "\0" + PROJECT_INDEX_ID;
+  return {
+    name: "project-index",
+    resolveId(id) {
+      return id === PROJECT_INDEX_ID ? resolved : undefined;
+    },
+    async load(id) {
+      if (id !== resolved) return undefined;
+      this.addWatchFile(PROJECTS_FILE);
+      const source = await readFile(PROJECTS_FILE, "utf8");
+      const { code } = await transformWithOxc(source, PROJECTS_FILE);
+      const content: { PROJECTS: Record<string, unknown>[] } = await import(
+        `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
+      );
+      const rows = content.PROJECTS.map((p) =>
+        Object.fromEntries(INDEX_FIELDS.map((field) => [field, p[field]])),
+      );
+      return `export const PROJECTS = ${JSON.stringify(rows)};\n`;
+    },
+  };
+}
+
 export default defineConfig(({ isSsrBuild }) => ({
-  plugins: [react()],
+  plugins: [react(), projectIndex()],
   // The build-time prerender (`vite build --ssr src/entry-server.tsx`, run by
   // `npm run build`) bundles every dependency into its one output file rather
   // than leaving Node to resolve the animation libraries' ESM builds itself.
@@ -53,7 +100,7 @@ export default defineConfig(({ isSsrBuild }) => ({
                 },
                 {
                   name: "motion",
-                  test: /[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils|gsap|lenis)[\\/]/,
+                  test: /[\\/]node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/,
                   priority: 1,
                 },
               ],

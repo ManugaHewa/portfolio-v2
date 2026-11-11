@@ -15,8 +15,8 @@ module.exports = {
   ],
   ignorePatterns: ["dist", "node_modules", "*.cjs"],
   rules: {
-    // The canvas graph and the GSAP timelines legitimately need non-null
-    // assertions after their own guards; flag them as warnings, not errors.
+    // A few refs and lookups legitimately need non-null assertions after
+    // their own guards; flag them as warnings, not errors.
     "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
   },

@@ -3,12 +3,14 @@
  * than typed in, so a project or skill added to its source file updates the
  * counts, the project numbers and the tech band with it.
  *
- * The project list is read from content/projects.ts, the same file the
+ * The project list comes from content/projects.ts, the same file the
  * database is seeded from and the prerender writes into the HTML (a CI test
  * checks the API serves exactly that list), so these numbers agree with the
- * projects on screen.
+ * projects on screen. It arrives through `virtual:project-index`, a slim
+ * copy vite.config.ts generates with only the fields used here, so the case
+ * studies' full text stays out of the main bundle.
  */
-import { PROJECTS } from "../../content/projects";
+import { PROJECTS } from "virtual:project-index";
 import { CATEGORIES, SKILLS } from "./skills";
 import { ALSO_ON_GITHUB } from "./repositories";
 

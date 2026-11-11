@@ -46,17 +46,18 @@ describe("WorkIndex", () => {
     });
   });
 
-  it("names each row by its title and describes it by its problem", () => {
+  it("names each row by its visible text, title first", () => {
     renderIndex();
     for (const p of cases) {
-      const link = screen.getByRole("link", { name: p.title });
-      expect(link).toHaveAttribute("aria-labelledby", `work-index-${p.slug}-title`);
-      if (p.problem) {
-        expect(link).toHaveAttribute("aria-describedby", `work-index-${p.slug}-problem`);
-        expect(document.getElementById(`work-index-${p.slug}-problem`)).toHaveTextContent(p.problem);
-      } else {
-        expect(link).not.toHaveAttribute("aria-describedby");
-      }
+      const meta = [p.category, p.status].filter(Boolean).join(" · ");
+      const name = [p.title, meta, p.problem].filter(Boolean).join(" ");
+      const link = screen.getByRole("link", { name });
+      // No aria-labelledby or aria-label: every visible word is in the name
+      // (WCAG 2.5.3), and the decorative number is not.
+      expect(link).not.toHaveAttribute("aria-labelledby");
+      expect(link).not.toHaveAttribute("aria-label");
+      expect(link.textContent).toContain(projectNumber(p.slug));
+      expect(link).not.toHaveAccessibleName(new RegExp(`^${projectNumber(p.slug)}`));
     }
   });
 

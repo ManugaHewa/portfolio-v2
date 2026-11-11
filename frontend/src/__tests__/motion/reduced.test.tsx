@@ -98,16 +98,36 @@ describe("under reduced motion", () => {
 });
 
 describe("with motion allowed (for contrast)", () => {
-  it("Odometer builds reels but keeps the number as its text", () => {
+  it("Odometer below the fold builds reels but keeps the number as its text", () => {
     media.set([FINE]);
+    // jsdom lays nothing out; place the number well under the viewport.
+    const below = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue({ top: 2000, bottom: 2040, left: 0, right: 80, width: 80, height: 40, x: 0, y: 2000, toJSON: () => ({}) });
+    try {
+      const { container } = render(
+        <Wrap>
+          <Odometer value={13} />
+        </Wrap>,
+      );
+      expect(container.querySelectorAll(".odometer-slot")).toHaveLength(2);
+      expect(find(container, ".odometer-digits").textContent).toBe("13");
+      expect(find(container, ".visually-hidden").textContent).toBe("13");
+    } finally {
+      below.mockRestore();
+    }
+  });
+
+  it("Odometer already on screen at hydration stays plain digits (no roll through a wrong value)", () => {
+    media.set([FINE]);
+    // jsdom's zero rect sits at the top of the viewport: on screen.
     const { container } = render(
       <Wrap>
         <Odometer value={13} />
       </Wrap>,
     );
-    expect(container.querySelectorAll(".odometer-slot")).toHaveLength(2);
+    expect(container.querySelector(".odometer-slot")).toBeNull();
     expect(find(container, ".odometer-digits").textContent).toBe("13");
-    expect(find(container, ".visually-hidden").textContent).toBe("13");
   });
 
   it("TiltSurface switches on for a fine pointer", () => {

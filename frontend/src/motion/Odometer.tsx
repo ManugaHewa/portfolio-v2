@@ -47,15 +47,13 @@ const digitAt = (value: number, place: number) => Math.floor(value / place) % 10
  * are aria-hidden and a visually hidden copy carries the number for screen
  * readers, so the reels are never read out.
  *
- * After hydration, if motion is allowed, the digits become reels:
- * - already on screen at that moment: the reels jump to value - 10 (which
- *   leaves the units digit where it was) and spin one full turn to the
- *   value, so nothing visible drops to zero;
- * - below the fold: the reels wait at 0 and roll up the first time the
- *   number comes into view.
- * Under reduced motion or "Pause motion" the final digits simply stay. The
- * reel faces are drawn by CSS (motion.css), so the page text stays the
- * number itself.
+ * After hydration, if motion is allowed and the number is still below the
+ * fold, the digits become reels that wait at 0 and roll up the first time
+ * the number comes into view. A number already on screen at that moment
+ * keeps its plain digits: the visitor has read it, and any roll would first
+ * have to show a wrong value (a spin to 13 passes through 03). Under reduced
+ * motion or "Pause motion" the final digits simply stay too. The reel faces
+ * are drawn by CSS (motion.css), so the page text stays the number itself.
  */
 export function Odometer({ value, className }: OdometerProps) {
   const target = Math.max(0, Math.round(value));
@@ -65,23 +63,23 @@ export function Odometer({ value, className }: OdometerProps) {
   const count = useMotionValue(target);
   const inView = useInView(ref, { once: true, amount: 0.6 });
   const decided = useRef(false);
-  // null: plain digits. Otherwise the reels are shown, and `spin` says
-  // whether they start at once (on screen at hydration) or wait for the view.
-  const [reels, setReels] = useState<{ spin: boolean } | null>(null);
+  // false: plain digits. true: reels, waiting at 0 for the first view.
+  const [reels, setReels] = useState(false);
 
   useIsomorphicLayoutEffect(() => {
     if (!hydrated || decided.current) return;
     decided.current = true;
     const el = ref.current;
     if (!allowed || !el || target === 0) return;
+    // Measured before paint, in the same layout effect that swaps in the
+    // reels, so a number already in view never shows anything but itself.
     const r = el.getBoundingClientRect();
-    const onScreen = r.top < window.innerHeight && r.bottom >= 0;
-    count.jump(onScreen ? Math.max(0, target - 10) : 0);
-    setReels({ spin: onScreen });
+    if (r.top < window.innerHeight && r.bottom >= 0) return;
+    count.jump(0);
+    setReels(true);
   }, [hydrated, allowed, target, count]);
 
-  const spin = reels?.spin ?? false;
-  const armed = reels !== null && (spin || inView);
+  const armed = reels && inView;
 
   useEffect(() => {
     if (!armed) return;
@@ -90,16 +88,16 @@ export function Odometer({ value, className }: OdometerProps) {
       count.jump(target);
       return;
     }
-    const controls = animate(count, target, { ...ROLL, delay: spin ? 0.25 : 0.1 });
+    const controls = animate(count, target, { ...ROLL, delay: 0.1 });
     return () => controls.stop();
-  }, [armed, spin, allowed, target, count]);
+  }, [armed, allowed, target, count]);
 
   const places = String(target).length;
 
   return (
     <span ref={ref} className={cx("odometer", className)}>
       <span className="odometer-digits" aria-hidden="true">
-        {reels === null
+        {!reels
           ? String(target)
           : Array.from({ length: places }, (_, k) => {
               const place = 10 ** (places - 1 - k);
