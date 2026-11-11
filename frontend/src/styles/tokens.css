@@ -1,0 +1,90 @@
+/*
+ * Design tokens for every page, the privacy page and the 404 included.
+ *
+ * The colours are the old site's, unchanged: the owner asked to keep the
+ * scheme. Each accent has a fixed job (redesign SPEC.md, section 3), and the
+ * jobs matter more than the values. Ember marks the one thing to press and a
+ * few live indicators; sky marks links, focus, labels and linework. Depth
+ * comes from the ink ramp, not from shadows.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Ink. Each surface is a measured step brighter than the one under it. */
+  --bg: #0d1518;
+  --surface-1: #131c20;
+  --surface-2: #1a262a;
+  --surface-3: #223035;
+
+  /* Hairlines on the same ink. --line-control is the one new value: form
+     controls need a 3:1 border (3.74:1 on surface-2, 4.17:1 on surface-1),
+     which none of the decorative hairlines reach. */
+  --line-soft: #1d292e;
+  --line: #2a393f;
+  --line-strong: #3c4d54;
+  --line-control: #6b8088;
+
+  /* --text-3 is 4.62:1 at worst (on surface-3), so it is only ever used on
+     the plain ink ramp, never on a tinted or spotlit surface. */
+  --text: #e7eaeb;
+  --text-2: #aab6bb;
+  --text-3: #89999f;
+
+  --ember: #e98e49;
+  --ember-hover: #f0ae75;
+  --ember-soft: rgba(233, 142, 73, 0.13);
+  --ember-line: rgba(233, 142, 73, 0.38);
+  --on-ember: #171009;
+
+  --sky: #6ab9e7;
+  --sky-hover: #95ceef;
+  --sky-soft: rgba(106, 185, 231, 0.13);
+  --sky-line: rgba(106, 185, 231, 0.38);
+
+  /* Radii and the only two shadows on the site. */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 20px;
+  --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --shadow-ember: 0 0 0 1px rgba(233, 142, 73, 0.35), 0 6px 22px rgba(233, 142, 73, 0.18);
+
+  /* One spacing scale, in 4px steps, so gaps across sections agree. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
+  --s10: 128px;
+
+  --container: 1240px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --section-pad: clamp(96px, 12vw, 176px);
+  --header-h: 64px;
+
+  /* Type. "Mona Sans Fallback" is Arial resized to Mona Sans's proportions
+     (fonts.css), so the swap when the real font lands barely moves a line. */
+  --font-sans: "Mona Sans Variable", "Mona Sans Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Martian Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --fs-hero: clamp(3rem, 13cqi, 7.25rem);
+  --fs-h2: clamp(2.25rem, 1.4rem + 3.2vw, 4.25rem);
+  --fs-h3: clamp(1.6rem, 1.2rem + 1.4vw, 2.25rem);
+  --fs-sub: 1.25rem;
+  --fs-lede: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+  --fs-body: 1.0625rem;
+  --fs-small: 0.9375rem;
+  --fs-label: 0.75rem;
+  --fs-readout: clamp(1.75rem, 1.2rem + 1.6vw, 3rem);
+
+  /* Motion. The same curve drives CSS and Motion ([0.16, 1, 0.3, 1]). */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 160ms;
+  --dur-2: 240ms;
+  --dur-3: 420ms;
+  --dur-4: 700ms;
+}

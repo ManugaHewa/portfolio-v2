@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   AdditiveBlending,
   BackSide,
@@ -18,22 +18,21 @@ import {
   SRGBColorSpace,
 } from "three";
 import { mountScene } from "../lib/threeScene";
-import type { SceneDef } from "../lib/threeScene";
+import type { SceneController, SceneDef } from "../lib/threeScene";
 import { sceneBudget, scaled } from "../lib/sceneQuality";
+import type { SceneVariant } from "../lib/sceneQuality";
 
-export type SceneVariant =
-  | "core"
-  | "corridor"
-  | "globe"
-  | "field"
-  | "starfield"
-  | "signal";
+export type { SceneVariant };
 
 const SKY = "#6ab9e7";
 const EMBER = "#e98e49";
 
-// Far enough ahead that a scene finishes building before it scrolls into view.
-const APPROACH = "600px 0px 600px 0px";
+export interface Scene3DProps {
+  variant: SceneVariant;
+  /** The visitor's "Pause motion": stops the loop on the current frame. */
+  paused?: boolean;
+  onLive?: (live: boolean) => void;
+}
 
 /**
  * Every WebGL scene on the site, behind one lazy import.
@@ -42,46 +41,53 @@ const APPROACH = "600px 0px 600px 0px";
  * otherwise pull Three into its own chunk, and the library is roughly the
  * size of the entire rest of the bundle. One entry point means one shared
  * chunk, fetched once, reused by all six.
+ *
+ * Whether and when this mounts is Scene.tsx's job; once mounted it builds its
+ * scene, follows the pause prop, and tears everything down on unmount.
  */
-export default function Scene3D({
-  variant,
-  className,
-}: {
-  variant: SceneVariant;
-  className?: string;
-}) {
+export default function Scene3D({ variant, paused = false, onLive }: Scene3DProps) {
   const ref = useRef<HTMLDivElement>(null);
-  // Desktop mounts once and keeps the context for the life of the page.
-  const [near, setNear] = useState(() => !sceneBudget().mountOnApproach);
-
-  // Phones only: build the scene as its section approaches and drop it well
-  // after the section leaves, so six GPU contexts are never live together.
-  // mountScene's own observer still handles pausing the frame loop; this wider
-  // one decides whether the context should exist at all.
+  const controller = useRef<SceneController | null>(null);
+  // Read through refs so a new callback or a pause from the parent never
+  // rebuilds the scene. These effects run before the build below, so the
+  // build sees the current values.
+  const pausedRef = useRef(paused);
+  const onLiveRef = useRef(onLive);
   useEffect(() => {
-    if (!sceneBudget().mountOnApproach || typeof IntersectionObserver !== "function") {
-      setNear(true);
-      return;
-    }
+    onLiveRef.current = onLive;
+  }, [onLive]);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    controller.current?.setPaused(paused);
+  }, [paused]);
+
+  useEffect(() => {
     const el = ref.current;
     if (!el) return;
-
-    const io = new IntersectionObserver(([entry]) => setNear(entry.isIntersecting), {
-      rootMargin: APPROACH,
-    });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !near) return;
+    let live = false;
+    const report = (next: boolean) => {
+      live = next;
+      onLiveRef.current?.(next);
+    };
     // Detail is read at build time, so a scene rebuilt after a rotation picks
     // up the budget for the orientation it is actually in.
-    return mountScene(el, BUILDERS[variant](sceneBudget().detail));
-  }, [variant, near]);
+    const c = mountScene(el, BUILDERS[variant](sceneBudget(variant).detail), {
+      onLive: report,
+      budget: () => sceneBudget(variant),
+      paused: pausedRef.current,
+    });
+    controller.current = c;
+    return () => {
+      c.dispose();
+      controller.current = null;
+      // The canvas is gone, so whatever stood in for it (the hero's still)
+      // has to come back.
+      if (live) report(false);
+    };
+  }, [variant]);
 
-  return <div className={`scene-3d ${className ?? ""}`} ref={ref} aria-hidden="true" />;
+  return <div className="scene-mount" ref={ref} />;
 }
 
 /** Collects anything holding GPU memory so teardown is not hand-maintained. */
@@ -535,12 +541,24 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   },
 
   /* ---------------------------------------------------------------
-     Statement: a corridor of rings receding into depth, with a value
-     travelling down it. The section's claim is that a type crosses the
-     whole stack, so the backdrop is that journey given an actual Z axis.
+     How it's built: a corridor of frames receding into depth. The
+     section traces the project list from one file to this page, so the
+     backdrop is a journey given an actual Z axis.
+
+     It sits behind a diagram and its text, so it is kept sparse: 14
+     frames rather than the 26 it had as a section of its own, and the
+     tunnel's centre is moved off to the right, away from the reading
+     column on the left.
   --------------------------------------------------------------- */
-  corridor: (detail) => {
+  corridor: () => {
     const t = makeTracker();
+    const FRAMES = 14;
+    // Wider spacing than before, so fewer frames still make a corridor of
+    // about the same depth rather than a short box.
+    const SPACING = 1.8;
+    const SPEED = 2.1;
+    // Where the vanishing point sits across the stage, from the left edge.
+    const CENTRE_X = 0.7;
     return {
       fov: 58,
       dispose: t.disposeAll,
@@ -548,12 +566,20 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         camera.position.set(0, 0, 3.4);
         camera.lookAt(0, 0, -8);
 
+        // An off-axis view rather than moving the frames: every frame
+        // converges on the centre of the projection however far it is moved
+        // sideways, so the only way to put the vanishing point at 70% of the
+        // width is to slide the view window itself. setViewOffset works in
+        // fractions of the full view, so it holds at any size; it also
+        // overwrites the aspect ratio, which applySize has already set.
+        const aspect = camera.aspect;
+        camera.setViewOffset(1, 1, -(CENTRE_X - 0.5), 0, 1, 1);
+        camera.aspect = aspect;
+        camera.updateProjectionMatrix();
+
         const world = new Group();
         scene.add(world);
 
-        // Fewer frames is a shorter corridor, so this floor is generous.
-        const RINGS = scaled(26, detail, 18);
-        const SPACING = 1.25;
         const frames: Group[] = [];
         // One material per frame, not one shared: each has to fade on its
         // own as it nears the camera. Sharing meant the closest frames
@@ -563,7 +589,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         const mats: LineBasicMaterial[] = [];
         const ringGeo = t.track(ringsGeometry([2.6], 4)); // a square frame
 
-        for (let i = 0; i < RINGS; i++) {
+        for (let i = 0; i < FRAMES; i++) {
           const mat = t.track(
             new LineBasicMaterial({ color: new Color(SKY), transparent: true, opacity: 0.85 })
           );
@@ -578,27 +604,27 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           world.add(g);
         }
 
-        const TOTAL = RINGS * SPACING;
+        const TOTAL = FRAMES * SPACING;
         return (time) => {
           // Frames stream toward the camera and recycle, so the corridor
           // never ends without building 200 of them.
           frames.forEach((f, i) => {
-            let z = (-i * SPACING + time * 2.1) % TOTAL;
+            let z = (-i * SPACING + time * SPEED) % TOTAL;
             if (z > 0) z -= TOTAL;
             f.position.z = z;
             // 0 at the far end, 1 just in front of the camera.
             const near = 1 - Math.abs(z) / TOTAL;
             f.scale.setScalar(0.8 + near * 1.35);
-            // Both ends of the loop have to reach exactly zero opacity, or
-            // the wrap is visible. The old curve was full-strength the
-            // instant a frame recycled to the vanishing point, so every
-            // frame popped into existence - that is the "restart" you see.
-            // Ramping in over the first 14% of the run and out over the
-            // last 30% means a frame is invisible at both the moment it
-            // appears and the moment it is recycled.
+            // Both ends of the loop reach exactly zero opacity, so a frame
+            // is invisible at the moment it appears and the moment it is
+            // recycled, and the wrap never shows.
             const fadeIn = Math.min(1, near / 0.1);
             const fadeOut = Math.min(1, (1 - near) / 0.08);
-            mats[i].opacity = 0.85 * fadeIn * fadeOut;
+            // Distant frames crowd together around the tunnel's centre line,
+            // where their lines stack into a bright knot. Weighting by depth
+            // keeps that knot as dim as the open frames around it.
+            const depth = 0.3 + 0.7 * near * near;
+            mats[i].opacity = 0.85 * fadeIn * fadeOut * depth;
           });
         };
       },
@@ -606,9 +632,10 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   },
 
   /* ---------------------------------------------------------------
-     Skills: a slow wireframe globe sitting behind the 2D scope. Purely
-     atmospheric - the readable data stays on the 2D canvas in front,
-     because that legibility was the whole point of that redesign.
+     Skills: a slow wireframe globe, pinned behind the section while its
+     groups scroll past. Purely atmospheric: it is held at low strength
+     and faded out across the left half (styles/scenes.css), so the lists
+     in front stay the thing you read.
   --------------------------------------------------------------- */
   globe: (detail) => {
     const t = makeTracker();
@@ -744,8 +771,10 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   },
 
   /* ---------------------------------------------------------------
-     Projects / contact: a slow drifting point field, giving the flat
-     card grids something with parallax behind them.
+     Work: a slow drifting field of motes, giving the case studies
+     something with parallax behind them. The motes are round and soft-
+     edged (softDot below): square GL points read as hard pixels wherever
+     one drifted behind a line of text.
   --------------------------------------------------------------- */
   field: (detail) => {
     const t = makeTracker();
@@ -770,13 +799,19 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         }
         const g = t.track(new BufferGeometry());
         g.setAttribute("position", new Float32BufferAttribute(pts, 3));
+        const dot = softDot();
+        if (dot) t.track(dot);
         world.add(
           new Points(
             g,
             t.track(
               new PointsMaterial({
                 color: new Color(SKY),
-                size: 0.05,
+                // Larger than the old hard dots, because most of a soft
+                // sprite is its falloff: the bright middle ends up about the
+                // size the square used to be.
+                size: dot ? 0.12 : 0.05,
+                map: dot,
                 transparent: true,
                 opacity: 0.4,
                 blending: AdditiveBlending,
@@ -794,6 +829,30 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     };
   },
 };
+
+/**
+ * A small white disc with a soft edge, drawn once into a canvas, for use as a
+ * points sprite map. White so the material's colour tints it. Null where a 2D
+ * context is unavailable, in which case the field falls back to plain points.
+ */
+function softDot(): CanvasTexture | null {
+  const SIZE = 64;
+  const c = document.createElement("canvas");
+  c.width = SIZE;
+  c.height = SIZE;
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const half = SIZE / 2;
+  const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.35, "rgba(255,255,255,0.75)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  const tex = new CanvasTexture(c);
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
+}
 
 /* ---------------------------------------------------------------------
    Geometry helpers
@@ -872,5 +931,3 @@ function ringsGeometry(radii: number[], segments: number): BufferGeometry {
   g.setAttribute("position", new Float32BufferAttribute(out, 3));
   return g;
 }
-
-

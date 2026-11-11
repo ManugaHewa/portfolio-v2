@@ -1,5 +1,6 @@
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { sceneBudget } from "./sceneQuality";
+import type { SceneBudget } from "./sceneQuality";
 
 export interface SceneHandle {
   scene: Scene;
@@ -18,67 +19,89 @@ export interface SceneDef {
   dispose?: () => void;
 }
 
+export interface MountOptions {
+  /** Hears true once the first frame is drawn, false if the context is lost. */
+  onLive?: (live: boolean) => void;
+  /**
+   * Pixel ratio, antialiasing and frame-rate cap. A function rather than a
+   * value because it is read again on every resize: rotating a phone across
+   * a breakpoint should change the budget, not keep the one from mount.
+   */
+  budget?: () => SceneBudget;
+  /** Start with the loop stopped (the visitor has paused motion). */
+  paused?: boolean;
+}
+
+/**
+ * What a mounted scene gives back. Pausing is separate from disposing so the
+ * header's "Pause motion" toggle can stop every loop and start it again
+ * without throwing away and rebuilding six GPU contexts.
+ */
+export interface SceneController {
+  setPaused(paused: boolean): void;
+  dispose(): void;
+}
+
+const INERT: SceneController = { setPaused: () => {}, dispose: () => {} };
+
 /**
  * Shared harness for every WebGL scene on the page.
  *
- * Written once because the same four things go wrong in each of them:
+ * Written once because the same things go wrong in each of them:
  *
  * - Backing store vs CSS size. The renderer's drawing buffer has to match
- *   the element's real box times the device pixel ratio, or the canvas is
- *   silently upscaled and everything looks soft. The first version of the
- *   hero dome rendered 383px into a 392px box for exactly this reason.
+ *   the element's real box times the pixel ratio, or the canvas is silently
+ *   upscaled and everything looks soft.
  * - Resize. A canvas sized once at mount is wrong the moment the layout
  *   moves, so this watches the element rather than the window.
- * - Offscreen cost. A WebGL loop that keeps running below the fold is pure
- *   battery drain, so the frame loop is gated on intersection.
+ * - Idle cost. A loop below the fold, in a background tab or after the
+ *   visitor pressed "Pause motion" is pure battery drain, so the loop runs
+ *   only while all three allow it.
  * - Disposal. Three holds GPU buffers until told otherwise; without an
  *   explicit teardown a StrictMode remount leaks a context every time.
  *
- * `onLive` hears true once the first frame is on screen and false if the
- * context is later lost. The hero shows a still image whenever the scene is
- * not live, so a device that never gets a frame out keeps the still instead
- * of an empty box.
+ * `onLive` hears true once the first frame is drawn and false if the context
+ * is later lost. The hero shows a still image whenever its scene is not live,
+ * so a device that never gets a frame out keeps the still instead of an
+ * empty box.
  */
-export function mountScene(el: HTMLElement, def: SceneDef, onLive?: (live: boolean) => void): () => void {
+export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions = {}): SceneController {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    return () => {};
+    return INERT;
   }
+
+  const { onLive } = options;
+  const budget = options.budget ?? (() => sceneBudget());
 
   let renderer: WebGLRenderer;
   try {
     renderer = new WebGLRenderer({
       alpha: true,
-      // Off on small screens. MSAA costs real fill rate on a mobile GPU and
-      // these scenes are soft, additive-blended backdrops at half opacity, so
-      // it buys almost nothing visible.
-      antialias: sceneBudget().antialias,
+      antialias: budget().antialias,
       powerPreference: "low-power",
     });
   } catch {
     // No WebGL: the CSS layer underneath is the whole experience.
-    return () => {};
+    return INERT;
   }
 
   const scene = new Scene();
   const camera = new PerspectiveCamera(def.fov ?? 42, 1, 0.1, 100);
 
-  renderer.domElement.style.display = "block";
-  renderer.domElement.style.width = "100%";
-  renderer.domElement.style.height = "100%";
-  el.appendChild(renderer.domElement);
+  const canvas = renderer.domElement;
+  canvas.style.display = "block";
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  el.appendChild(canvas);
 
   const applySize = () => {
     // clientWidth/Height, not getBoundingClientRect: the rect is the
-    // *transformed* box, and these canvases sit inside cards that GSAP is
-    // rotating and scaling. Measuring the rect made the hero dome render a
-    // 383px buffer into a 392px box, which is why it looked soft.
+    // *transformed* box, and the hero's gyroscope is scaled as the work
+    // index rises over it. Measuring the rect would size the buffer to the
+    // shrunken box and leave the scene soft when it grows back.
     const w = Math.max(1, el.clientWidth);
     const h = Math.max(1, el.clientHeight);
-    // Re-read the budget on every resize, so rotating a phone into landscape
-    // and crossing the breakpoint changes the ratio rather than keeping
-    // whichever one happened to apply at mount. A phone reporting DPR 3 would
-    // otherwise render a 400px canvas into a 1200px buffer, six times over.
-    renderer.setPixelRatio(sceneBudget().pixelRatio);
+    renderer.setPixelRatio(budget().pixelRatio);
     // updateStyle false: the element is already sized by CSS, and letting
     // three write inline px here is what desyncs buffer from box.
     renderer.setSize(w, h, false);
@@ -96,32 +119,46 @@ export function mountScene(el: HTMLElement, def: SceneDef, onLive?: (live: boole
   let t = 0;
   let lastFrame = performance.now();
 
-  const tick = (now: number) => {
-    if (!running) return;
-    const dt = Math.min((now - lastFrame) / 1000, 0.05);
-    lastFrame = now;
-    t += dt;
-    update?.(t, dt);
+  const draw = () => {
     renderer.render(scene, camera);
     if (!drawn) {
       drawn = true;
       onLive?.(true);
     }
+  };
+
+  const tick = (now: number) => {
+    if (!running) return;
+    // A frame-rate cap skips display frames rather than using a timer, so the
+    // frames that are drawn stay in step with the display. The millisecond of
+    // slack keeps a 60Hz display from landing just short of every other frame.
+    const cap = budget().maxFps;
+    if (cap > 0 && now - lastFrame < 1000 / cap - 1) {
+      raf = requestAnimationFrame(tick);
+      return;
+    }
+    const dt = Math.min((now - lastFrame) / 1000, 0.05);
+    lastFrame = now;
+    t += dt;
+    update?.(t, dt);
+    draw();
     raf = requestAnimationFrame(tick);
   };
 
-  // Two independent reasons to stop, so neither can restart the loop while the
-  // other still wants it paused. Intersection alone was not enough: the
-  // page-wide starfield is position: fixed, so it never stops intersecting and
-  // its loop ran forever, including in a background tab.
+  // Independent reasons to stop, so none of them can restart the loop while
+  // another still wants it stopped. Intersection alone is not enough: the
+  // page-wide starfield is position: fixed, so it never stops intersecting.
   let onScreen = false;
   let visible = document.visibilityState !== "hidden";
-  // Terminal, unlike the other two: a lost context is never coming back here,
-  // so scrolling the element back into view must not restart the loop on it.
+  let paused = options.paused ?? false;
+  // Terminal, unlike the others: a lost context is never coming back here, so
+  // scrolling the element back into view must not restart the loop on it. A
+  // section scene gets a fresh context the next time its section approaches.
   let lost = false;
+  let disposed = false;
 
   const sync = () => {
-    const shouldRun = onScreen && visible && !lost;
+    const shouldRun = onScreen && visible && !paused && !lost && !disposed;
     if (shouldRun === running) return;
     running = shouldRun;
     if (running) {
@@ -134,9 +171,15 @@ export function mountScene(el: HTMLElement, def: SceneDef, onLive?: (live: boole
     }
   };
 
+  // One frame straight away, at time zero, before any loop starts. A scene
+  // that mounts while motion is paused then shows its resting pose rather
+  // than an empty canvas, and the hero can swap its still for it.
+  update?.(0, 0);
+  draw();
+
   const io = new IntersectionObserver(
-    ([entry]) => {
-      onScreen = entry.isIntersecting;
+    (entries) => {
+      onScreen = entries[entries.length - 1].isIntersecting;
       sync();
     },
     { threshold: 0.02 }
@@ -150,34 +193,45 @@ export function mountScene(el: HTMLElement, def: SceneDef, onLive?: (live: boole
   document.addEventListener("visibilitychange", onVisibility);
 
   const ro = new ResizeObserver(() => {
-    if (lost) return;
+    if (lost || disposed) return;
     handle.size = applySize();
     // Repaint immediately rather than waiting for the next frame: while the
-    // loop is paused offscreen, nothing else would redraw the resized buffer.
+    // loop is stopped, nothing else would redraw the resized buffer.
     renderer.render(scene, camera);
   });
   ro.observe(el);
 
   // A lost context would otherwise leave a dead black canvas on the page.
+  // Hiding it lets whatever sits underneath (the hero's still image, or just
+  // the section's background) show, and onLive(false) tells the hero to
+  // bring its still back.
   const onLost = (e: Event) => {
     e.preventDefault();
     lost = true;
     sync();
-    renderer.domElement.style.opacity = "0";
+    canvas.style.visibility = "hidden";
     onLive?.(false);
   };
-  renderer.domElement.addEventListener("webglcontextlost", onLost);
+  canvas.addEventListener("webglcontextlost", onLost);
 
-  return () => {
-    io.disconnect();
-    ro.disconnect();
-    document.removeEventListener("visibilitychange", onVisibility);
-    running = false;
-    cancelAnimationFrame(raf);
-    renderer.domElement.removeEventListener("webglcontextlost", onLost);
-    def.dispose?.();
-    renderer.dispose();
-    renderer.forceContextLoss();
-    renderer.domElement.remove();
+  return {
+    setPaused(next: boolean) {
+      paused = next;
+      sync();
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      io.disconnect();
+      ro.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      running = false;
+      cancelAnimationFrame(raf);
+      canvas.removeEventListener("webglcontextlost", onLost);
+      def.dispose?.();
+      renderer.dispose();
+      renderer.forceContextLoss();
+      canvas.remove();
+    },
   };
 }

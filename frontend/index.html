@@ -59,18 +59,13 @@
       }
     </script>
 
-    <!-- The page is prerendered with the entrance animations at their
-         starting point (faded, shifted, masked). Without JavaScript nothing
-         moves them on, so show the finished state instead. -->
+    <!-- Entrances that start hidden in the prerendered HTML carry
+         data-reveal. Without JavaScript nothing moves them on, so show the
+         finished state. Only [data-reveal]: the old attribute-sniffing
+         selectors also un-hid things that were meant to stay hidden. -->
     <noscript>
       <style>
-        [style*="opacity:0"] { opacity: 1 !important; }
-        [style*="transform"] { transform: none !important; }
-        [style*="blur("] { filter: none !important; }
-        [style*="stroke-dasharray"] { stroke-dasharray: none !important; }
-        .statement { height: auto !important; }
-        .statement-sticky { position: static !important; height: auto !important; }
-        .statement-line { grid-area: auto !important; }
+        [data-reveal] { opacity: 1 !important; transform: none !important; }
       </style>
     </noscript>
   </head>

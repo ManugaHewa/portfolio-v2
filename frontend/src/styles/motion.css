@@ -1,0 +1,279 @@
+/*
+ * The motion primitives' own rules (src/motion, redesign SPEC.md section 7):
+ * masks, reels, stacks and the marquee's two layouts. Only structure and
+ * movement live here; each section's stylesheet sets the type and colour of
+ * the things it puts in them.
+ *
+ * Everything that moves is gated twice: the components only start motion
+ * after hydration and outside reduced motion, and the rules below either
+ * sit under prefers-reduced-motion: no-preference or are undone under
+ * reduce, so a stylesheet alone never animates for a visitor who asked it
+ * not to.
+ */
+
+/* ---------------------------------------------------------- hero name */
+
+/*
+ * Each word of the h1 rises out of its own mask, 70ms apart, on CSS alone:
+ * it runs as soon as the HTML paints, before any JavaScript, so the name (the
+ * page's largest paint) is never waiting on the bundle. The mask is padded
+ * past the line box, and the padding taken back with negative margins, so a
+ * tight line-height does not clip the descenders or accents.
+ */
+.hero-name-mask {
+  display: inline-block;
+  overflow: clip;
+  padding-block: 0.08em 0.18em;
+  margin-block: -0.08em -0.18em;
+  vertical-align: top;
+}
+
+.hero-name-word {
+  display: inline-block;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-name-word {
+    /* both: each word waits below its mask through its delay. No `to`
+       keyframe, so the end state is the word's own place. */
+    animation: hero-word-rise var(--dur-4) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms + 120ms);
+  }
+}
+
+@keyframes hero-word-rise {
+  from {
+    transform: translateY(120%);
+  }
+}
+
+/* -------------------------------------------------------- split title */
+
+/* Section titles: the same mask, driven by Motion once in view
+   (SplitTitle.tsx). The words' hidden state is an inline transform, which
+   [data-reveal] rules in base.css and the <noscript> block undo. */
+.split-mask {
+  display: inline-block;
+  overflow: clip;
+  padding-block: 0.08em 0.18em;
+  margin-block: -0.08em -0.18em;
+  vertical-align: top;
+}
+
+.split-word {
+  display: inline-block;
+}
+
+/* ------------------------------------------------------------- reveal */
+
+/* Anything an entrance still holds hidden shows the moment it, or anything
+   inside it, takes focus: a keyboard user tabbing ahead of the scroll must
+   never land on an invisible link. !important to beat Motion's inline
+   style, the same way the reduced-motion rule does. */
+[data-reveal]:focus-within {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* ----------------------------------------------------------- scramble */
+
+/* While decoding, the real text keeps its place (and stays in the
+   accessibility tree) but turns transparent; the frames are drawn over it
+   in the same box, so the line never changes width. */
+.scramble {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.scramble.is-scrambling .scramble-text {
+  color: transparent;
+}
+
+.scramble-out {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------- text loop */
+
+/* Every item stacked in one cell: the invisible ghosts hold the width of
+   the longest, the live word slides through the clipped cell. */
+.text-loop-stage {
+  display: inline-grid;
+  overflow: clip;
+  padding-block: 0.08em 0.18em;
+  margin-block: -0.08em -0.18em;
+}
+
+.text-loop-stage > * {
+  grid-area: 1 / 1;
+  white-space: nowrap;
+}
+
+.text-loop-ghost {
+  visibility: hidden;
+}
+
+/* The ghosts' text comes from their data-text attribute, so it is not page
+   text: find-in-page, copy and tests see each word once. */
+.text-loop-ghost::before {
+  content: attr(data-text);
+}
+
+.text-loop-word {
+  display: inline-block;
+}
+
+/* ----------------------------------------------------------- odometer */
+
+.odometer {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * One window per place value. The ghost is the final digit in normal flow:
+ * it sizes the window and gives it the parent's baseline, so swapping the
+ * plain digits for reels moves nothing. The reel is drawn by ::before
+ * (0 to 9 and a repeated 0, so 9 rolls forward into 0 with no jump); its
+ * faces are generated content, so the page text stays the number.
+ * Odometer.tsx moves the reel in whole em steps: 1em per face, the window's
+ * line-height.
+ */
+.odometer-slot {
+  position: relative;
+  display: inline-block;
+  height: 1em;
+  line-height: 1em;
+  clip-path: inset(0);
+}
+
+.odometer-ghost {
+  visibility: hidden;
+}
+
+.odometer-reel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.odometer-reel::before {
+  content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9\A 0";
+  display: block;
+  white-space: pre;
+}
+
+/* ----------------------------------------------------------- magnetic */
+
+/* The hit area reaches 12px past the button on every side, given back by
+   the negative margin so the layout does not change. Only the inner span
+   moves. */
+.magnetic {
+  display: inline-block;
+  padding: 12px;
+  margin: -12px;
+}
+
+.magnetic-inner {
+  display: inline-block;
+}
+
+/* --------------------------------------------------------------- tilt */
+
+/* The root is deliberately not positioned: the card's stretched "Read the
+   case study" target is placed against the card itself. */
+.tilt-visual {
+  transform-origin: 50% 50%;
+}
+
+/* ------------------------------------------------------------ marquee */
+
+.marquee {
+  --marquee-gap: var(--s6);
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+}
+
+.marquee-viewport {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The static layout: one list, wrapped. This is what the HTML shows, and
+   what the strip returns to when paused or under reduced motion. */
+.marquee-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--marquee-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--marquee-gap);
+  white-space: nowrap;
+}
+
+/* A sky dot after every item, drawn as a box rather than a "·" character so
+   screen readers have nothing to read out. In the moving row every item has
+   one, so the seam between the two copies gets a dot too. */
+.marquee-item::after {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--sky);
+}
+
+.marquee:not(.is-running) .marquee-item:last-child::after {
+  display: none;
+}
+
+.marquee-toggle {
+  flex: none;
+}
+
+/* The moving row: both copies side by side, the viewport's gap equal to the
+   items' gap so the loop has no seam, the edges faded. Each copy moves by
+   its own width plus one gap per lap, then starts over where the other
+   began. */
+.marquee.is-running .marquee-viewport {
+  overflow: clip;
+  gap: var(--marquee-gap);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+.marquee.is-running .marquee-list {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marquee.is-running .marquee-list {
+    animation: marquee-scroll var(--marquee-duration, 60s) linear infinite;
+  }
+
+  .marquee.is-offscreen .marquee-list {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes marquee-scroll {
+  to {
+    transform: translateX(calc(-100% - var(--marquee-gap)));
+  }
+}

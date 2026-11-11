@@ -14,18 +14,80 @@ import { RETENTION, SITE } from "../site";
  * - Logs: the anonymised access-log format in deploy/nginx/portfolio.conf,
  *   and Ubuntu's 14-day rotation for Nginx.
  * - Rate limiting: the 15-minute in-memory window in backend/src/app.ts.
+ * - Credits: what ships to the browser, from frontend/package.json. GSAP and
+ *   Lenis left with the redesign; the two typefaces arrived with it.
  *
  * No cookies and no browser storage: measured, not assumed (docs/audit-2026-10.md).
+ *
+ * The page has its own entry (privacy-main.tsx) and loads none of the home
+ * page's animation code, so nothing here imports from src/motion.
  */
-const UPDATED = "6 October 2026";
+const UPDATED = "10 November 2026";
 
-const LIBRARIES = [
+interface Credit {
+  name: string;
+  /** The npm package, where it differs from the name people know it by. */
+  pkg?: string;
+  use: string;
+  licence: string;
+  url: string;
+}
+
+const LIBRARIES: Credit[] = [
   { name: "React", use: "the interface", licence: "MIT", url: "https://react.dev" },
   { name: "Three.js", use: "the 3D scenes", licence: "MIT", url: "https://threejs.org" },
-  { name: "GSAP", use: "the hero animation", licence: "GSAP Standard “No Charge” licence", url: "https://gsap.com/standard-license" },
-  { name: "Framer Motion", use: "scroll and reveal animation", licence: "MIT", url: "https://motion.dev" },
-  { name: "Lenis", use: "smooth scrolling", licence: "MIT", url: "https://lenis.darkroom.engineering" },
+  { name: "Motion", pkg: "framer-motion", use: "the animation", licence: "MIT", url: "https://motion.dev" },
 ];
+
+const FONTS: Credit[] = [
+  {
+    name: "Mona Sans",
+    use: "headings and text",
+    licence: "SIL Open Font License 1.1",
+    url: "https://github.com/github/mona-sans",
+  },
+  {
+    name: "Martian Mono",
+    use: "labels and numbers",
+    licence: "SIL Open Font License 1.1",
+    url: "https://github.com/evilmartians/mono",
+  },
+];
+
+function CreditList({ items }: { items: Credit[] }) {
+  return (
+    <ul className="legal-credits">
+      {items.map((item) => (
+        <li key={item.name}>
+          <a href={item.url} target="_blank" rel="noreferrer">
+            {item.name}
+          </a>
+          {item.pkg && ` (${item.pkg})`}, for {item.use} ({item.licence})
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * The header the privacy page and the 404 share: the name, home, and a way
+ * back. No section nav and no pause toggle, since neither page has sections
+ * or motion. id="top" is where the footer's "Back to top" lands.
+ */
+export function LegalHeader() {
+  return (
+    <header className="site-header legal-header" id="top">
+      <div className="site-nav container">
+        <a className="brand" href="/">
+          {SITE.name}
+        </a>
+        <a className="legal-back" href="/">
+          Back to the portfolio
+        </a>
+      </div>
+    </header>
+  );
+}
 
 export function PrivacyPage() {
   return (
@@ -34,19 +96,7 @@ export function PrivacyPage() {
         Skip to content
       </a>
 
-      <header className="site-header legal-header">
-        <nav className="nav" aria-label="Primary">
-          <a className="brand" href="/">
-            <span className="brand-mark" aria-hidden="true">
-              MH
-            </span>
-            <span className="brand-text">{SITE.name}</span>
-          </a>
-          <a className="legal-back" href="/">
-            Back to the portfolio
-          </a>
-        </nav>
-      </header>
+      <LegalHeader />
 
       <main id="main" className="legal container">
         <h1>Privacy</h1>
@@ -151,20 +201,12 @@ export function PrivacyPage() {
         <section aria-labelledby="credits-heading" id="credits">
           <h2 id="credits-heading">Credits</h2>
           <p>
-            No fonts are downloaded: text uses your device&rsquo;s own system fonts. The 3D scenes are
-            drawn in code with Three.js, with no third-party models or textures. The libraries that
-            run in your browser:
+            The 3D scenes are drawn in code with Three.js, with no third-party models or textures.
+            The libraries that run in your browser:
           </p>
-          <ul className="legal-credits">
-            {LIBRARIES.map((lib) => (
-              <li key={lib.name}>
-                <a href={lib.url} target="_blank" rel="noreferrer">
-                  {lib.name}
-                </a>
-                , for {lib.use} ({lib.licence})
-              </li>
-            ))}
-          </ul>
+          <CreditList items={LIBRARIES} />
+          <p>The typefaces, served from this site rather than a font service:</p>
+          <CreditList items={FONTS} />
         </section>
       </main>
 

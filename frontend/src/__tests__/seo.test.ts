@@ -60,6 +60,25 @@ describe("the home page's head", () => {
   });
 });
 
+describe("the home page without JavaScript", () => {
+  const html = read("index.html");
+
+  it("reveals only the entrances marked data-reveal", () => {
+    // The old block sniffed inline styles ([style*="opacity:0"] and the
+    // like), which also un-hid things meant to stay hidden.
+    const block = html.match(/<noscript>([\s\S]*?)<\/noscript>/)?.[1] ?? "";
+    const rules = [...block.matchAll(/([^{}]+)\{/g)].map((m) => m[1].replace(/<style>/, "").trim());
+    expect(rules).toEqual(["[data-reveal]"]);
+    expect(block).toMatch(/opacity:\s*1\s*!important/);
+    expect(block).toMatch(/transform:\s*none\s*!important/);
+  });
+
+  it("loads no font from another origin", () => {
+    // The fonts are bundled and served from this site (CSP font-src 'self').
+    expect(html).not.toMatch(/fonts\.(googleapis|gstatic)\.com|use\.typekit|fonts\.bunny/);
+  });
+});
+
 describe("the privacy page's head", () => {
   const { doc } = head(read("privacy/index.html"));
 

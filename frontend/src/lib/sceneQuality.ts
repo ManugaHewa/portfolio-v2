@@ -1,17 +1,69 @@
 /**
- * How much work the WebGL scenes are allowed to do on this device.
+ * Which WebGL scenes run on this device, when they are built, and how much
+ * work each is allowed to do.
  *
- * An earlier pass simply switched the scenes off below 900px, which was the
- * cheap answer and the wrong one: the 3D layers are most of what the site looks
- * like, and a phone was getting a flat page. They run everywhere now, on a
- * budget that fits the hardware.
- *
- * Pixel ratio is the lever that matters. A phone commonly reports a DPR of 3,
- * so a 400px-wide canvas becomes a 1200px drawing buffer - and there are six
- * canvases. Capping the ratio cuts fill cost quadratically while barely showing
- * on a soft, additive-blended backdrop. Geometry counts come second, and
- * antialiasing is not worth its cost on a small screen at all.
+ * Kept free of any Three import, so the gate (Scene.tsx, useSceneEnabled.ts)
+ * can decide whether to fetch the Three chunk at all without loading it.
  */
+export type SceneVariant = "core" | "corridor" | "globe" | "field" | "starfield" | "signal";
+
+/**
+ * The four scenes that sit behind a section. Each is built as its section
+ * approaches and torn down once it has gone, so the page never holds more
+ * than two or three GPU contexts at once. Mobile Safari drops contexts under
+ * memory pressure, and a dropped context is a backdrop that silently
+ * disappears, which is worse than one that costs a moment to build.
+ *
+ * The other two, the hero's gyroscope and the page-wide starfield, are on
+ * screen from the first paint (or always, for the starfield), so they mount
+ * once and stay.
+ */
+export const SECTION_SCENES: ReadonlySet<SceneVariant> = new Set<SceneVariant>([
+  "field",
+  "corridor",
+  "globe",
+  "signal",
+]);
+
+/**
+ * Half a viewport ahead and behind. Far enough that a section scene has
+ * finished building before its section scrolls in, near enough that a scene
+ * is let go soon after its section leaves.
+ */
+export const APPROACH_MARGIN = "50% 0px";
+
+/**
+ * A touch screen or a phone-sized window. There, only the gyroscope and the
+ * starfield run: the section backdrops are the most expendable GPU work on
+ * the page, and the screen they would sit behind is mostly text anyway.
+ */
+export const SMALL_OR_TOUCH_QUERY = "(pointer: coarse), (max-width: 719.98px)";
+
+export function mountsOnApproach(variant: SceneVariant): boolean {
+  return SECTION_SCENES.has(variant);
+}
+
+export function sceneAllowed(variant: SceneVariant, smallOrTouch: boolean): boolean {
+  return !smallOrTouch || !SECTION_SCENES.has(variant);
+}
+
+/**
+ * The highest device pixel ratio any scene draws at. A phone commonly reports
+ * 3, so a 400px canvas would otherwise become a 1200px drawing buffer. These
+ * are soft, additive, part-transparent backdrops, and above 1.5 the extra
+ * pixels cost fill rate (quadratically) without showing.
+ */
+export const MAX_PIXEL_RATIO = 1.5;
+
+/**
+ * The starfield is the one scene that is always on screen and the one with
+ * the least to show per frame: a few hundred stars drifting a fraction of a
+ * pixel a second. Ratio 1 and 30 frames a second look the same and halve
+ * its cost twice over.
+ */
+const STARFIELD_PIXEL_RATIO = 1;
+const STARFIELD_MAX_FPS = 30;
+
 export interface SceneBudget {
   /** Upper bound for renderer.setPixelRatio. */
   pixelRatio: number;
@@ -19,44 +71,30 @@ export interface SceneBudget {
   detail: number;
   /** MSAA is expensive on mobile GPUs and nearly invisible on these scenes. */
   antialias: boolean;
-  /**
-   * Whether a scene should be torn down while it is far from the viewport.
-   * Six live contexts is a lot to ask of mobile Safari, which drops them under
-   * memory pressure - and a dropped context is a backdrop that silently
-   * disappears, which is worse than one that costs a moment to build.
-   */
-  mountOnApproach: boolean;
+  /** Frames per second the loop may draw at; 0 means the display's own rate. */
+  maxFps: number;
 }
 
-const PHONE = "(max-width: 760px)";
-const NARROW = "(max-width: 1100px)";
+const PHONE = "(max-width: 719.98px)";
+const NARROW = "(max-width: 1099.98px)";
 
-const PHONE_BUDGET: SceneBudget = {
-  pixelRatio: 1.5,
-  detail: 0.45,
-  antialias: false,
-  mountOnApproach: true,
-};
+export function sceneBudget(variant: SceneVariant = "core"): SceneBudget {
+  const hasWindow = typeof window !== "undefined" && typeof window.matchMedia === "function";
+  const dpr = hasWindow ? window.devicePixelRatio || 1 : 1;
+  const starfield = variant === "starfield";
 
-export function sceneBudget(): SceneBudget {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return PHONE_BUDGET;
-  }
+  const pixelRatio = Math.min(dpr, starfield ? STARFIELD_PIXEL_RATIO : MAX_PIXEL_RATIO);
+  const maxFps = starfield ? STARFIELD_MAX_FPS : 0;
 
-  const dpr = window.devicePixelRatio || 1;
-
-  if (window.matchMedia(PHONE).matches) {
-    return { ...PHONE_BUDGET, pixelRatio: Math.min(dpr, PHONE_BUDGET.pixelRatio) };
+  // Geometry counts are the second lever after pixel ratio, sized to the
+  // screen: a phone shows a scene a third the width of a desktop's.
+  if (!hasWindow || window.matchMedia(PHONE).matches) {
+    return { pixelRatio, detail: 0.45, antialias: false, maxFps };
   }
   if (window.matchMedia(NARROW).matches) {
-    return {
-      pixelRatio: Math.min(dpr, 1.75),
-      detail: 0.7,
-      antialias: true,
-      mountOnApproach: false,
-    };
+    return { pixelRatio, detail: 0.7, antialias: true, maxFps };
   }
-  return { pixelRatio: Math.min(dpr, 2), detail: 1, antialias: true, mountOnApproach: false };
+  return { pixelRatio, detail: 1, antialias: true, maxFps };
 }
 
 /**

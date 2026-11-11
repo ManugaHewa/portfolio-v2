@@ -1,52 +1,25 @@
-import { useEffect, useRef, useState } from "react";
-import { MotionConfig } from "framer-motion";
-import { Nav } from "./components/Nav";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LayoutGroup, LazyMotion, domMax } from "./motion/m";
+import { IndexRail, MotionPauseProvider, ScrollProgress } from "./motion";
+import { Nav, PAGE_SECTIONS } from "./components/Nav";
 import { Scene } from "./components/Scene";
 import { Hero } from "./components/Hero";
-import { Statement } from "./components/Statement";
-import { ProjectCard } from "./components/ProjectCard";
-import { ProjectModal } from "./components/ProjectModal";
-import { SkillsSection } from "./components/SkillsSection";
+import { Work } from "./components/work/Work";
+import type { OpenProject } from "./components/work/Work";
+import { TechBand } from "./components/TechBand";
+import { Pipeline } from "./components/Pipeline";
+import { Skills } from "./components/Skills";
 import { ContactSection } from "./components/ContactSection";
-import { Reveal } from "./components/Reveal";
-import { SectionHead } from "./components/SectionHead";
-import { SmoothScroll } from "./components/SmoothScroll";
 import { Footer } from "./components/Footer";
-
-/**
- * Smaller public repositories that are not projects in their own right. They
- * share the Other work list with the projects that did not earn a card: two
- * kinds of row at one visual weight, since a second heading for two links was
- * more structure than the content justified.
- *
- * Two entries left when the project list took them over: portfolio-v2 is a
- * project of its own now, and AI-Product-Recommendation is the repository
- * behind ShopSense. Listing either twice would read as padding.
- */
-const ALSO_ON_GITHUB = [
-  {
-    name: "Portfolio",
-    note: "The previous portfolio, in vanilla HTML, CSS and JavaScript.",
-    year: 2025,
-    url: "https://github.com/ManugaHewa/Portfolio",
-  },
-  {
-    name: "Calculators",
-    note: "Three successive refactors of one Python program.",
-    year: 2024,
-    url: "https://github.com/ManugaHewa/Calculators",
-  },
-  // Newest first. Sorted here rather than trusted to the order above, so
-  // adding an entry in the wrong place cannot quietly break the sequence.
-].sort((a, b) => b.year - a.year);
-
+import { ProjectModal } from "./components/ProjectModal";
+import { useIsomorphicLayoutEffect } from "./lib/useHydrated";
 import { api } from "./api";
 import type { ProjectDetail, ProjectSummary } from "./types";
 
 interface AppProps {
   /**
-   * The card summaries the build-time prerender wrote into the page, so the
-   * first render shows the projects instead of skeletons, and matches the
+   * The project summaries the build-time prerender wrote into the page, so
+   * the first render shows the projects instead of skeletons, and matches the
    * HTML React is hydrating. Absent in development, where nothing is
    * prerendered and the list arrives from the API alone.
    */
@@ -55,16 +28,26 @@ interface AppProps {
 
 export default function App({ initialProjects }: AppProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>(initialProjects ?? []);
-  const [activeProject, setActiveProject] = useState<ProjectDetail | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(!initialProjects);
-  const progressRef = useRef<HTMLDivElement>(null);
+
+  // The dialog: the summary it opened with, the full case study once it
+  // arrives, and the control to hand focus back to.
+  const [openProject, setOpenProject] = useState<ProjectSummary | null>(null);
+  const [detail, setDetail] = useState<ProjectDetail | null>(null);
+  const [detailError, setDetailError] = useState(false);
+  const [returnFocusTo, setReturnFocusTo] = useState<HTMLElement | null>(null);
+  // The slug of the latest request, so a slow answer for a project that has
+  // since been closed or swapped cannot land in the dialog.
+  const requested = useRef<string | null>(null);
+  const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Still asked for with prerendered cards on screen: the data lives in
+    // Still asked for with prerendered projects on screen: the data lives in
     // Postgres, and this is the live read. CI checks the API returns exactly
     // what the prerender used, so the swap changes nothing on screen. If the
-    // API is down, the prerendered cards stay and only opening one fails.
+    // API is down, the prerendered list stays and only the full case studies
+    // fail to load.
     api
       .getProjects()
       .then(setProjects)
@@ -74,197 +57,92 @@ export default function App({ initialProjects }: AppProps) {
       .finally(() => setLoadingProjects(false));
   }, [initialProjects]);
 
-  useEffect(() => {
-    const doc = document.documentElement;
-    // Measured here rather than inside the scroll handler. scrollHeight forces
-    // layout, and with Lenis smoothing the scroll this handler runs every
-    // frame, so reading it there meant a forced reflow per frame for a number
-    // that only changes when the page itself resizes.
-    let max = 0;
-    const measure = () => {
-      max = doc.scrollHeight - doc.clientHeight;
-    };
+  // Everything but the dialog goes inert while it is open, so neither the
+  // keyboard nor a screen reader's own cursor can reach the page behind it.
+  // Through the ref because React 18 has no inert prop. A layout effect, so
+  // inert is lifted before the dialog's cleanup hands focus back into the page.
+  const dialogOpen = openProject !== null;
+  useIsomorphicLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+    if (dialogOpen) shell.setAttribute("inert", "");
+    else shell.removeAttribute("inert");
+  }, [dialogOpen]);
 
-    // Written straight to the DOM. Holding this in React state re-rendered the
-    // whole page tree on every scroll event, which with smooth scrolling means
-    // every frame.
-    const paint = () => {
-      const pct = max > 0 ? (doc.scrollTop / max) * 100 : 0;
-      if (progressRef.current) progressRef.current.style.width = `${pct}%`;
-    };
-
-    const remeasure = () => {
-      measure();
-      paint();
-    };
-
-    remeasure();
-    window.addEventListener("scroll", paint, { passive: true });
-    window.addEventListener("resize", remeasure);
-    // The page gets taller when the project data lands and when a modal opens,
-    // so the track length has to be remeasured then too, not only on resize.
-    const ro = new ResizeObserver(remeasure);
-    ro.observe(document.body);
-
-    return () => {
-      window.removeEventListener("scroll", paint);
-      window.removeEventListener("resize", remeasure);
-      ro.disconnect();
-    };
+  const onOpen = useCallback<OpenProject>((project, trigger) => {
+    requested.current = project.slug;
+    setReturnFocusTo(trigger);
+    setOpenProject(project);
+    setDetail(null);
+    setDetailError(false);
+    api
+      .getProject(project.slug)
+      .then((full) => {
+        if (requested.current === project.slug) setDetail(full);
+      })
+      .catch(() => {
+        if (requested.current === project.slug) setDetailError(true);
+      });
   }, []);
 
-  // The band a project sits in is a column on the row, not a slice of the
-  // ordering, so reordering the seed cannot quietly promote something into the
-  // card grid. Both lists keep the order the API sent them in.
-  const cards = projects.filter((p) => p.tier === 1);
+  const onClose = useCallback(() => {
+    requested.current = null;
+    setOpenProject(null);
+    setDetail(null);
+    setDetailError(false);
+  }, []);
+
+  // The tier is a column on the row, not a slice of the ordering, so
+  // reordering the seed cannot quietly promote something into the case
+  // studies. Both lists keep the order the API sent them in.
+  const cases = projects.filter((p) => p.tier === 1);
   const otherWork = projects.filter((p) => p.tier !== 1);
 
-  const openProject = async (slug: string) => {
-    try {
-      setActiveProject(await api.getProject(slug));
-    } catch {
-      setLoadError(true);
-    }
-  };
-
   return (
-    <MotionConfig reducedMotion="user">
-      <SmoothScroll />
+    <LazyMotion features={domMax} strict>
+      <MotionPauseProvider>
+        {/* Around the page and the dialog both, so a case-study card and its
+            dialog can share a layoutId across the portal. */}
+        <LayoutGroup>
+          <div id="app-shell" ref={shellRef}>
+            <a className="skip-link" href="#main">
+              Skip to content
+            </a>
 
-      {/* Page-wide, fixed, and purely a backdrop: no sweep crossing the
-          content, which is what made the earlier full-page radar intrusive. */}
-      <Scene variant="starfield" className="scene-starfield" />
+            <ScrollProgress />
+            <Nav />
+            <IndexRail sections={PAGE_SECTIONS} />
 
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
+            {/* Page-wide, fixed, and purely a backdrop. */}
+            <Scene variant="starfield" className="scene-starfield" />
 
-      <div className="scroll-progress" aria-hidden="true">
-        <div className="scroll-progress-bar" ref={progressRef} />
-      </div>
+            <main id="main">
+              <Hero cases={cases} />
+              <Work
+                cases={cases}
+                otherWork={otherWork}
+                loading={loadingProjects}
+                error={loadError}
+                onOpen={onOpen}
+              />
+              <TechBand />
+              <Pipeline />
+              <Skills />
+              <ContactSection />
+            </main>
 
-      <Nav />
-
-      <main id="main">
-        <Hero />
-
-        {/* Evidence first. This used to sit fourth, nearly eight viewports
-            down, behind a skills map that is by nature self-reported. The
-            projects are the only part of the page someone else can verify,
-            so they lead. */}
-        <section className="section container has-scene" id="projects" aria-labelledby="projects-heading">
-          <Scene variant="field" className="scene-field" />
-          <SectionHead
-            index="01"
-            kicker="Evidence"
-            title="Selected work"
-            id="projects-heading"
-            note="Every card opens a full case study."
-          />
-
-          {loadError && (
-            <div className="load-error" role="alert">
-              <strong>Couldn't reach the API.</strong>
-              <span>
-                The projects come from Express and Postgres rather than a hardcoded array, so
-                this section needs the backend running.
-              </span>
-            </div>
-          )}
-
-          {/* Placeholders rather than an empty grid: the section otherwise
-              collapses to its heading and then jumps when the data lands. */}
-          {loadingProjects && !loadError && (
-            <div className="projects-grid">
-              {[0, 1, 2].map((i) => (
-                <div className="project-skeleton" key={i} aria-hidden="true">
-                  <span className="skeleton-line skeleton-title" />
-                  <span className="skeleton-line" />
-                  <span className="skeleton-line skeleton-short" />
-                  <div className="skeleton-chips">
-                    {[0, 1, 2, 3].map((c) => (
-                      <span className="skeleton-chip" key={c} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Six cards, three to a row. The ranking is the point: a capstone
-              with a real industry client and a coursework routing simulator
-              both belong on this page, and giving them the same card would say
-              they carry the same weight. */}
-          <div className="projects-grid">
-            {cards.map((p, i) => (
-              <Reveal key={p.slug} delay={i * 70}>
-                <ProjectCard project={p} onOpen={openProject} />
-              </Reveal>
-            ))}
+            <Footer />
           </div>
 
-          {loadingProjects && (
-            <p className="visually-hidden" role="status">
-              Loading projects
-            </p>
-          )}
-
-          {/* Everything else in one list: first the projects that did not earn
-              a card, then the smaller repositories. A project row opens its
-              case study and a repository row links straight out, but they sit
-              at one weight because that is what they are worth. Two headings
-              for two links was more structure than the content justified. */}
-          {(otherWork.length > 0 || ALSO_ON_GITHUB.length > 0) && (
-            <Reveal delay={120}>
-              <div className="other-work">
-                <h3 className="band-title">Other work</h3>
-                <div className="projects-compact-list">
-                  {otherWork.map((p) => (
-                    <ProjectCard
-                      key={p.slug}
-                      project={p}
-                      onOpen={openProject}
-                      variant="compact"
-                    />
-                  ))}
-
-                  {ALSO_ON_GITHUB.map((r) => (
-                    <a
-                      className="project-compact"
-                      key={r.name}
-                      href={r.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <div className="project-compact-main">
-                        <h4 className="project-compact-title">{r.name}</h4>
-                        <p className="project-compact-desc">{r.note}</p>
-                      </div>
-                      <div className="project-compact-aside">
-                        <span className="project-category">Repository · {r.year}</span>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </Reveal>
-          )}
-        </section>
-
-        {/* Sits between the work and the stack sections on purpose: it is the
-            claim that the projects above are typed end to end, and it leads
-            straight into the map that backs that up. In front of the work it
-            was a 2.6-viewport gate before any evidence. */}
-        <Statement />
-
-        <SkillsSection />
-
-        <ContactSection />
-      </main>
-
-      <Footer />
-
-      <ProjectModal project={activeProject} onClose={() => setActiveProject(null)} />
-    </MotionConfig>
+          <ProjectModal
+            project={openProject}
+            detail={detail}
+            detailError={detailError}
+            onClose={onClose}
+            returnFocusTo={returnFocusTo}
+          />
+        </LayoutGroup>
+      </MotionPauseProvider>
+    </LazyMotion>
   );
 }

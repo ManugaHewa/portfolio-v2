@@ -1,0 +1,350 @@
+/*
+ * Shared foundations: the reset, the type every page uses, links, the one
+ * focus ring, layout helpers and the classes more than one section relies on
+ * (buttons, mono labels, readouts, section headings). Section-specific rules
+ * live in their own files; nothing here knows about a particular section.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* The scrollbar's space is always reserved, so locking scroll for the
+     dialog (overflow: hidden on html, lib/scrollLock.ts) does not shift the
+     page sideways when the scrollbar disappears. */
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* In-page jumps (nav, rail, work index rows) glide rather than cut. Left
+     off under reduced motion, where a jump should be a jump. */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: 400;
+  font-stretch: 100%;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* A safety net against one wide element giving the whole page a sideways
+     scroll. clip, not hidden: hidden would make body a scroll container and
+     break every position: sticky on the page. */
+  overflow-x: clip;
+}
+
+/* Content sits above the page-wide starfield, which is fixed behind it. */
+#main,
+.site-footer {
+  position: relative;
+  z-index: 1;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+dl,
+dd,
+figure,
+blockquote {
+  margin: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 700;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Every in-page target leaves room for the sticky header above it. */
+[id] {
+  scroll-margin-top: 80px;
+}
+
+/* ---------------------------------------------------------------- links */
+
+/* Links are sky and always underlined: colour alone is not enough to tell a
+   link from text. Navigation-style links (header, rail, rows) opt out in
+   their own rules, where position and context say what they are. */
+a {
+  color: var(--sky);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+  transition: color var(--dur-1) var(--ease-out), text-decoration-color var(--dur-1) var(--ease-out);
+}
+
+a:hover {
+  color: var(--sky-hover);
+}
+
+/* ---------------------------------------------------------------- focus */
+
+/* One focus language everywhere, form controls included. */
+:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 3px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ------------------------------------------------------------- helpers */
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--s3);
+  left: var(--s3);
+  z-index: 100;
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  text-decoration: none;
+  transform: translateY(calc(-100% - 24px));
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+}
+
+.container {
+  width: 100%;
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+/*
+ * Sections clip what spills out of them (scenes, transforms) with
+ * overflow: clip, never hidden or auto. Those two create a scroll container,
+ * and a scroll container stops position: sticky inside it from sticking to
+ * the page. Anything else holding sticky children takes .overflow-clip.
+ */
+.section {
+  position: relative;
+  padding-block: var(--section-pad);
+  overflow: clip;
+}
+
+.overflow-clip {
+  overflow: clip;
+}
+
+/* --------------------------------------------------------------- type */
+
+.section-head {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: var(--s5);
+  max-width: 880px;
+  margin-bottom: var(--s8);
+}
+
+.section-title {
+  font-size: var(--fs-h2);
+  font-weight: 760;
+  font-stretch: 115%;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.section-intro {
+  max-width: 62ch;
+  font-size: var(--fs-lede);
+  font-weight: 420;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.lede {
+  font-size: var(--fs-lede);
+  font-weight: 420;
+  line-height: 1.5;
+}
+
+.subsection-title {
+  font-size: var(--fs-sub);
+  font-weight: 650;
+  font-stretch: 104%;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.small {
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+/* Labels, file names and endpoint names. Sentence case, never uppercase. */
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* A line of instrument readings: mono, quiet, numerals in sky. */
+.readout {
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.readout-num {
+  font-family: var(--font-mono);
+  font-size: var(--fs-readout);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--sky);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------ buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 48px;
+  padding: 0 var(--s5);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  font-weight: 600;
+  font-stretch: 104%;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    border-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-2) var(--ease-out);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* The one ember button: the thing to press. Its ring is one of only two
+   shadows on the site. */
+.btn-primary {
+  background: var(--ember);
+  border-color: var(--ember);
+  color: var(--on-ember);
+  box-shadow: var(--shadow-ember);
+}
+
+.btn-primary:hover {
+  background: var(--ember-hover);
+  border-color: var(--ember-hover);
+  color: var(--on-ember);
+}
+
+.btn-secondary {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.btn-secondary:hover {
+  border-color: var(--text-2);
+  background: var(--surface-1);
+  color: var(--text);
+}
+
+/* ------------------------------------------------------ reveal fallback */
+
+/*
+ * Entrances that start hidden in the prerendered HTML carry data-reveal.
+ * Under reduced motion they show in place; the <noscript> block in
+ * index.html does the same without JavaScript. Nothing else is targeted:
+ * the old attribute-sniffing selectors un-hid things that were meant to be
+ * hidden.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

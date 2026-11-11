@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 
 export type CapabilityIconId =
   | "layers"
@@ -39,7 +39,7 @@ export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
   const paths = PATHS[id];
 
   return (
-    <motion.svg
+    <m.svg
       className="capability-icon"
       viewBox="0 0 24 24"
       fill="none"
@@ -57,7 +57,7 @@ export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
       viewport={{ once: true, amount: 0.6 }}
     >
       {paths.map((d, i) => (
-        <motion.path
+        <m.path
           key={d}
           d={d}
           variants={{
@@ -75,6 +75,6 @@ export function CapabilityIcon({ id }: { id: CapabilityIconId }) {
           }}
         />
       ))}
-    </motion.svg>
+    </m.svg>
   );
 }

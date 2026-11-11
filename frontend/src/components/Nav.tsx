@@ -1,52 +1,40 @@
 import { useEffect, useRef, useState } from "react";
+import { PauseMotionToggle, useActiveSection } from "../motion";
+import { SITE } from "../site";
+import { cx } from "../lib/cx";
 
-// Order matches the page: the work comes first, then the supporting material.
-const LINKS = [
-  { href: "#projects", label: "Work" },
-  { href: "#skills", label: "Skills" },
-  { href: "#contact", label: "Contact" },
+/**
+ * The page's four destinations, in page order. The header nav and the index
+ * rail both read this, so they cannot disagree. Work points at the work index
+ * in the hero, the first place the projects appear.
+ */
+export const PAGE_SECTIONS = [
+  { id: "work-index", label: "Work" },
+  { id: "pipeline", label: "How it's built" },
+  { id: "skills", label: "Skills" },
+  { id: "contact", label: "Contact" },
 ];
 
+// The case studies (#work) follow the work index and count as Work too.
+const SPY_IDS = ["work-index", "work", "pipeline", "skills", "contact"];
+const navTarget = (id: string | null) => (id === "work" ? "work-index" : id);
+
 export function Nav() {
-  const [active, setActive] = useState("#projects");
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
+  const active = navTarget(useActiveSection(SPY_IDS));
 
+  // The bottom hairline appears once the page has moved, so the header does
+  // not draw a line across the hero at rest.
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 24);
-
-      // A line a third of the way down the viewport decides the active
-      // section. getBoundingClientRect rather than offsetTop, because the
-      // pinned hero sits inside a GSAP pin-spacer and offsetTop is measured
-      // against an offsetParent that the pin can change.
-      const line = window.innerHeight * 0.34;
-      let current = LINKS[0].href;
-
-      for (const link of LINKS) {
-        const el = document.querySelector(link.href);
-        if (!el) continue;
-        if (el.getBoundingClientRect().top <= line) current = link.href;
-      }
-
-      // At the very bottom the last section may never cross the line, so
-      // make sure the final link still lights up when the page bottoms out.
-      const atBottom =
-        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
-      setActive(atBottom ? LINKS[LINKS.length - 1].href : current);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // The mobile menu is an overlay, so it should close the way overlays do:
+  // The phone menu is an overlay, so it should close the way overlays do:
   // on Escape, and on a click that lands outside it.
   useEffect(() => {
     if (!open) return;
@@ -67,39 +55,40 @@ export function Nav() {
   }, [open]);
 
   return (
-    <header className={`site-header${scrolled ? " is-scrolled" : ""}`}>
-      <nav className="nav" ref={navRef} aria-label="Primary">
-        {/* Named by its visible text. aria-label="Home" replaced that text
-            for screen readers, so a voice-control user saying the name they
-            could see had nothing to match. */}
+    <header className={cx("site-header", scrolled && "is-scrolled")}>
+      <nav className="site-nav container" ref={navRef} aria-label="Primary">
+        {/* Named by its visible text, so a voice-control user can say the
+            name they see. */}
         <a className="brand" href="#top">
-          <span className="brand-mark" aria-hidden="true">
-            MH
-          </span>
-          <span className="brand-text">Manuga Hewa Pathirana</span>
+          {SITE.name}
         </a>
 
         <button
+          type="button"
           className="nav-toggle"
           aria-expanded={open}
-          aria-controls="navLinks"
+          aria-controls="nav-panel"
           onClick={() => setOpen((o) => !o)}
         >
           {open ? "Close" : "Menu"}
         </button>
 
-        <div className={`nav-links${open ? " is-open" : ""}`} id="navLinks">
-          {LINKS.map((l) => (
-            <a
-              key={l.href}
-              className={`nav-link${active === l.href ? " is-active" : ""}`}
-              href={l.href}
-              aria-current={active === l.href ? "true" : undefined}
-              onClick={() => setOpen(false)}
-            >
-              {l.label}
-            </a>
-          ))}
+        <div className={cx("nav-panel", open && "is-open")} id="nav-panel">
+          <ul className="nav-links">
+            {PAGE_SECTIONS.map((s) => (
+              <li key={s.id}>
+                <a
+                  className={cx("nav-link", active === s.id && "is-active")}
+                  href={`#${s.id}`}
+                  aria-current={active === s.id ? "location" : undefined}
+                  onClick={() => setOpen(false)}
+                >
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <PauseMotionToggle />
         </div>
       </nav>
     </header>

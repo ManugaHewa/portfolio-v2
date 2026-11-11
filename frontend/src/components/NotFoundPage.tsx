@@ -1,24 +1,20 @@
 import { Footer } from "./Footer";
-import { SITE } from "../site";
+import { LegalHeader } from "./PrivacyPage";
 
 /**
  * Rendered once at build time into dist/404.html, which Nginx serves with a
  * real 404 status. Static HTML with no script: there is nothing to hydrate.
- * Before this, every unknown address got the home page and a 200.
+ * It borrows the privacy page's stylesheet (scripts/prerender.mjs), which
+ * covers the header, the footer and this column.
  */
 export function NotFoundPage() {
   return (
     <>
-      <header className="site-header legal-header">
-        <nav className="nav" aria-label="Primary">
-          <a className="brand" href="/">
-            <span className="brand-mark" aria-hidden="true">
-              MH
-            </span>
-            <span className="brand-text">{SITE.name}</span>
-          </a>
-        </nav>
-      </header>
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+
+      <LegalHeader />
 
       <main id="main" className="legal container">
         <h1>Page not found</h1>

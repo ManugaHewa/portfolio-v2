@@ -1,0 +1,149 @@
+/*
+ * The WebGL scene layers (redesign SPEC.md, section 6).
+ *
+ * Every scene is decoration: it sits behind its section's content, never
+ * takes pointer events, and the page reads the same without it. Scene.tsx
+ * renders the host (.scene-3d plus the placement classes below) only once a
+ * scene is allowed on this device, and the canvas inside it only once its
+ * section is near, so none of these boxes exist in the prerendered HTML.
+ *
+ * Strength is set here, per scene, rather than in the materials: one number
+ * per layer is easier to tune against the text in front of it.
+ */
+
+/* The host. Absolute by default so a scene never takes space in the flow. */
+.scene-3d {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* The box Scene3D mounts the canvas into; fills whichever host it is in. */
+.scene-mount {
+  position: absolute;
+  inset: 0;
+}
+
+.scene-mount canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* A backdrop the size of its section. */
+.scene-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/*
+ * A backdrop one viewport tall that stays pinned while a tall section scrolls
+ * past it. Stretching a canvas over the whole section would mean a drawing
+ * buffer several screens tall for a backdrop you only ever see one screen of.
+ * The negative margin cancels the height it takes in the flow, so nothing
+ * after it moves; height and margin use the same unit (svh, the viewport a
+ * phone actually shows) or they stop cancelling.
+ *
+ * Sticky only works if no ancestor between it and the page is a scroll
+ * container, which is why sections clip with overflow: clip (base.css).
+ */
+.scene-sticky {
+  position: sticky;
+  inset: auto;
+  top: 0;
+  height: 100svh;
+  margin-bottom: -100svh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/*
+ * Section content above the scene. Wrapped in :where() so it weighs nothing:
+ * any section's own rule for one of its children (a sticky stage, say) wins
+ * over this without having to fight it.
+ */
+:where(.section) > :where(:not(.scene-3d)) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------------------------------------------------------------- core */
+
+/* The hero's gyroscope. Unchanged in look; it sits over the still image,
+   which the hero hides only once the scene reports its first frame. */
+.scene-core {
+  z-index: 1;
+}
+
+/* ----------------------------------------------------------- starfield */
+
+/* Page-wide and fixed behind every section. #main and the footer sit at
+   z-index 1 (base.css), so it reads as depth the page floats on rather than
+   an overlay crossing the content. */
+.scene-starfield {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  opacity: 0.55;
+}
+
+/* --------------------------------------------------------------- field */
+
+/* Work. Held at 40% strength across the middle 60%, where the case cards and
+   their text are, and at full strength only out at the edges. */
+.scene-field {
+  opacity: 0.35;
+  -webkit-mask-image: radial-gradient(farthest-side at 50% 50%, rgb(0 0 0 / 0.4) 60%, #000 100%);
+  mask-image: radial-gradient(farthest-side at 50% 50%, rgb(0 0 0 / 0.4) 60%, #000 100%);
+}
+
+/* ------------------------------------------------------------ corridor */
+
+/* How it's built. The tunnel's centre sits at 70% of the width (Scene3D), so
+   the mask is centred there too: dimmest at the vanishing point, where the
+   distant frames crowd together, opening out toward the edges. */
+.scene-corridor {
+  opacity: 0.4;
+  -webkit-mask-image: radial-gradient(closest-side at 70% 50%, rgb(0 0 0 / 0.35), #000 70%);
+  mask-image: radial-gradient(closest-side at 70% 50%, rgb(0 0 0 / 0.35), #000 70%);
+}
+
+/* --------------------------------------------------------------- globe */
+
+/* Skills. Pinned for the length of the section (scene-sticky). */
+.scene-globe {
+  opacity: 0.4;
+}
+
+/* On a wide screen the groups run in three columns from the left edge, so
+   the globe gives up its left half and shows on the right. */
+@media (min-width: 1100px) {
+  .scene-globe {
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 15%, #000 55%);
+    mask-image: linear-gradient(to right, transparent 0%, transparent 15%, #000 55%);
+  }
+}
+
+/* -------------------------------------------------------------- signal */
+
+/* Contact. The rings leave from below the form, so the scene takes the lower
+   half of the section, behind and under both columns, faded at its top and
+   bottom edges so it has no hard horizon or floor. */
+.scene-signal {
+  position: absolute;
+  inset: 45% 0 0 0;
+  opacity: 0.6;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent);
+}
+
+/* Belt and braces: the scenes never mount under reduced motion, but a host
+   left over from before the setting changed should not show either. */
+@media (prefers-reduced-motion: reduce) {
+  .scene-3d {
+    display: none;
+  }
+}

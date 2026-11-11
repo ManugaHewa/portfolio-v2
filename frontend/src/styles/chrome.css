@@ -1,0 +1,384 @@
+/*
+ * The page's chrome: the sticky header and its nav, the pause toggle, the
+ * scroll progress hairline, the index rail and the footer. The privacy page
+ * and the 404 use the header and footer rules too.
+ */
+
+/* --------------------------------------------------------------- header */
+
+/* Teal, not the old navy, and no blur: the header is a band of the page's
+   own ink with a hairline under it once the page has moved. */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--header-h);
+  background: rgba(13, 21, 24, 0.82);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-2) var(--ease-out);
+}
+
+.site-header.is-scrolled {
+  border-bottom-color: var(--line-soft);
+}
+
+.site-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s5);
+  height: 100%;
+}
+
+.brand {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+  font-stretch: 112%;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand:hover {
+  color: var(--text);
+}
+
+.nav-panel {
+  display: flex;
+  align-items: center;
+  gap: var(--s6);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Navigation, so no underline at rest: position says what these are. The
+   current section gets the text colour and a 2px ember rule 6px below. */
+.nav-link {
+  position: relative;
+  display: inline-block;
+  color: var(--text-2);
+  font-size: 15px;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.nav-link:hover,
+.nav-link.is-active {
+  color: var(--text);
+}
+
+.nav-link.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  height: 2px;
+  background: var(--ember);
+}
+
+.nav-toggle {
+  display: none;
+  min-height: 40px;
+  padding: 0 var(--s4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-small);
+}
+
+.legal-back {
+  color: var(--text-2);
+  font-size: 15px;
+  text-decoration: none;
+}
+
+.legal-back:hover {
+  color: var(--text);
+}
+
+/* -------------------------------------------------------- pause toggle */
+
+.pause-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 32px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+
+.pause-toggle:hover {
+  color: var(--text);
+  border-color: var(--text-2);
+}
+
+.pause-toggle[aria-pressed="true"] {
+  color: var(--text);
+  border-color: var(--sky-line);
+}
+
+/* Two bars while motion runs; a play triangle once paused, saying what a
+   second press does. Drawn in CSS, aria-hidden: the label carries it. */
+.pause-toggle-glyph {
+  flex: none;
+  box-sizing: border-box;
+  width: 8px;
+  height: 9px;
+  border-inline: 2px solid currentColor;
+}
+
+.pause-toggle[aria-pressed="true"] .pause-toggle-glyph {
+  width: 0;
+  height: 0;
+  border-inline: 0;
+  border-block: 4.5px solid transparent;
+  border-left: 8px solid currentColor;
+}
+
+/* ------------------------------------------------------------ phones */
+
+@media (max-width: 719.98px) {
+  .nav-toggle {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .nav-panel {
+    display: none;
+  }
+
+  /* A full-width panel under the header. Nav.tsx closes it on Escape, on a
+     click outside, and when a link is chosen. */
+  .nav-panel.is-open {
+    position: absolute;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s5);
+    padding: var(--s5) var(--gutter) var(--s6);
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .nav-panel.is-open .nav-links {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--s4);
+  }
+
+  .nav-panel.is-open .nav-link {
+    font-size: 1.125rem;
+  }
+}
+
+/* ---------------------------------------------------- scroll progress */
+
+/* motion/ScrollProgress.tsx sets scaleX from the scroll position. */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  height: 2px;
+  background: var(--ember);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------- index rail */
+
+/*
+ * Wide screens only. motion/IndexRail.tsx sets --pos (0 to 1) on each item;
+ * the server's even spacing is the no-JavaScript layout. The marker, when
+ * rendered, is placed by the component along the track.
+ */
+.index-rail {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .index-rail {
+    position: fixed;
+    top: 50%;
+    right: 12px;
+    z-index: 40;
+    display: block;
+    width: 24px;
+    height: min(48vh, 420px);
+    transform: translateY(-50%);
+  }
+}
+
+.index-rail-track {
+  position: relative;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The scale's hairline. */
+.index-rail-track::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  background: var(--line-strong);
+}
+
+.index-rail-item {
+  position: absolute;
+  top: calc(var(--pos, 0) * 100%);
+  right: 0;
+  transform: translateY(-50%);
+}
+
+/* A 24px target around a 12px calibration tick. */
+.index-rail-tick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 24px;
+  height: 24px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.index-rail-tick::after {
+  content: "";
+  width: 12px;
+  height: 1px;
+  background: var(--text-3);
+  transition: width var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+}
+
+.index-rail-tick:hover::after,
+.index-rail-tick:focus-visible::after,
+.index-rail-tick[aria-current="location"]::after {
+  width: 18px;
+  background: var(--text);
+}
+
+/* The tick's accessible name; shown beside it on hover and focus. */
+.index-rail-label {
+  position: absolute;
+  right: calc(100% + 6px);
+  padding: 2px var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+
+.index-rail-tick:hover .index-rail-label,
+.index-rail-tick:focus-visible .index-rail-label {
+  opacity: 1;
+}
+
+/* The live marker: an 8px ember ring riding the hairline. */
+.index-rail-marker {
+  position: absolute;
+  top: 0;
+  right: -3.5px;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border: 1.5px solid var(--ember);
+  border-radius: 50%;
+  background: var(--bg);
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------------- footer */
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  padding-block: var(--s7);
+}
+
+.site-footer-inner {
+  display: grid;
+  gap: var(--s5) var(--s7);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 900px) {
+  .site-footer-inner {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.site-footer-name {
+  color: var(--text);
+  font-weight: 650;
+  font-stretch: 112%;
+}
+
+.site-footer-place {
+  color: var(--text-2);
+  font-size: var(--fs-small);
+}
+
+.site-footer-colophon {
+  max-width: 52ch;
+  color: var(--text-3);
+  font-size: var(--fs-small);
+  line-height: 1.5;
+}
+
+.site-footer-nav {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+}
+
+.site-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-small);
+}
+
+.site-footer-top {
+  font-size: var(--fs-small);
+}

@@ -1,0 +1,62 @@
+/*
+ * The privacy page and the 404: one reading column in the site's type and
+ * colours, with no scenes and no motion.
+ */
+
+.legal {
+  max-width: calc(72ch + 2 * var(--gutter));
+  padding-block: var(--s9) var(--s10);
+}
+
+.legal h1 {
+  font-size: var(--fs-h2);
+  font-weight: 760;
+  font-stretch: 115%;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.legal h2 {
+  margin: var(--s7) 0 var(--s3);
+  font-size: var(--fs-sub);
+  font-weight: 650;
+  font-stretch: 104%;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.legal p {
+  margin: 0 0 var(--s4);
+  color: var(--text-2);
+}
+
+.legal-updated {
+  margin-top: var(--s4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.legal .legal-updated {
+  color: var(--text-3);
+}
+
+.legal .legal-lead {
+  margin-top: var(--s6);
+  color: var(--text);
+  font-size: var(--fs-lede);
+  font-weight: 420;
+  line-height: 1.5;
+}
+
+.legal-credits {
+  margin: 0 0 var(--s5);
+  padding-left: 1.25em;
+  color: var(--text-2);
+}
+
+.legal-credits li + li {
+  margin-top: var(--s2);
+}

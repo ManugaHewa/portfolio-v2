@@ -1,19 +1,28 @@
 import { SITE } from "../site";
 
 /**
- * Who runs the site, where, and how to reach them, on every page. The site
- * had no footer at all, so the only place a name and a contact route appeared
- * was halfway down a long scroll.
+ * Who runs the site, where, and how to reach them, on every page. The privacy
+ * page and the 404 use it too, which is why it imports no animation code:
+ * those pages load none.
+ *
+ * "Back to top" goes to #top, which every page that renders this footer has
+ * (the hero on the home page, the header elsewhere).
  */
 export function Footer() {
   return (
     <footer className="site-footer">
       <div className="container site-footer-inner">
-        <p className="site-footer-who">
-          <span className="site-footer-name">{SITE.name}</span>
-          <span className="site-footer-place">{SITE.location}</span>
+        <div className="site-footer-who">
+          <p className="site-footer-name">{SITE.name}</p>
+          <p className="site-footer-place">{SITE.location}</p>
+        </div>
+
+        <p className="site-footer-colophon">
+          Set in Mona Sans and Martian Mono. Built with React, Three.js and Motion, served from my
+          own server.
         </p>
-        <nav aria-label="Footer">
+
+        <nav className="site-footer-nav" aria-label="Footer">
           <ul className="site-footer-links">
             <li>
               <a href={`mailto:${SITE.email}`}>Email</a>
@@ -35,6 +44,9 @@ export function Footer() {
               <a href="/privacy#credits">Credits</a>
             </li>
           </ul>
+          <a className="site-footer-top" href="#top">
+            Back to top
+          </a>
         </nav>
       </div>
     </footer>

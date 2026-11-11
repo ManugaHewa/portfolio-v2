@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { m, useReducedMotion } from "framer-motion";
 
 /**
  * The four hops a message actually makes on submit. Deliberately the same
@@ -32,7 +32,7 @@ export function SendTrace({ stage }: Props) {
         <Fragment key={label}>
           {i > 0 && (
             <span className="trace-link" aria-hidden="true">
-              <motion.span
+              <m.span
                 className="trace-link-fill"
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: i <= stage ? 1 : 0 }}

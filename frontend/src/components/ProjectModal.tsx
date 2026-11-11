@@ -1,11 +1,20 @@
 import { useEffect, useRef } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import type { ProjectDetail, ProjectLink } from "../types";
+import { createPortal } from "react-dom";
+import { AnimatePresence, m } from "../motion/m";
+import { useHydrated } from "../motion";
+import type { ProjectDetail, ProjectLink, ProjectSummary } from "../types";
 import { lockScroll, unlockScroll } from "../lib/scrollLock";
 
 interface Props {
-  project: ProjectDetail | null;
+  /** The project being shown, from the list: the dialog opens with this at once. */
+  project: ProjectSummary | null;
+  /** The full case study, once /api/projects/:slug has answered. */
+  detail: ProjectDetail | null;
+  /** True when that request failed. */
+  detailError?: boolean;
   onClose: () => void;
+  /** Where focus goes back to when the dialog closes. */
+  returnFocusTo: HTMLElement | null;
 }
 
 const FOCUSABLE =
@@ -16,7 +25,7 @@ function ListSection({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
     <div className="modal-section">
-      <div className="modal-section-title">{title}</div>
+      <h3 className="modal-section-title">{title}</h3>
       <ul>
         {items.map((item) => (
           <li key={item}>{item}</li>
@@ -50,33 +59,33 @@ function LinkList({ links }: { links: ProjectLink[] }) {
   );
 }
 
-export function ProjectModal({ project, onClose }: Props) {
+/**
+ * The case-study dialog, portalled to <body> outside #app-shell, which App
+ * makes inert while this is open (so a screen reader's cursor cannot walk
+ * out of the dialog into the page behind).
+ *
+ * Adapted by the scaffold to the redesign's props (SPEC.md, section 5.3): it
+ * opens with the summary and fills in the detail. The work agent rewrites it
+ * with the card morph and the new layout.
+ */
+export function ProjectModal({ project, detail, detailError = false, onClose, returnFocusTo }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
-  // Whatever had focus when the dialog opened, so it can be handed back.
-  const returnFocusRef = useRef<HTMLElement | null>(null);
+  const hydrated = useHydrated();
+  // The latest values, read by the effect's cleanup without re-running it.
+  const returnRef = useRef(returnFocusTo);
+  returnRef.current = returnFocusTo;
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  const open = project !== null;
 
   useEffect(() => {
-    if (!project) return;
-
-    returnFocusRef.current = document.activeElement as HTMLElement | null;
+    if (!open) return;
     lockScroll();
-
-    // Everything beside the dialog goes inert while it is open. The Tab trap
-    // below covers the keyboard, but a screen reader's own cursor ignores
-    // focus and could walk straight out of the dialog into the page behind.
-    const modal = cardRef.current?.closest<HTMLElement>(".modal");
-    const background = modal?.parentElement
-      ? Array.from(modal.parentElement.children).filter(
-          (el): el is HTMLElement => el instanceof HTMLElement && el !== modal && !el.inert,
-        )
-      : [];
-    background.forEach((el) => {
-      el.inert = true;
-    });
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        closeRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -85,9 +94,6 @@ export function ProjectModal({ project, onClose }: Props) {
       // the page behind it, which is still visible but not meant to be usable.
       const card = cardRef.current;
       if (!card) return;
-      // No visibility filtering: the dialog never renders hidden subtrees
-      // (empty sections are omitted entirely), and the usual offsetParent
-      // check misreports inside fixed-position ancestors anyway.
       const items = Array.from(card.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (items.length === 0) return;
 
@@ -108,75 +114,58 @@ export function ProjectModal({ project, onClose }: Props) {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       unlockScroll();
-      // Before the focus hand-back: nothing inside an inert subtree can take focus.
-      background.forEach((el) => {
-        el.inert = false;
-      });
-      // Send focus back where it came from, so closing does not dump a
-      // keyboard user at the top of the document.
-      returnFocusRef.current?.focus?.();
+      // App lifts inert from the page in a layout effect, which runs before
+      // this, so the element can take focus again by now.
+      returnRef.current?.focus?.();
     };
-  }, [project, onClose]);
+  }, [open]);
 
-  const facts = project
+  if (!hydrated) return null;
+
+  // The detail only counts once it is for the project on screen.
+  const full = detail && project && detail.slug === project.slug ? detail : null;
+  const shown: ProjectSummary | null = full ?? project;
+
+  const facts = shown
     ? [
-        { label: "Role", value: project.role },
-        { label: "Timeline", value: project.timeline },
-        { label: "Category", value: project.category },
-        { label: "Status", value: project.status },
+        { label: "Role", value: shown.role },
+        { label: "Timeline", value: shown.timeline },
+        { label: "Category", value: shown.category },
+        { label: "Status", value: shown.status },
       ].filter((f) => f.value)
     : [];
 
   // A placeholder link has a label but no destination yet, so it cannot stand
   // in for a repository: the note below keys off a real url, not off the count.
-  const hasPublishedLink = project?.links.some((link) => link.url) ?? false;
+  const hasPublishedLink = shown?.links.some((link) => link.url) ?? false;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      {project && (
-        <div
-          className="modal is-open"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-title"
-        >
-          <motion.div
+      {shown && (
+        <div className="modal is-open" role="dialog" aria-modal="true" aria-labelledby="modal-title" key="modal">
+          <m.div
             className="modal-backdrop"
             onClick={onClose}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.16 }}
           />
-          <motion.div
+          <m.div
             className="modal-card"
             ref={cardRef}
             tabIndex={-1}
-            // Lenis keeps a global wheel listener and calls preventDefault on
-            // every event while it is stopped, which is what a scroll lock
-            // does - so the wheel died inside the dialog and only the
-            // scrollbar drag worked. This attribute makes Lenis bail out of
-            // the handler before that, handing the wheel back to the browser.
-            data-lenis-prevent
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
           >
             <button className="modal-close" onClick={onClose} aria-label="Close project details">
               Close
             </button>
             <div className="modal-body">
-              <h3 id="modal-title">{project.title}</h3>
-              <p className="project-meta">{project.subtitle}</p>
-
-              <div className="meta-row">
-                {project.stack.map((tag) => (
-                  <span className="meta-pill" key={tag}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
+              <h2 id="modal-title">{shown.title}</h2>
+              <p className="project-meta">{shown.subtitle}</p>
 
               {facts.length > 0 && (
                 <div className="modal-facts">
@@ -189,42 +178,58 @@ export function ProjectModal({ project, onClose }: Props) {
                 </div>
               )}
 
-              {project.context && (
+              <p className="modal-stack mono">{shown.stack.join(" · ")}</p>
+
+              {!full && !detailError && (
+                <p className="modal-loading" role="status">
+                  Loading the full case study
+                </p>
+              )}
+              {!full && detailError && (
+                <p className="modal-error" role="alert">
+                  Couldn&rsquo;t load the full case study. Try again in a moment.
+                </p>
+              )}
+
+              {full?.context && (
                 <div className="modal-section">
-                  <div className="modal-section-title">Context</div>
-                  <p>{project.context}</p>
+                  <h3 className="modal-section-title">Context</h3>
+                  <p>{full.context}</p>
                 </div>
               )}
 
-              {project.problem && (
+              {shown.problem && (
                 <div className="modal-section">
-                  <div className="modal-section-title">Problem</div>
-                  <p>{project.problem}</p>
+                  <h3 className="modal-section-title">Problem</h3>
+                  <p>{shown.problem}</p>
                 </div>
               )}
 
-              <ListSection title="Scope" items={project.scope} />
-              <ListSection title="Highlights" items={project.highlights} />
-              <ListSection title="Stakeholders" items={project.stakeholders} />
-              <ListSection title="Key requirements" items={project.requirements} />
-              <ListSection title="Non-functional targets" items={project.nonFunctional} />
-              <ListSection title="How it was delivered" items={project.deliveryProcess} />
-              <ListSection title="Technical challenges" items={project.challenges} />
-              <ListSection title="Risks handled" items={project.risks} />
-              <ListSection title="Outcomes" items={project.outcomes} />
-              <ListSection title="Next steps" items={project.nextSteps} />
+              {full && (
+                <>
+                  <ListSection title="Scope" items={full.scope} />
+                  <ListSection title="Highlights" items={full.highlights} />
+                  <ListSection title="Key requirements" items={full.requirements} />
+                  <ListSection title="Non-functional targets" items={full.nonFunctional} />
+                  <ListSection title="How it was delivered" items={full.deliveryProcess} />
+                  <ListSection title="Technical challenges" items={full.challenges} />
+                  <ListSection title="Risks handled" items={full.risks} />
+                </>
+              )}
+              <ListSection title="Outcomes" items={shown.outcomes} />
+              {full && <ListSection title="Next steps" items={full.nextSteps} />}
 
-              {project.learned && (
+              {full?.learned && (
                 <div className="modal-section">
-                  <div className="modal-section-title">What I learned</div>
-                  <p>{project.learned}</p>
+                  <h3 className="modal-section-title">What I learned</h3>
+                  <p>{full.learned}</p>
                 </div>
               )}
 
-              {project.links.length > 0 && (
+              {shown.links.length > 0 && (
                 <div className="modal-section">
-                  <div className="modal-section-title">Links</div>
-                  <LinkList links={project.links} />
+                  <h3 className="modal-section-title">Links</h3>
+                  <LinkList links={shown.links} />
                 </div>
               )}
 
@@ -238,9 +243,10 @@ export function ProjectModal({ project, onClose }: Props) {
                 </p>
               )}
             </div>
-          </motion.div>
+          </m.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

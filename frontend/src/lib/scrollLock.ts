@@ -1,36 +1,33 @@
-import type Lenis from "lenis";
-
 /**
- * Lenis drives scrolling from its own wheel and touch handlers, so setting
- * `body { overflow: hidden }` alone does not reliably stop the page moving
- * behind a dialog. SmoothScroll registers its instance here, and anything
- * that opens an overlay locks through this module so both the native and the
- * smoothed path are held at once.
- *
- * Reduced motion never constructs a Lenis, so `instance` stays null and the
- * overflow lock is the whole story. That is the correct behaviour, not a gap.
+ * Holds the page still behind the dialog. With Lenis gone the browser does
+ * all the scrolling, so hiding overflow on <html> is the whole lock. <html>
+ * rather than <body>: overflow set on body is passed up to the viewport only
+ * while html's own is visible, which made the body version easy to defeat.
+ * base.css gives html `scrollbar-gutter: stable`, so the page does not shift
+ * sideways when its scrollbar goes away.
  */
-let instance: Lenis | null = null;
 let locks = 0;
 let restoreOverflow = "";
-
-export function registerLenis(lenis: Lenis | null) {
-  instance = lenis;
-}
 
 export function lockScroll() {
   // Counted rather than boolean: if two overlays were ever open at once,
   // closing the first must not unlock the page underneath the second.
   locks += 1;
   if (locks > 1) return;
-  restoreOverflow = document.body.style.overflow;
-  document.body.style.overflow = "hidden";
-  instance?.stop();
+  const html = document.documentElement;
+  restoreOverflow = html.style.overflow;
+  html.style.overflow = "hidden";
 }
 
 export function unlockScroll() {
-  locks = Math.max(0, locks - 1);
+  if (locks === 0) return;
+  locks -= 1;
   if (locks > 0) return;
-  document.body.style.overflow = restoreOverflow;
-  instance?.start();
+  document.documentElement.style.overflow = restoreOverflow;
 }
+
+/**
+ * Left only so the old SmoothScroll.tsx, no longer imported anywhere, still
+ * compiles until it is deleted. Does nothing.
+ */
+export function registerLenis(_lenis: unknown) {}

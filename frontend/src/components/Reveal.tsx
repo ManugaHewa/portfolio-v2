@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import type { ReactNode } from "react";
 
 interface Props {
@@ -8,7 +8,7 @@ interface Props {
   as?: "div" | "section";
 }
 
-const tags = { div: motion.div, section: motion.section };
+const tags = { div: m.div, section: m.section };
 
 export function Reveal({ children, className = "", delay = 0, as = "div" }: Props) {
   const Tag = tags[as];

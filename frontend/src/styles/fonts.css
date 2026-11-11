@@ -1,0 +1,38 @@
+/*
+ * The two typefaces, self-hosted. Both packages' files are bundled by Vite
+ * into /assets and served from this site (the CSP's font-src is 'self';
+ * vite.config.ts never inlines a font as a data: URL).
+ *
+ * Mona Sans comes from its width-axis build, so headings can widen with
+ * font-stretch. Martian Mono's default build is its weight axis only.
+ * scripts/prerender.mjs preloads the Latin Mona Sans file on every page.
+ *
+ * Imported by index.css (home) and by privacy-main.tsx directly, since the
+ * privacy page uses the same type without the rest of the home page's CSS.
+ */
+@import "@fontsource-variable/mona-sans/wdth.css";
+@import "@fontsource-variable/martian-mono/index.css";
+
+/*
+ * Arial, reshaped to occupy the space Mona Sans will. Text first paints in
+ * this face and swaps when the real font arrives (font-display: swap), so any
+ * difference in width or line height would move every line on the page.
+ *
+ * Measured in Chrome against mona-sans-latin-wdth-normal.woff2 at weight 400
+ * and font-stretch 100%, over a paragraph of the page's own copy: Mona Sans
+ * sets 3.36% wider than Arial, with an ascent of 1.09em, a descent of 0.32em
+ * and no line gap. The overrides are divided by size-adjust because the
+ * browser scales them by it. Liberation Sans shares Arial's metrics, so the
+ * same numbers hold where it stands in for Arial.
+ *
+ * The wider display settings (stretch 108-118%) cannot be matched by Arial;
+ * those lines are few and the headings reserve their own height.
+ */
+@font-face {
+  font-family: "Mona Sans Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  size-adjust: 103.36%;
+  ascent-override: 105.46%;
+  descent-override: 30.96%;
+  line-gap-override: 0%;
+}
