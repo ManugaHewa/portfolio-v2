@@ -13,6 +13,10 @@ export default defineConfig(({ isSsrBuild }) => ({
   build: isSsrBuild
     ? {}
     : {
+        // Fonts always as files. Vite inlines small assets as data: URIs, and
+        // the CSP's font-src 'self' (deploy/nginx/portfolio.conf) blocks a
+        // font loaded that way, which it did for the smallest subsets.
+        assetsInlineLimit: (file: string) => (/\.woff2?$/.test(file) ? false : undefined),
         rolldownOptions: {
           // Two pages, each with its own entry: the privacy page shares the React
           // chunk and loads none of the animation or WebGL code.

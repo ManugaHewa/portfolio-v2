@@ -655,6 +655,8 @@ export interface ProjectSummaryContent {
   category: string | null;
   status: string | null;
   tier: number;
+  /** Shown beside each case study, so it travels with the list. */
+  problem: string | null;
   outcomes: string[];
   links: ProjectLinkContent[];
 }
@@ -675,6 +677,7 @@ export function projectSummaries(): ProjectSummaryContent[] {
     category: p.category ?? null,
     status: p.status ?? null,
     tier: p.tier,
+    problem: p.problem ?? null,
     outcomes: p.outcomes ?? [],
     links: p.links.map(({ label, url }) => ({ label, url })),
   }));

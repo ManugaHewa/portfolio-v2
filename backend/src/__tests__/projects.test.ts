@@ -37,6 +37,7 @@ describe("GET /api/projects", () => {
         category: "Full-stack web",
         status: "In active development",
         tier: 1,
+        problem: "Donations were tracked by hand.",
         outcomes: [],
         links: [{ label: "GitHub repository", url: "https://example.com/dms" }],
       },
@@ -46,7 +47,7 @@ describe("GET /api/projects", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
-    for (const field of ["slug", "title", "subtitle", "stack", "role", "timeline", "category", "status", "tier", "outcomes", "links"]) {
+    for (const field of ["slug", "title", "subtitle", "stack", "role", "timeline", "category", "status", "tier", "problem", "outcomes", "links"]) {
       expect(res.body[0], `missing ${field}`).toHaveProperty(field);
     }
   });

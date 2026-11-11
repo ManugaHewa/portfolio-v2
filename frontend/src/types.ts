@@ -24,7 +24,9 @@ export interface ProjectSummary {
   category: string | null;
   status: string | null;
   tier: ProjectTier;
-  /** The card shows the first one; the modal shows all of them. */
+  /** Stated beside the case study, before what was built. */
+  problem: string | null;
+  /** The case study shows the first one; the modal shows all of them. */
   outcomes: string[];
   links: ProjectLink[];
 }
@@ -36,7 +38,6 @@ export interface ProjectSummary {
  */
 export interface ProjectDetail extends ProjectSummary {
   context: string | null;
-  problem: string | null;
   scope: string[];
   stakeholders: string[];
   requirements: string[];

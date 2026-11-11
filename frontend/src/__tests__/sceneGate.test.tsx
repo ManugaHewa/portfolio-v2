@@ -1,6 +1,6 @@
 import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, afterEach } from "vitest";
-import { useSceneEnabled } from "../lib/useSceneEnabled";
+import { deviceCanRunScene, useSceneEnabled } from "../lib/useSceneEnabled";
 import { sceneBudget, scaled } from "../lib/sceneQuality";
 
 const realMatchMedia = window.matchMedia;
@@ -131,5 +131,27 @@ describe("the render budget", () => {
     expect(scaled(96, 0.45, 48)).toBe(48);
     expect(scaled(160, 0.45, 70)).toBe(72);
     expect(scaled(160, 1, 70)).toBe(160);
+  });
+});
+
+describe("what counts as too weak for the scene", () => {
+  const nav = (hints: Record<string, unknown>) => hints as unknown as Navigator;
+
+  it("runs it when the browser reports nothing either way", () => {
+    expect(deviceCanRunScene(nav({}))).toBe(true);
+  });
+
+  it("skips it with data saver on", () => {
+    expect(deviceCanRunScene(nav({ connection: { saveData: true } }))).toBe(false);
+  });
+
+  it("skips it on two gigabytes of memory or less", () => {
+    expect(deviceCanRunScene(nav({ deviceMemory: 2, hardwareConcurrency: 8 }))).toBe(false);
+    expect(deviceCanRunScene(nav({ deviceMemory: 4, hardwareConcurrency: 8 }))).toBe(true);
+  });
+
+  it("skips it on two cores or fewer", () => {
+    expect(deviceCanRunScene(nav({ hardwareConcurrency: 2 }))).toBe(false);
+    expect(deviceCanRunScene(nav({ hardwareConcurrency: 4 }))).toBe(true);
   });
 });

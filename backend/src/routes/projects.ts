@@ -30,6 +30,9 @@ const summarySelect = {
   // the band has to travel with the summary rather than being inferred
   // from the ordering on the client.
   tier: true,
+  // Each case study on the page states its problem before what was built,
+  // so this comes with the list rather than waiting for the detail view.
+  problem: true,
   outcomes: true,
   links: linkSelect,
 } as const;
@@ -42,7 +45,6 @@ const summarySelect = {
 const detailSelect = {
   ...summarySelect,
   context: true,
-  problem: true,
   scope: true,
   stakeholders: true,
   requirements: true,

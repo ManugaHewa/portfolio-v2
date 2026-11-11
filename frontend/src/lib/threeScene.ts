@@ -33,8 +33,13 @@ export interface SceneDef {
  *   battery drain, so the frame loop is gated on intersection.
  * - Disposal. Three holds GPU buffers until told otherwise; without an
  *   explicit teardown a StrictMode remount leaks a context every time.
+ *
+ * `onLive` hears true once the first frame is on screen and false if the
+ * context is later lost. The hero shows a still image whenever the scene is
+ * not live, so a device that never gets a frame out keeps the still instead
+ * of an empty box.
  */
-export function mountScene(el: HTMLElement, def: SceneDef): () => void {
+export function mountScene(el: HTMLElement, def: SceneDef, onLive?: (live: boolean) => void): () => void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     return () => {};
   }
@@ -87,6 +92,7 @@ export function mountScene(el: HTMLElement, def: SceneDef): () => void {
 
   let raf = 0;
   let running = false;
+  let drawn = false;
   let t = 0;
   let lastFrame = performance.now();
 
@@ -97,6 +103,10 @@ export function mountScene(el: HTMLElement, def: SceneDef): () => void {
     t += dt;
     update?.(t, dt);
     renderer.render(scene, camera);
+    if (!drawn) {
+      drawn = true;
+      onLive?.(true);
+    }
     raf = requestAnimationFrame(tick);
   };
 
@@ -154,6 +164,7 @@ export function mountScene(el: HTMLElement, def: SceneDef): () => void {
     lost = true;
     sync();
     renderer.domElement.style.opacity = "0";
+    onLive?.(false);
   };
   renderer.domElement.addEventListener("webglcontextlost", onLost);
 
