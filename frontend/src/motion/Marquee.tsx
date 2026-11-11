@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "./m";
-import { useHydrated, useMotionAllowed, usePrefersReducedMotion } from "./hooks";
+import { useMotionAllowed } from "./hooks";
 import { useIsomorphicLayoutEffect } from "./internal";
 import { cx } from "../lib/cx";
 
@@ -33,13 +33,15 @@ type Animated = Element & { getAnimations?: (options?: { subtree?: boolean }) =>
  * at about 40px a second whatever it holds. Under the pointer or with focus
  * inside, it eases to a quarter of that speed through the Web Animations
  * playbackRate, which changes speed without a jump. Off screen it stops.
+ *
+ * The strip's own toggle is there only while motion is allowed. Under the
+ * header's "Pause motion" or reduced motion the strip is already still, and a
+ * toggle saying "not paused" that changes nothing would mislead.
  */
 export function Marquee({ items, label }: MarqueeProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const copyRef = useRef<HTMLUListElement>(null);
-  const hydrated = useHydrated();
-  const reduced = usePrefersReducedMotion();
   const allowed = useMotionAllowed();
   const [ownPaused, setOwnPaused] = useState(false);
   const onScreen = useInView(rootRef, { margin: "200px 0px" });
@@ -125,7 +127,7 @@ export function Marquee({ items, label }: MarqueeProps) {
         {list(listRef, false)}
         {running && list(copyRef, true)}
       </div>
-      {hydrated && !reduced && (
+      {allowed && (
         <button
           type="button"
           className="marquee-toggle pause-toggle"

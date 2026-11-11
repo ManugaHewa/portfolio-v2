@@ -44,11 +44,13 @@ function CaseSkeleton() {
  * The case studies and the other work (redesign SPEC.md, section 5.3).
  *
  * The six case studies sit on a twelve-column grid in three different
- * pairings (7 and 5, 5 and 7, 6 and 6), so no row repeats the one above it,
- * and each card is as tall as its own content. The field scene is pinned
- * behind the section one viewport tall rather than stretched over all of it:
- * a canvas the height of the section would mean a drawing buffer several
- * screens tall for a backdrop you only ever see one screen of.
+ * pairings (7 and 5, 5 and 7, 6 and 6), so no row repeats the one above it.
+ * The two cards in a row share one figure height and one bottom edge.
+ *
+ * The field scene is pinned behind the section one viewport tall rather
+ * than stretched over all of it: a canvas the height of the section would
+ * mean a drawing buffer several screens tall for a backdrop you only ever
+ * see one screen of.
  */
 export function Work({ cases, otherWork, loading, error, onOpen }: WorkProps) {
   const empty = cases.length === 0 && otherWork.length === 0;
@@ -57,7 +59,11 @@ export function Work({ cases, otherWork, loading, error, onOpen }: WorkProps) {
     <section className="section work" id="work" aria-labelledby="work-heading">
       <Scene variant="field" className="scene-sticky scene-field" />
       <div className="container work-inner">
+        {/* The heading on the left and the intro set against it on the right,
+            on one baseline: the other sections open with the intro under
+            the heading, so this one reads as its own room. */}
         <SectionHead
+          className="work-head"
           titleId="work-heading"
           title="Case studies"
           intro="What each project was for, what I built, and what happened."

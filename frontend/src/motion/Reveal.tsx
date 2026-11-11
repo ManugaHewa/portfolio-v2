@@ -25,7 +25,8 @@ export interface RevealProps {
  * rows above it.
  *
  * It starts hidden in the prerendered HTML, so it carries data-reveal, which
- * the <noscript> block and the reduced-motion rule in base.css both undo.
+ * the <noscript> block and the reduced-motion rule in base.css both undo, as
+ * does base.css's three-second fail-safe if the bundle never runs.
  * motion.css also shows it the moment anything inside takes focus, so a
  * keyboard user tabbing ahead of the scroll never lands on an invisible
  * link. Under reduced motion or "Pause motion" the entrance lands at once.

@@ -1,4 +1,13 @@
-import { createContext, createElement, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { ReactNode } from "react";
 
 /**
@@ -15,6 +24,14 @@ const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
 const FINE_POINTER_QUERY = "(pointer: fine) and (hover: hover)";
 
 const noop = () => {};
+
+/**
+ * useLayoutEffect in the browser, useEffect while prerendering. React warns
+ * about a layout effect on the server, where there is no layout to read, and
+ * the build-time prerender renders every component there once. The one copy
+ * for the whole site: the app shell, the contact form and the primitives.
+ */
+export const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const subscribeNever = () => noop;
 
 /**

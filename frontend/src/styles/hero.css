@@ -210,32 +210,47 @@
 }
 
 .work-index-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--s4) var(--s6);
   margin-bottom: var(--s6);
 }
 
+/* Three gauges under the heading, each a numeral over its label, read
+   left to right like an instrument panel. */
 .work-index-readout {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s2) var(--s3);
+  align-items: flex-start;
+  gap: var(--s4) var(--s6);
+  margin-top: var(--s5);
 }
 
 .work-index-reading {
+  display: grid;
+  justify-items: start;
+  gap: var(--s1);
   white-space: nowrap;
 }
 
 .work-index-readout .readout-num {
-  margin-right: 0.3em;
-  font-size: clamp(1.5rem, 1.1rem + 0.9vw, 2rem);
+  font-size: 2rem;
 }
 
-.work-index-sep {
-  color: var(--text-3);
+.work-index-label {
+  color: var(--text-2);
+  font-size: 0.75rem;
+}
+
+/* On a phone the three share the row in equal columns and the labels wrap
+   under their numerals, rather than one gauge dropping to a line alone. */
+@media (max-width: 719.98px) {
+  .work-index-readout {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: var(--s4);
+  }
+
+  .work-index-reading {
+    white-space: normal;
+  }
 }
 
 .work-index-list {
@@ -306,16 +321,21 @@
   color: var(--text-2);
 }
 
+/* The problem wraps as prose and is cut to two lines (one from 720px):
+   lines break between words, so the last word shown is always whole, with
+   no ellipsis through the middle of one. The rest is still in the link's
+   name, so a screen reader hears all of it. */
 .work-index-problem {
   grid-area: problem;
+  max-height: 3em;
+  overflow: hidden;
   color: var(--text-2);
   font-size: var(--fs-small);
   line-height: 1.5;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
+}
+
+.work-index-word {
+  white-space: nowrap;
 }
 
 /* A small down arrow: these rows jump to the case studies below. Drawn in
@@ -379,14 +399,11 @@
     padding-block: var(--s9) var(--s7);
   }
 
-  /* One line each from here up: the row is wide enough to say what the
-     project is in a sentence's opening words. */
-  .work-index-meta,
+  /* One line from here up: the row is wide enough to say what the project
+     is in a sentence's opening words. The meta line is not cut: a status
+     is a fact, and half of one says something else. */
   .work-index-problem {
-    display: block;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    max-height: 1.5em;
   }
 }
 
@@ -438,15 +455,16 @@
    * The sheet that rises: one visible screen tall at least, on the page's own
    * background so the copy it passes over goes under it. The fill reaches
    * left to the window's edge (the hero clips it), so it reads as a sheet
-   * sliding up the page rather than a box; a hairline marks its top edge,
-   * with a short tick where the sheet ends beside the gyroscope.
+   * sliding up the page rather than a box. The hairline on its top edge
+   * stays in the grid, from the first column to the seventh, with a short
+   * tick where the sheet ends beside the gyroscope.
    */
   .work-index-sheet {
     position: relative;
     isolation: isolate;
     min-height: calc(100svh - var(--header-h));
     background: var(--bg);
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--line-soft);
   }
 
   .work-index-sheet::before {
@@ -458,7 +476,6 @@
     right: 100%;
     width: 100vw;
     background: var(--bg);
-    border-top: 1px solid var(--line);
   }
 
   .work-index-sheet::after {

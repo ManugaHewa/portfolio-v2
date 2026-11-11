@@ -48,10 +48,12 @@ describe("CaseCard", () => {
     expect(screen.getByRole("heading", { level: 3, name: project.title })).toBeInTheDocument();
   });
 
-  it("reads number and category on the left, the status with its dot on the right", () => {
+  it("reads the category on the left and the status with its dot on the right", () => {
     const { card } = renderCard();
     const readout = find(card, ".case-readout");
-    expect(readout).toHaveTextContent(`${projectNumber("dms")} · Full-stack web`);
+    // The figure carries the number; the readout does not repeat it.
+    expect(readout).toHaveTextContent("Full-stack web");
+    expect(readout).not.toHaveTextContent(projectNumber("dms"));
     expect(find(readout, ".case-status")).toHaveClass("is-ongoing");
 
     const done = renderCard({ ...project, slug: "alice", status: "Completed" });
@@ -63,22 +65,28 @@ describe("CaseCard", () => {
     const figure = find(card, ".case-figure");
 
     // The number is decoration (CSS generated content), not text.
-    expect(figure).toHaveAttribute("data-number", projectNumber("dms"));
-    expect(find(figure, ".case-figure-line")).toHaveTextContent(project.outcomes[0]);
-    expect(find(figure, ".case-figure-stack")).toHaveAttribute("aria-hidden", "true");
+    const number = find(figure, ".case-figure-num");
+    expect(number).toHaveAttribute("data-number", projectNumber("dms"));
+    expect(number).toHaveAttribute("aria-hidden", "true");
+    expect(number).toBeEmptyDOMElement();
+    // What the project is, which the text below does not say again.
+    expect(find(figure, ".case-figure-line")).toHaveTextContent(project.subtitle);
     expect(card).not.toHaveTextContent(/screenshot/i);
   });
 
-  it("does not print the plate's outcome twice: Result takes the next one", () => {
+  it("says each thing once: the outcome in Result, the stack in one line", () => {
     const { card } = renderCard();
     const blocks = within(find(card, ".case-blocks"));
     expect(blocks.getByText("Problem")).toBeInTheDocument();
     expect(blocks.getByText(project.problem as string)).toBeInTheDocument();
-    expect(blocks.getByText(project.outcomes[1])).toBeInTheDocument();
-    expect(blocks.queryByText(project.outcomes[0])).not.toBeInTheDocument();
+    expect(blocks.getByText(project.outcomes[0])).toBeInTheDocument();
+    expect(within(card).getAllByText(project.outcomes[0])).toHaveLength(1);
+    expect(within(card).getAllByText(project.subtitle)).toHaveLength(1);
+    expect(card.querySelectorAll(".case-stack")).toHaveLength(1);
+    expect(find(card, ".case-figure")).not.toHaveTextContent("TypeScript");
   });
 
-  it("falls back to the subtitle on the plate when there are no outcomes", () => {
+  it("leaves Result out when there are no outcomes", () => {
     const { card } = renderCard({ ...project, outcomes: [] });
     expect(find(card, ".case-figure-line")).toHaveTextContent(project.subtitle);
     expect(within(card).queryByText("Result")).not.toBeInTheDocument();
@@ -95,6 +103,13 @@ describe("CaseCard", () => {
     const { onOpen } = renderCard();
     const button = screen.getByRole("button", { name: `Read the case study for ${project.title}` });
     fireEvent.click(button);
+    expect(onOpen).toHaveBeenCalledWith(project, button);
+  });
+
+  it("opens from the figure too, still handing over the button for focus to return to", () => {
+    const { card, onOpen } = renderCard();
+    fireEvent.click(find(card, ".case-figure-line"));
+    const button = screen.getByRole("button", { name: `Read the case study for ${project.title}` });
     expect(onOpen).toHaveBeenCalledWith(project, button);
   });
 
@@ -129,11 +144,12 @@ describe("CaseCard", () => {
     expect(find(coarse.card, ".tilt-surface")).not.toHaveAttribute("data-tilt");
   });
 
-  it("keeps the content layer outside the tilting layer", () => {
+  it("tilts only what is drawn on the figure: not the plate, not the text", () => {
     const { card } = renderCard();
     const visual = find(card, ".tilt-visual");
     expect(visual.contains(find(card, ".case-content"))).toBe(false);
-    expect(visual.contains(find(card, ".case-figure"))).toBe(true);
+    expect(visual.contains(find(card, ".case-figure-line"))).toBe(true);
+    expect(find(card, ".case-figure").contains(visual)).toBe(true);
   });
 });
 

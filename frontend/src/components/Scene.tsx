@@ -1,18 +1,43 @@
 import { lazy, Suspense, useContext, useEffect, useRef, useState } from "react";
+import type { ComponentType } from "react";
 import { MotionPauseContext } from "../motion/hooks";
 import { cx } from "../lib/cx";
 import { useSceneEnabled } from "../lib/useSceneEnabled";
 import { APPROACH_MARGIN, mountsOnApproach } from "../lib/sceneQuality";
 import type { SceneVariant } from "../lib/sceneQuality";
+import type { Scene3DProps } from "./Scene3D";
 
 export type { SceneVariant };
+
+/** What a scene renders when its chunk could not be fetched: nothing. */
+function SceneUnavailable({ onLive }: Scene3DProps) {
+  // The hero keeps (or brings back) its still.
+  useEffect(() => {
+    onLive?.(false);
+  }, [onLive]);
+  return null;
+}
+
+/**
+ * Loads the scene module, failing soft. There is no error boundary on the
+ * page, so a rejected lazy import would take the whole root down with it, and
+ * a section scene's chunk is fetched only when its section comes near, which
+ * can be long after load: a tab left open across a deploy asks for a hashed
+ * file the deploy has since deleted. A failed fetch leaves the CSS layer and
+ * the hero's still where they are instead.
+ */
+export function failSoft(
+  load: () => Promise<{ default: ComponentType<Scene3DProps> }>
+): Promise<{ default: ComponentType<Scene3DProps> }> {
+  return load().catch(() => ({ default: SceneUnavailable }));
+}
 
 /**
  * One lazy import for the whole site, declared here instead of separately in
  * each section that wants a backdrop. It is one chunk either way, but this
  * way it is also one place that decides whether to load it at all.
  */
-const Scene3D = lazy(() => import("./Scene3D"));
+const Scene3D = lazy(() => failSoft(() => import("./Scene3D")));
 
 export interface SceneProps {
   variant: SceneVariant;

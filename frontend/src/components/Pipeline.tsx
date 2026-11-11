@@ -63,10 +63,10 @@ const RAIL: [number, number] = [0.06, 0.64];
 const ROUTE: [number, number] = [0.7, 0.84];
 const CI_AT = 0.9;
 
-// The columns' relative widths, in node order. The two long file names get
-// the wide columns so no label has to break at the narrowest pinned width.
-// pipeline.css reads the same numbers (grid-template-columns, --c1, --c5).
-const COLUMN_WEIGHTS = [1.1, 1.25, 0.85, 1, 0.8];
+// The gap between two columns of the pinned row, as a share of one column's
+// width: about what pipeline.css's --g comes to. Only the first guess at the
+// stations below uses it; measurement replaces that guess.
+const GAP_SHARE = 0.25;
 
 /**
  * Where the drawing stands: how many nodes are lit, and whether the second
@@ -86,21 +86,35 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const breakable = (s: string) => s.replace(/(\S)\//g, "$1/​");
 
 /**
- * Each station's position along the rail (0 at the first, 1 at the last),
- * from the column weights alone. A first guess, replaced by measurement as
- * soon as the diagram is on screen; it ignores the gaps between columns.
+ * A path that can break after a slash and nowhere else: each piece, slash
+ * included, is kept whole, with a <wbr> between pieces.
+ */
+function PathText({ path }: { path: string }) {
+  const pieces = path.split("/").map((piece, i, all) => (i < all.length - 1 ? `${piece}/` : piece));
+  return (
+    <>
+      {pieces.map((piece, i) => (
+        <Fragment key={i}>
+          {i > 0 && <wbr />}
+          <span className="pl-path-piece">{piece}</span>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+/**
+ * Where each node starts along the rail, which runs from the first node's
+ * right edge to the last node's left edge: 0 is the first, 1 the last. Five
+ * equal columns put the stations evenly; this first guess assumes the gap is
+ * GAP_SHARE of a column and is replaced by measurement as soon as the
+ * diagram is on screen.
  */
 function estimatedStations(): number[] {
-  const total = COLUMN_WEIGHTS.reduce((a, b) => a + b, 0);
-  const centres: number[] = [];
-  let x = 0;
-  for (const w of COLUMN_WEIGHTS) {
-    centres.push((x + w / 2) / total);
-    x += w;
-  }
-  const first = centres[0];
-  const span = centres[centres.length - 1] - first;
-  return centres.map((c) => (c - first) / span);
+  const n = PIPELINE_NODES.length;
+  const pitch = 1 + GAP_SHARE;
+  const length = (n - 1) * pitch - 1;
+  return PIPELINE_NODES.map((_, i) => (i === 0 ? 0 : (i * pitch - 1) / length));
 }
 
 function stageAt(progress: number, stations: number[]): Stage {
@@ -154,20 +168,19 @@ export function Pipeline() {
     return progress.on("change", update);
   }, [driven, progress]);
 
-  // Measure where the stations really sit on the rail, and the box the
+  // Measure where each node really starts along the rail, and the box the
   // second route is drawn in, whenever the diagram changes size.
   useEffect(() => {
     const nodes = nodesRef.current;
     if (!nodes || typeof ResizeObserver !== "function") return;
     const measure = () => {
-      const dots = Array.from(nodes.querySelectorAll<HTMLElement>(".pl-station"));
+      const boxes = Array.from(nodes.querySelectorAll<HTMLElement>(".pl-node"));
       const rail = nodes.querySelector<HTMLElement>(".pl-rail");
       const r = rail?.getBoundingClientRect();
-      if (r && r.width > 0 && dots.length === PIPELINE_NODES.length) {
-        stations.current = dots.map((d) => {
-          const b = d.getBoundingClientRect();
-          return clamp01((b.left + b.width / 2 - r.left) / r.width);
-        });
+      if (r && r.width > 0 && boxes.length === PIPELINE_NODES.length) {
+        stations.current = boxes.map((b, i) =>
+          i === 0 ? 0 : clamp01((b.getBoundingClientRect().left - r.left) / r.width),
+        );
       }
       const svg = routeRef.current?.getBoundingClientRect();
       setRouteBox(svg && svg.width > 0 && svg.height > 0 ? { w: svg.width, h: svg.height } : null);
@@ -184,6 +197,9 @@ export function Pipeline() {
   const decoding = (i: number) => stage !== null && i < stage.lit;
   const routeOn = stage === null || stage.route;
   const ciOn = stage === null || stage.ci;
+  // The step counter in the head: which node the drawing has reached. It
+  // reads 1 from the moment the stage pins, and the finished diagram is 5/5.
+  const step = stage === null ? PIPELINE_NODES.length : Math.max(1, stage.lit);
 
   return (
     <section className="section pipeline" id="pipeline" aria-labelledby="pipeline-heading">
@@ -195,7 +211,14 @@ export function Pipeline() {
               titleId="pipeline-heading"
               title="How the projects reach this page"
               intro={`This site is project ${projectNumber("portfolio-v2")}. Its project list starts as one TypeScript file and reaches you by two routes.`}
-            />
+            >
+              {/* Only the pinned layout shows it (pipeline.css): the list
+                  layout is finished from the start, so it has nothing to count. */}
+              <p className="pl-counter" aria-hidden="true">
+                <span className="pl-counter-step">{step}</span>
+                <span className="pl-counter-total">/{PIPELINE_NODES.length}</span>
+              </p>
+            </SectionHead>
 
             {/* The drawing. Hidden from assistive technology, which reads the
                 same steps from the list below it. */}
@@ -218,26 +241,9 @@ export function Pipeline() {
               </div>
 
               <div className="pl-nodes" ref={nodesRef}>
-                {PIPELINE_NODES.map((node, i) => {
-                  const col = { "--i": i + 1 } as CSSProperties;
-                  const last = i === PIPELINE_NODES.length - 1;
-                  return (
-                    <Fragment key={node.label}>
-                      <div className="pl-node" data-on={lit(i)} style={col}>
-                        <span className="pl-node-label mono">
-                          <Scramble text={breakable(node.label)} trigger={{ active: decoding(i) }} />
-                        </span>
-                        <span className="pl-node-text small">{node.text}</span>
-                      </div>
-                      <span className="pl-cite mono" data-on={lit(i)} style={col}>
-                        {breakable(node.source)}
-                      </span>
-                      <span className={last ? "pl-stem is-last" : "pl-stem"} data-on={lit(i)} style={col}>
-                        <span className="pl-station" />
-                      </span>
-                    </Fragment>
-                  );
-                })}
+                {/* One rail behind the row: the opaque nodes cover it, so it
+                    shows only in the gaps, as a connector from each node to
+                    the next. */}
                 <span className="pl-rail">
                   <m.span className="pl-rail-fill" style={{ scaleX: driven ? railFill : done }} />
                   <m.span
@@ -247,11 +253,35 @@ export function Pipeline() {
                     <span className="pl-token" />
                   </m.span>
                 </span>
+                {PIPELINE_NODES.map((node, i) => {
+                  const col = { "--i": i + 1 } as CSSProperties;
+                  const last = i === PIPELINE_NODES.length - 1;
+                  return (
+                    <Fragment key={node.label}>
+                      <div className={`pl-node${i === 0 ? " is-first" : ""}${last ? " is-last" : ""}`} data-on={lit(i)} style={col}>
+                        <span className="pl-node-label mono">
+                          <Scramble text={breakable(node.label)} trigger={{ active: decoding(i) }} />
+                        </span>
+                        <span className="pl-node-text">{node.text}</span>
+                      </div>
+                      {/* A node named after its own file needs no citation
+                          under it saying the same thing again. */}
+                      {node.source !== node.label && (
+                        <span className="pl-cite mono" data-on={lit(i)} style={col}>
+                          <PathText path={node.source} />
+                        </span>
+                      )}
+                      {!last && <span className="pl-stem" data-on={lit(i + 1)} />}
+                    </Fragment>
+                  );
+                })}
               </div>
 
               <div className="pl-ci" data-on={ciOn}>
                 <span className="pl-ci-text small">{CI_CHECK.text}</span>
-                <span className="pl-cite mono">{breakable(CI_CHECK.source)}</span>
+                <span className="pl-cite mono">
+                  <PathText path={CI_CHECK.source} />
+                </span>
               </div>
             </div>
 

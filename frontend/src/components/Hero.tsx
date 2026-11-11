@@ -26,6 +26,10 @@ const HEADER_PX = 64;
 // index, so focus landing in it scrolls the hero back to its start.
 const FOCUS_RETURN_AT = 0.05;
 
+// Where the work index's heading has risen to, in px below the header, when
+// the copy it rises over has faded out.
+const COPY_GONE_AT = 120;
+
 /**
  * One container (#top) holding the sticky stage and the work index, which
  * rises over the stage's copy column as the page scrolls (redesign SPEC.md,
@@ -39,6 +43,7 @@ const FOCUS_RETURN_AT = 0.05;
  */
 export function Hero({ cases }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
+  const indexHeadRef = useRef<HTMLDivElement>(null);
   const pinned = useMediaQuery(PIN_QUERY);
   const [live, setLive] = useState(false);
   const [keyboardInCopy, setKeyboardInCopy] = useState(false);
@@ -48,12 +53,22 @@ export function Hero({ cases }: HeroProps) {
     offset: [`start ${HEADER_PX}px`, "end end"],
   });
 
-  // While the work index rises (the first 45% of the pin) the copy drifts up
-  // and fades out under it; the gyroscope settles back a little and its
-  // calibration ring turns, across the whole pin, so the instrument keeps
-  // reacting until the page moves on.
-  const copyY = useTransform(scrollYProgress, [0, 0.45], [0, -60]);
-  const copyOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
+  // The work index's heading on its way up: 0 as it enters at the bottom of
+  // the window, 1 once it is COPY_GONE_AT below the header.
+  const { scrollYProgress: indexRise } = useScroll({
+    target: indexHeadRef,
+    offset: ["start end", `start ${HEADER_PX + COPY_GONE_AT}px`],
+  });
+
+  // The copy drifts up and fades as the work index rises over it, timed
+  // against the index itself rather than the pin, so what is left of the
+  // copy stays until the sheet is about to cover it and no empty band opens
+  // between them. The fade starts once the sheet has passed the copy's
+  // lower half. The gyroscope settles back a little and its calibration
+  // ring turns across the whole pin, so the instrument keeps reacting until
+  // the page moves on.
+  const copyY = useTransform(indexRise, [0, 1], [0, -60]);
+  const copyOpacity = useTransform(indexRise, [0.45, 1], [1, 0]);
   const gyroScale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
   const ringRotate = useTransform(scrollYProgress, [0, 1], [0, 40]);
 
@@ -105,8 +120,11 @@ export function Hero({ cases }: HeroProps) {
                 srLabel="web apps, mobile apps, APIs and machine-learning tools."
               />
             </p>
+            {/* The self-hosting claim is about this site only: the Superhero
+                API ran on AWS, and an app on a phone runs on no server of
+                mine (docs/claims-review.md, N1). */}
             <p className="hero-lede-2 lede">
-              With TypeScript, React, Node.js and Python, hosted on my own server.
+              Mostly in TypeScript, React, Node.js and Python. I host this site on my own server.
             </p>
 
             <div className="hero-actions">
@@ -155,7 +173,7 @@ export function Hero({ cases }: HeroProps) {
         </div>
       </div>
 
-      <WorkIndex cases={cases} />
+      <WorkIndex cases={cases} headRef={indexHeadRef} />
     </div>
   );
 }

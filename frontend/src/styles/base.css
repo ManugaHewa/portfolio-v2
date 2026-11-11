@@ -348,3 +348,22 @@ a:hover {
     transform: none !important;
   }
 }
+
+/*
+ * And if JavaScript is on but the bundle never runs (a chunk that fails to
+ * load, a browser too old for it), the same finished state after three
+ * seconds. An animation rather than a rule, because an animation outranks
+ * Motion's inline style without !important and needs no script to start.
+ * main.tsx puts .js on <html> before it hydrates, which turns this off and
+ * leaves the entrances to Motion.
+ */
+html:not(.js) [data-reveal] {
+  animation: reveal-failsafe 0s 3s forwards;
+}
+
+@keyframes reveal-failsafe {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ContactForm, countBucket } from "../components/ContactForm";
 import { api } from "../api";
@@ -165,5 +165,29 @@ describe("ContactForm", () => {
 
     resolve({ status: "received" });
     expect(await screen.findByText(/message received/i)).toBeInTheDocument();
+  });
+
+  it("never steps the trace back when the answer beats the next frame", async () => {
+    // Hold every frame, so the server's answer lands before the frame that
+    // was meant to move the trace from validate to the network hop.
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      frames.push(cb);
+      return frames.length;
+    });
+    try {
+      sendMock.mockResolvedValue({ status: "received" });
+      render(<ContactForm />);
+      fillValid();
+      fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+      // Answered: the trace is on zod.parse, step 3 of 4.
+      expect(await screen.findByText(/Sending: step 3 of 4/)).toBeInTheDocument();
+      act(() => frames.splice(0).forEach((cb) => cb(performance.now())));
+      expect(screen.queryByText(/Sending: step 2 of 4/)).toBeNull();
+      expect(await screen.findByText(/message received/i)).toBeInTheDocument();
+    } finally {
+      raf.mockRestore();
+    }
   });
 });

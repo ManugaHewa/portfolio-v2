@@ -100,12 +100,29 @@ describe("Pipeline: markup", () => {
     expect(note).toHaveTextContent(CI_CHECK.text);
   });
 
-  it("shows every citation under its node", () => {
+  it("shows each citation under its node, unless it only repeats the node's name", () => {
     const { container } = renderPipeline();
-    const cites = Array.from(container.querySelectorAll(".pl-nodes .pl-cite")).map((c) =>
-      c.textContent!.replace(/\u200b/g, ""),
-    );
-    expect(cites).toEqual(PIPELINE_NODES.map((n) => n.source));
+    const cites = Array.from(container.querySelectorAll(".pl-nodes .pl-cite")).map((c) => c.textContent);
+    expect(cites).toEqual(PIPELINE_NODES.filter((n) => n.source !== n.label).map((n) => n.source));
+    // content/projects.ts is its own source: named once, not twice.
+    expect(cites).not.toContain(PIPELINE_NODES[0].label);
+  });
+
+  it("lets a cited path break after a slash and nowhere else", () => {
+    const { container } = renderPipeline();
+    const cite = Array.from(container.querySelectorAll(".pl-cite")).find(
+      (c) => c.textContent === CI_CHECK.source,
+    )!;
+    const pieces = Array.from(cite.querySelectorAll(".pl-path-piece")).map((p) => p.textContent);
+    expect(pieces).toEqual(["backend/", "src/", "__tests__/", "content.integration.test.ts"]);
+    expect(cite.querySelectorAll("wbr")).toHaveLength(pieces.length - 1);
+  });
+
+  it("counts the steps in the head, finished outside the pinned layout", () => {
+    const { container } = renderPipeline();
+    const counter = container.querySelector(".pipeline .section-head .pl-counter")!;
+    expect(counter).toHaveAttribute("aria-hidden", "true");
+    expect(counter).toHaveTextContent(`${PIPELINE_NODES.length}/${PIPELINE_NODES.length}`);
   });
 
   it("renders the finished diagram outside the pinned layout", () => {
@@ -125,6 +142,8 @@ describe("Pipeline: markup", () => {
     expect(on).toEqual(PIPELINE_NODES.map(() => "false"));
     expect(container.querySelector(".pl-route")).toHaveAttribute("data-on", "false");
     expect(container.querySelector(".pl-ci")).toHaveAttribute("data-on", "false");
+    // The counter reads step 1 from the moment the stage pins.
+    expect(container.querySelector(".pl-counter")).toHaveTextContent(`1/${PIPELINE_NODES.length}`);
     // The text is still all there for anyone reading the list.
     expect(screen.getByRole("list")).toHaveTextContent(PIPELINE_NODES[4].text);
   });

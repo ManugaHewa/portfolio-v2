@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, m } from "../motion/m";
 import type { Variants } from "../motion/m";
-import { Magnetic, Scramble, useMotionAllowed } from "../motion";
+import { Magnetic, Scramble, useIsomorphicLayoutEffect, useMotionAllowed } from "../motion";
 import { api } from "../api";
 import { SendTrace } from "./SendTrace";
 import { Turnstile, TURNSTILE_SITE_KEY } from "./Turnstile";
@@ -26,8 +26,6 @@ interface Fields {
 }
 
 const EMPTY: Fields = { name: "", email: "", message: "" };
-
-const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 function validate(values: Fields): Partial<Record<keyof Fields, string>> {
   const errors: Partial<Record<keyof Fields, string>> = {};
@@ -103,7 +101,7 @@ function SubmitLabel({ label }: { label: string }) {
   const ghost = useRef<HTMLSpanElement>(null);
   const [width, setWidth] = useState<number | null>(null);
 
-  useIsoLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     if (ghost.current) setWidth(ghost.current.offsetWidth);
   }, [label]);
 
@@ -229,8 +227,10 @@ export function ContactForm() {
     setStage(0);
     try {
       // The trace advances to the network hop on the next frame, so the
-      // first segment is visibly drawn even on a fast local response.
-      requestAnimationFrame(() => setStage(1));
+      // first segment is visibly drawn even on a fast local response. Only
+      // from step 0: if the answer (or a failure) lands before that frame,
+      // the trace has already moved on and must not step back to 1.
+      requestAnimationFrame(() => setStage((s) => (s === 0 ? 1 : s)));
       const token = turnstileToken;
       if (TURNSTILE_SITE_KEY) {
         // Spent by this send either way, so ask the widget for a new one now.

@@ -3,15 +3,32 @@
  *
  * Seven groups in CSS columns, so they pack top to bottom and no group is
  * left alone on a last row: three columns on a wide screen, two from 720px,
- * one below. A group never splits across a column break. Each row is a name,
- * a dotted leader and the project number it was used in, like an index at
- * the back of a book. No ratings, meters or colours: the categories are told
- * apart by their headings and their place on the page.
+ * one below. A group never splits across a column break, and the columns
+ * balance (the default), so they end as close to level as whole groups
+ * allow. Each row is a name, a dotted leader and the project number it was
+ * used in, like an index at the back of a book. No ratings, meters or
+ * colours: the categories are told apart by their headings and their place
+ * on the page.
  */
 
 .skills-inner {
   position: relative;
   z-index: 1;
+}
+
+/* The head as a spread: the title on the left, the intro opposite it on the
+   right, both sitting on the title's last baseline. */
+@media (min-width: 960px) {
+  .skills .section-head {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: var(--s8);
+    align-items: last baseline;
+    max-width: none;
+  }
+
+  .skills .section-intro {
+    font-size: var(--fs-body);
+  }
 }
 
 .skills-groups {

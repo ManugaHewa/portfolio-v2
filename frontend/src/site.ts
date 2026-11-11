@@ -6,7 +6,7 @@
 export const SITE = {
   name: "Manuga Hewa Pathirana",
   origin: "https://manugahewa.dev",
-  email: "Manugaginodh2@gmail.com",
+  email: "manugaginodh2@gmail.com",
   location: "Milton, Ontario",
   github: { label: "github.com/ManugaHewa", url: "https://github.com/ManugaHewa" },
   linkedin: { label: "linkedin.com/in/manugahewa", url: "https://www.linkedin.com/in/manugahewa" },

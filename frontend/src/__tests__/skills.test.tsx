@@ -1,8 +1,8 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Skills, evidenceProject, projectAnchor } from "../components/Skills";
+import { NUMBERING, Skills, evidenceProject, projectAnchor } from "../components/Skills";
 import { CATEGORIES, SKILLS, skillsIn } from "../skills";
-import { PROJECT_INDEX, projectNumber } from "../stats";
+import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
 import { Wrap } from "./motion/helpers";
 
 const renderSkills = () =>
@@ -83,6 +83,18 @@ describe("Skills section", () => {
         }
       });
     }
+  });
+
+  it("states the number ranges from the data, padded like the project numbers", () => {
+    const { container } = renderSkills();
+    const lastCase = PROJECT_INDEX[STATS.caseStudies - 1];
+    const firstOther = PROJECT_INDEX[STATS.caseStudies];
+    const last = PROJECT_INDEX[STATS.projects - 1];
+    expect(NUMBERING).toBe(
+      `Numbers are the projects above: ${projectNumber(PROJECT_INDEX[0].slug)} to ${projectNumber(lastCase.slug)} ` +
+        `the case studies, ${projectNumber(firstOther.slug)} to ${projectNumber(last.slug)} the other work.`,
+    );
+    expect(container.querySelector(".section-intro")).toHaveTextContent(NUMBERING);
   });
 
   it("shows no ratings or levels", () => {

@@ -11,7 +11,7 @@ import {
 } from "../lib/sceneQuality";
 import type { SceneBudget, SceneVariant } from "../lib/sceneQuality";
 import { mountScene } from "../lib/threeScene";
-import { Scene } from "../components/Scene";
+import { Scene, failSoft } from "../components/Scene";
 import { MotionPauseContext } from "../motion/hooks";
 
 /*
@@ -317,6 +317,15 @@ describe("mounting a section scene on approach", () => {
     const second = screen.getByTestId("scene3d");
     expect(second).toHaveAttribute("data-paused", "true");
     expect(second).toBe(first);
+  });
+
+  it("renders nothing and reports the scene dead when its chunk fails to load", async () => {
+    // A tab left open across a deploy asks for a chunk that no longer exists.
+    const { default: Fallback } = await failSoft(() => Promise.reject(new Error("404")));
+    const onLive = vi.fn();
+    const { container } = render(<Fallback variant="field" onLive={onLive} />);
+    expect(container.innerHTML).toBe("");
+    expect(onLive).toHaveBeenCalledWith(false);
   });
 });
 

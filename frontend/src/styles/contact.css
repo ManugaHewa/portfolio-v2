@@ -12,6 +12,14 @@
   padding-bottom: calc(var(--section-pad) + var(--s8));
 }
 
+/* The last heading on the page, set a size up from the others: a closing
+   line rather than one more section label. */
+.contact .section-title {
+  font-size: clamp(2.75rem, 1.2rem + 6.2vw, 6.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+}
+
 /* The reply-time readout under the intro: a calibration tick, then the
    reading. Static on purpose; a pulsing "online" dot would be a claim the
    page cannot keep. */
@@ -43,10 +51,10 @@
     column-gap: var(--s6);
   }
 
+  /* No top padding: the routes' first hairline sits level with the panel's
+     top edge. */
   .contact-direct {
     grid-column: 1 / span 5;
-    /* Level with the panel's first label rather than its top edge. */
-    padding-top: var(--s2);
   }
 
   .contact-panel {
@@ -76,12 +84,23 @@
   min-width: 0;
 }
 
+/* All three routes in one face: mono, sky, underlined, the address as
+   written (sentence case is for labels, never for an address). */
+.contact-profile,
+.copy-email-address {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
 .contact-profile {
   display: inline-flex;
   align-items: center;
   gap: var(--s3);
-  font-size: 0.875rem;
-  overflow-wrap: anywhere;
 }
 
 /* An arrow out, drawn in CSS: the corner of a box plus its diagonal. */
@@ -121,36 +140,28 @@
   gap: var(--s3) var(--s4);
 }
 
-.copy-email-address {
-  font-size: var(--fs-body);
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
+/* Copy is a quiet text button beside the address: no box, text-2 with a
+   dotted underline, so it reads as an action that belongs to the link
+   without competing with it. It still has a 32px target. */
 .copy-email-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
   min-height: 32px;
-  padding: 0 var(--s3);
-  border: 1px solid var(--line-control);
+  padding: 0 var(--s1);
+  margin-inline: calc(-1 * var(--s1));
+  border: 0;
   border-radius: var(--r-sm);
   background: transparent;
   color: var(--text-2);
-  transition:
-    color var(--dur-1) var(--ease-out),
-    border-color var(--dur-1) var(--ease-out),
-    background-color var(--dur-1) var(--ease-out);
+  transition: color var(--dur-1) var(--ease-out);
 }
 
 .copy-email-btn:hover {
-  border-color: var(--text-3);
-  background: var(--surface-1);
   color: var(--text);
 }
 
 .copy-email-btn[data-state="copied"] {
-  border-color: var(--sky-line);
   color: var(--sky);
 }
 
@@ -163,6 +174,10 @@
 .copy-email-label {
   min-width: 6ch;
   text-align: left;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--line-control);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
 }
 
 @media (pointer: coarse) {

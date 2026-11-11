@@ -1,4 +1,4 @@
-import { useContext, useEffect, useLayoutEffect, useSyncExternalStore } from "react";
+import { useContext, useSyncExternalStore } from "react";
 import { MotionPauseContext, usePrefersReducedMotion } from "./hooks";
 
 /**
@@ -12,11 +12,9 @@ export const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 /** Tilt and magnetic springs: firm enough that nothing wobbles after the cursor stops. */
 export const TILT_SPRING = { stiffness: 260, damping: 26 };
 
-/**
- * useLayoutEffect in the browser, useEffect while prerendering. React warns
- * about a layout effect on the server, where there is no layout to read.
- */
-export const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+// Defined once in ./hooks (it is public: the app shell and the contact form
+// use it too) and passed on here for the primitives that import it from here.
+export { useIsomorphicLayoutEffect } from "./hooks";
 
 /**
  * True when a one-off entrance should land on its finished values at once:

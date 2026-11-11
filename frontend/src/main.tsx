@@ -24,6 +24,11 @@ const app = (
   </React.StrictMode>
 );
 
+// The bundle is running: switch off base.css's fail-safe, which shows every
+// [data-reveal] entrance after three seconds in case it never did. Before
+// hydrating, so the fail-safe cannot fire under Motion's own entrances.
+document.documentElement.classList.add("js");
+
 // Built pages arrive prerendered (scripts/prerender.mjs) and are hydrated in
 // place; the dev server serves an empty root, which is rendered from scratch.
 if (root.hasChildNodes()) {

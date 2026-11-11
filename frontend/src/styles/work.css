@@ -1,12 +1,16 @@
 /*
  * Work: the case studies and the other work (redesign SPEC.md, section 5.3).
  *
- * Each case card has two layers. The figure is the only thing that tilts;
- * the text beside it never moves. The spotlight and the glow border are
- * drawn on the figure and follow the cursor through --vx / --vy, which
- * TiltSurface writes on its root; both show only while the tilt is live
- * (.tilt-surface[data-tilt]), and the glow also shows, still, while
- * anything in the card has keyboard focus.
+ * Each case card is one surface: its figure is the top edge, its text
+ * below. The figure's plate stays put and only what is drawn on it tilts.
+ * The spotlight and the glow border are drawn on the figure and follow the
+ * cursor through --vx / --vy, which TiltSurface writes on its root; both
+ * show only while the tilt is live (.tilt-surface[data-tilt]), and the glow
+ * also shows, still, while anything in the card has keyboard focus.
+ *
+ * The figure's base look (.case-figure, without .case-card around it) is
+ * shared with the head of the dialog (dialog.css), so the morph between the
+ * two carries one picture.
  */
 
 /* ------------------------------------------------------------ section */
@@ -26,6 +30,23 @@
   z-index: 1;
 }
 
+/* The heading on the left and the intro against it on the right, on the
+   intro's last baseline. Phone: the usual stack. */
+@media (min-width: 960px) {
+  .work-head {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: var(--s5);
+    align-items: last baseline;
+    max-width: none;
+  }
+
+  .work-head > .section-intro {
+    max-width: 36ch;
+    justify-self: end;
+    text-align: right;
+  }
+}
+
 .work-state {
   max-width: 62ch;
   padding: var(--s6);
@@ -40,13 +61,13 @@
 /* --------------------------------------------------------------- grid */
 
 /* Phone and tablet: one column. From 960px the twelve-column pairings
-   (7 + 5, 5 + 7, 6 + 6), so no row repeats the one above it. Each card is
-   as tall as its own content. */
+   (7 + 5, 5 + 7, 6 + 6), so no row repeats the one above it. The cells
+   stretch to their row, so the two cards in a row share a bottom edge. */
 .case-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--s6);
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (min-width: 960px) {
@@ -72,20 +93,32 @@
 }
 
 .case-cell {
+  display: flex;
   min-width: 0;
 }
 
 /* --------------------------------------------------------------- card */
 
-/* The root is positioned so the "Read the case study" button can stretch
-   its target over the whole card. Its radius is set in style (CaseCard.tsx)
-   so Motion can correct it mid-morph; the one here covers the skeleton. */
+/* --pad is the one inset in the card: the figure's drawing and the text
+   below it start on the same line. The root is positioned so the "Read the
+   case study" button can stretch its target over the whole card. */
 .case-card {
+  --pad: var(--s5);
   position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--surface-1);
   transition: border-color var(--dur-1) var(--ease-out);
+}
+
+@media (min-width: 720px) {
+  .case-card {
+    --pad: var(--s6);
+  }
 }
 
 .case-card:hover,
@@ -93,70 +126,78 @@
   border-color: var(--line-strong);
 }
 
-.case-tilt {
-  display: grid;
-  gap: var(--s5);
-  padding: var(--s3);
-}
-
-/* The figure's own box, for the spotlight and the glow drawn over it. */
-.case-tilt > .tilt-visual {
-  position: relative;
-  border-radius: var(--r-md);
-}
-
 /* ------------------------------------------------------------- figure */
 
+/* The plate. Its corners are set in style (workUtils.ts, FIGURE_RADIUS) so
+   Motion can correct them while it is scaled during the morph. */
+/* A grid down to the drawing, so each layer fills the plate whether the
+   plate's height is set or comes from what it shows. */
 .case-figure {
   position: relative;
   container-type: inline-size;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: var(--s4);
-  aspect-ratio: 16 / 10;
+  display: grid;
   overflow: hidden;
-  /* Not in cqi: a box's own padding would resolve against an outer
-     container, not itself. */
-  padding: clamp(16px, 2.2vw, 28px);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
   background: var(--surface-2);
 }
 
-/* The project number, as large as the plate allows. Decoration, so it is
-   generated content rather than text: the number is in the readout row
-   below for anyone reading. Drawn as an ember outline, so the line set over
-   the plate keeps the strongest contrast on it. */
-.case-figure:not(.has-shot)::before {
-  content: attr(data-number);
-  position: absolute;
-  top: clamp(12px, 4cqi, 28px);
-  left: clamp(12px, 4.4cqi, 30px);
-  font-family: var(--font-mono);
-  font-size: 26cqi;
-  font-weight: 500;
-  line-height: 0.8;
-  letter-spacing: -0.06em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ember-soft);
-  -webkit-text-stroke: 1px var(--ember);
-  pointer-events: none;
+/* In a card: flush with the card's top edge, with a hairline under it.
+   Above the button's stretched target, so the tilt sees the cursor; a click
+   on it opens the case study too. In one column it is as tall as what it
+   shows; from 960px every card's figure has one height, so the two cards
+   in a row line up. */
+.case-card > .case-figure {
+  z-index: 1;
+  flex: none;
+  min-height: 176px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
 }
 
-/* A narrow plate (a phone) gives the line more of the height. */
-@container (max-width: 400px) {
-  .case-figure:not(.has-shot)::before {
-    font-size: 21cqi;
+@media (min-width: 960px) {
+  .case-card > .case-figure {
+    height: clamp(252px, 19.5vw, 280px);
   }
+}
+
+.case-figure-tilt,
+.case-figure-tilt > .tilt-visual {
+  display: grid;
+  border-radius: inherit;
+}
+
+/* The number at the top left, what the project is along the bottom: the
+   space between them is the plate's. */
+.case-figure-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--pad, var(--s6));
+}
+
+/* The project number, large, as decoration: generated content on an empty
+   element, so it is not text. A solid tint of ember, in the display face,
+   which has no slashed zero and draws cleanly at any size (an outline on
+   the variable mono drew its overlapping contours). */
+.case-figure-num::before {
+  content: attr(data-number);
+  display: block;
+  font-family: var(--font-sans);
+  font-size: clamp(3.5rem, 1.2rem + 4.4vw, 6.75rem);
+  font-weight: 800;
+  font-stretch: 110%;
+  font-variant-numeric: normal;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: rgba(233, 142, 73, 0.3);
 }
 
 /* A calibration scale along the top right: fine ticks every 8px, a longer
    one every 40px, the same marks as the hero's ring and the index rail. */
 .case-scale {
   position: absolute;
-  top: clamp(16px, 5cqi, 32px);
-  right: clamp(16px, 5cqi, 32px);
+  top: var(--pad, var(--s6));
+  right: var(--pad, var(--s6));
   width: 34%;
   height: 10px;
   background:
@@ -166,68 +207,29 @@
   mask-image: linear-gradient(90deg, transparent, #000 40%);
 }
 
-/* The first outcome, in the case title's type, three lines at most. Sized
-   to the plate so it fits a five-column card and a phone alike. */
+/* What the project is, in the display face, sized to the plate so it fits a
+   five-column card and a phone alike. */
 .case-figure-line {
-  position: relative;
-  max-width: 30ch;
-  font-size: clamp(1.0625rem, 4.6cqi, 2.25rem);
-  font-weight: 700;
-  font-stretch: 108%;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
+  max-width: 44ch;
+  font-size: clamp(1rem, 3.6cqi, 1.375rem);
+  font-weight: 600;
+  font-stretch: 104%;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
   color: var(--text);
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
   overflow: hidden;
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 
-/* The stack as a readout along the bottom edge: a hairline above, a tick
-   between names, cut off with a fade rather than wrapping onto a second
-   line. */
-.case-figure-stack {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  margin: 0;
-  padding: var(--s3) 0 0;
-  list-style: none;
-  border-top: 1px solid var(--line);
-  overflow: hidden;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  color: var(--text-2);
-  -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent);
-  mask-image: linear-gradient(90deg, #000 85%, transparent);
-}
-
-.case-figure-stack li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s3);
-  flex: none;
-}
-
-.case-figure-stack li + li::before {
-  content: "";
-  width: 1px;
-  height: 9px;
-  background: var(--line-strong);
-}
-
-.case-figure.has-shot {
+.case-figure-inner.has-shot {
   padding: 0;
 }
 
-.case-figure.has-shot img {
+.case-figure-inner.has-shot img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -243,7 +245,7 @@
   transition: opacity var(--dur-2) var(--ease-out);
 }
 
-/* A 1px ring over the figure's border: sky where the cursor is, the plain
+/* A 1px ring over the figure's edge: sky where the cursor is, the plain
    hairline elsewhere. The mask keeps only the ring (the padding box is cut
    out of the border box). */
 .case-glow {
@@ -270,47 +272,48 @@
 }
 
 /* The live effect, only while TiltSurface is running. */
-.case-tilt[data-tilt]:hover .case-light {
+.case-figure-tilt[data-tilt]:hover .case-light {
   opacity: 1;
 }
 
-.case-tilt[data-tilt]:hover .case-glow {
+.case-figure-tilt[data-tilt]:hover .case-glow {
   opacity: 1;
   background: radial-gradient(240px circle at var(--vx, 50%) var(--vy, 50%), var(--sky), var(--line) 70%);
 }
 
 /* ------------------------------------------------------------ content */
 
+/* A column that fills the rest of the card, so the footer sits on the
+   card's bottom edge whatever the text above it runs to. */
 .case-content {
   container-type: inline-size;
-  display: grid;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: var(--s5);
-  padding: 0 var(--s3) var(--s3);
+  padding: var(--s5) var(--pad) var(--pad);
 }
 
+/* Category on the left, status on the right; when the two do not fit on
+   one line the status wraps and stays on the right. */
 .case-readout {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s2) var(--s4);
+  gap: var(--s1) var(--s4);
   font-family: var(--font-mono);
   font-size: var(--fs-label);
   font-weight: 500;
   line-height: 1.4;
   letter-spacing: 0.02em;
   color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-
-.case-num {
-  color: var(--ember);
 }
 
 .case-status {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
+  margin-left: auto;
 }
 
 .case-status::before {
@@ -341,6 +344,10 @@
   overflow-wrap: anywhere;
 }
 
+.case-subtitle {
+  color: var(--text-2);
+}
+
 .case-role {
   color: var(--text-2);
 }
@@ -364,6 +371,13 @@
   align-content: start;
 }
 
+/* The result is what the card is for: ember, the colour of things done,
+   on its label and a rule beside it. */
+.case-block.is-result {
+  padding-left: var(--s4);
+  border-left: 2px solid var(--ember-line);
+}
+
 .case-label {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -371,6 +385,10 @@
   line-height: 1.4;
   letter-spacing: 0.02em;
   color: var(--text-2);
+}
+
+.case-block.is-result .case-label {
+  color: var(--ember);
 }
 
 .case-value {
@@ -399,10 +417,11 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s3) var(--s5);
+  margin-top: auto;
 }
 
 /* The card's one action. Its ::after covers the whole card, so the card is
-   the target; the links beside it sit above that layer. */
+   the target; the links beside it and the figure sit above that layer. */
 .case-open {
   display: inline-flex;
   align-items: center;
@@ -471,22 +490,24 @@
 
 /* ----------------------------------------------------------- skeleton */
 
-.case-skeleton {
-  display: grid;
-  gap: var(--s5);
-  padding: var(--s3);
+.case-skeleton-figure {
+  flex: none;
+  height: 200px;
+  border-bottom: 1px solid var(--line);
+  border-radius: calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px) 0 0;
+  background: var(--surface-2);
 }
 
-.case-skeleton-figure {
-  aspect-ratio: 16 / 10;
-  border-radius: var(--r-md);
-  background: var(--surface-2);
+@media (min-width: 960px) {
+  .case-skeleton-figure {
+    height: clamp(252px, 19.5vw, 280px);
+  }
 }
 
 .case-skeleton-body {
   display: grid;
   gap: var(--s3);
-  padding: 0 var(--s3) var(--s3);
+  padding: var(--s5) var(--pad) var(--pad);
 }
 
 .case-skeleton-line {

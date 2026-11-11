@@ -56,6 +56,23 @@ describe("Hero", () => {
     expect(lede.querySelector(".visually-hidden")).toHaveTextContent(
       "web apps, mobile apps, APIs and machine-learning tools.",
     );
+    // What a screen reader hears for the line: the visible lead-in, then the
+    // hidden sentence, with nothing from the rotating word in between.
+    const heard = Array.from(lede.childNodes)
+      .map((n) => (n instanceof Element ? n.querySelector(".visually-hidden")?.textContent : n.textContent))
+      .join("")
+      .replace(/\s+/g, " ")
+      .trim();
+    expect(heard).toBe("Full-stack developer. I build web apps, mobile apps, APIs and machine-learning tools.");
+  });
+
+  it("claims self-hosting for this site only", () => {
+    // The Superhero API ran on AWS, and RxFlow runs on phones: the line
+    // under the loop names the languages, then scopes the server to the site.
+    const { container } = renderHero();
+    expect(container.querySelector(".hero-lede-2")).toHaveTextContent(
+      "Mostly in TypeScript, React, Node.js and Python. I host this site on my own server.",
+    );
   });
 
   it("prerenders the copy at rest, with the place label's final text", () => {

@@ -7,7 +7,9 @@
 /* --------------------------------------------------------------- header */
 
 /* Teal, not the old navy, and no blur: the header is a band of the page's
-   own ink with a hairline under it once the page has moved. */
+   own ink with a hairline under it once the page has moved. Over the hero
+   it can let the stars through; once the page moves, text scrolls under it,
+   so it is near solid then and nothing behind the nav can be read. */
 .site-header {
   position: sticky;
   top: 0;
@@ -15,10 +17,13 @@
   height: var(--header-h);
   background: rgba(13, 21, 24, 0.82);
   border-bottom: 1px solid transparent;
-  transition: border-color var(--dur-2) var(--ease-out);
+  transition:
+    border-color var(--dur-2) var(--ease-out),
+    background-color var(--dur-2) var(--ease-out);
 }
 
 .site-header.is-scrolled {
+  background: rgba(13, 21, 24, 0.96);
   border-bottom-color: var(--line-soft);
 }
 
@@ -212,9 +217,12 @@
 /* --------------------------------------------------------- index rail */
 
 /*
- * Wide screens only. motion/IndexRail.tsx sets --pos (0 to 1) on each item;
- * the server's even spacing is the no-JavaScript layout. The marker, when
- * rendered, is placed by the component along the track.
+ * Wide screens only, set in from the window's edge so it reads as a scale
+ * on the page, not a scrollbar. motion/IndexRail.tsx sets --pos (0 to 1) on
+ * each item; the server's even spacing is the no-JavaScript layout. The
+ * marker, when rendered, is placed by the component along the track, and
+ * the component fades the whole rail out while the hero is pinned, where
+ * it would crowd the gyroscope's ring.
  */
 .index-rail {
   display: none;
@@ -224,13 +232,19 @@
   .index-rail {
     position: fixed;
     top: 50%;
-    right: 12px;
+    right: clamp(16px, 2vw, 32px);
     z-index: 40;
     display: block;
     width: 24px;
     height: min(48vh, 420px);
     transform: translateY(-50%);
   }
+}
+
+/* Faded out, it still takes keyboard focus: it shows the moment it does.
+   !important to beat the component's inline opacity. */
+.index-rail:focus-within {
+  opacity: 1 !important;
 }
 
 .index-rail-track {
@@ -259,7 +273,8 @@
   transform: translateY(-50%);
 }
 
-/* A 24px target around a 12px calibration tick. */
+/* A 24px target around a 12px calibration tick; the current section's is
+   20px and ember, with its label shown beside it. */
 .index-rail-tick {
   position: relative;
   display: flex;
@@ -275,40 +290,57 @@
   content: "";
   width: 12px;
   height: 1px;
-  background: var(--text-3);
+  background: var(--line-strong);
   transition: width var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
 }
 
 .index-rail-tick:hover::after,
-.index-rail-tick:focus-visible::after,
-.index-rail-tick[aria-current="location"]::after {
-  width: 18px;
-  background: var(--text);
+.index-rail-tick:focus-visible::after {
+  width: 16px;
+  background: var(--text-2);
 }
 
-/* The tick's accessible name; shown beside it on hover and focus. */
+.index-rail-tick[aria-current="location"]::after {
+  width: 20px;
+  height: 2px;
+  background: var(--ember);
+}
+
+/* The tick's accessible name, shown on hover and focus. On the page's own
+   ink, since it can sit over the content's right edge. */
 .index-rail-label {
   position: absolute;
   right: calc(100% + 6px);
   padding: 2px var(--s2);
-  border: 1px solid var(--line);
   border-radius: var(--r-sm);
   background: var(--bg);
-  color: var(--text);
+  color: var(--text-3);
   font-family: var(--font-mono);
-  font-size: var(--fs-label);
+  font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.02em;
   line-height: 1.4;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--dur-1) var(--ease-out);
+  transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
+}
+
+/* The current section's label stays up only where the margin can hold it:
+   the widest ("How it's built", about 130px) clears the 1240px column from
+   about 1660px. Narrower, it would cover the column's right edge (the
+   pipeline's counter, card text), so there the ember tick alone marks the
+   section, as the header's nav already does. */
+@media (min-width: 1680px) {
+  .index-rail-tick[aria-current="location"] .index-rail-label {
+    opacity: 1;
+  }
 }
 
 .index-rail-tick:hover .index-rail-label,
 .index-rail-tick:focus-visible .index-rail-label {
   opacity: 1;
+  color: var(--text);
 }
 
 /* The live marker: an 8px ember ring riding the hairline. */

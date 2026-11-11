@@ -162,6 +162,51 @@ describe("ProjectModal", () => {
     expect(dialog.querySelector(".dialog-status")).toHaveClass("is-ongoing");
   });
 
+  it("opens with the case card's figure at its head: the number and what the project is", () => {
+    renderModal();
+    const dialog = screen.getByRole("dialog");
+    const figure = dialog.querySelector(".dialog-figure") as HTMLElement;
+    expect(figure.querySelector(".case-figure-num")).toHaveAttribute("data-number", projectNumber("dms"));
+    expect(figure).toHaveTextContent(detail.subtitle);
+    // The plate says it, so the head does not say it again.
+    expect(screen.getAllByText(detail.subtitle)).toHaveLength(1);
+  });
+
+  it("lists the stack under its own label, one item per name", () => {
+    renderModal({ detail: { ...detail, stack: ["Node.js", "MongoDB Atlas", "Docker"] } });
+    const stack = screen.getByRole("heading", { level: 3, name: "Stack" }).nextElementSibling as HTMLElement;
+    expect(stack.tagName).toBe("UL");
+    expect(Array.from(stack.querySelectorAll("li")).map((li) => li.textContent)).toEqual([
+      "Node.js",
+      "MongoDB Atlas",
+      "Docker",
+    ]);
+  });
+
+  it("gives a dialog opened while the last one is still closing its own name and its own trap", async () => {
+    const other: ProjectSummary = { ...summary, slug: "alice", title: "Alice Bot" };
+    const { rerender } = renderModal({ detail: null });
+    const first = screen.getByRole("dialog");
+
+    // Close the first and open the second at once: the first stays mounted
+    // for its exit while the second mounts.
+    rerender({ project: other, detail: null });
+    const second = screen.getByRole("dialog", { name: "Alice Bot" });
+    expect(second).not.toBe(first);
+    expect(document.querySelectorAll(".dialog-root")).toHaveLength(2);
+    const ids = Array.from(document.querySelectorAll(".dialog-title")).map((h) => h.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    // Once the first has gone, its unmount must not have taken the second's
+    // panel with it: Tab still wraps inside the second.
+    await waitFor(() => expect(document.querySelectorAll(".dialog-root")).toHaveLength(1));
+    const focusable = second.querySelectorAll<HTMLElement>("a[href], button");
+    const last = focusable[focusable.length - 1];
+    last.focus();
+    fireEvent.keyDown(window, { key: "Tab" });
+    expect(document.activeElement).toBe(focusable[0]);
+  });
+
   it("treats a link with no url as unpublished rather than as a repository", () => {
     // A placeholder has a label but no destination, so it cannot stand in for
     // a repository: the note has to key off a real url, not off the count.

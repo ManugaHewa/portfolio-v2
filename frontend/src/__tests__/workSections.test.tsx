@@ -46,7 +46,7 @@ describe("the work section", () => {
     const cards = Array.from(workSection().querySelectorAll<HTMLElement>("article.case-card"));
     expect(cards.map((c) => c.id)).toEqual(CASES.map((p) => `case-${p.slug}`));
     cards.forEach((card, i) => {
-      expect(card.querySelector(".case-num")).toHaveTextContent(projectNumber(CASES[i].slug));
+      expect(card.querySelector(".case-figure-num")).toHaveAttribute("data-number", projectNumber(CASES[i].slug));
     });
   });
 

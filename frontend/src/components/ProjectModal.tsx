@@ -1,16 +1,17 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import type { RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
+import type { MutableRefObject } from "react";
 import { createPortal } from "react-dom";
 // Not re-exported from ../motion/m, which lists only what the page needed
 // before the dialog: a hook, so it cannot trip LazyMotion's strict mode.
 import { useIsPresent } from "framer-motion";
 import { AnimatePresence, m } from "../motion/m";
-import { morphId, useHydrated, useMediaQuery, useMotionAllowed } from "../motion";
+import { morphId, useHydrated, useMotionAllowed } from "../motion";
 import { projectNumber } from "../stats";
 import { SCREENSHOTS } from "../screenshots";
 import type { ProjectDetail, ProjectLink, ProjectSummary } from "../types";
 import { lockScroll, unlockScroll } from "../lib/scrollLock";
-import { FADE, MORPH_SPRING, isOngoing } from "./work/workUtils";
+import { FigureContents } from "./work/CaseFigure";
+import { FADE, FIGURE_RADIUS, MORPH_SPRING, figureId, isOngoing } from "./work/workUtils";
 
 interface Props {
   /** The project being shown, from the list: the dialog opens with this at once. */
@@ -26,9 +27,6 @@ interface Props {
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-
-/** The phone layout, where the dialog is a sheet from the bottom edge. */
-const SHEET_QUERY = "(max-width: 719px)";
 
 /** Renders a bulleted section, or nothing at all when the list is empty. */
 function ListSection({ title, items }: { title: string; items: string[] | null | undefined }) {
@@ -88,12 +86,12 @@ interface LayerProps {
   /** The full case study, only once it is for this project. */
   full: ProjectDetail | null;
   detailError: boolean;
-  /** Grow out of the case card (shared layoutId) rather than fade in. */
+  /** Grow the figure out of the case card (shared layoutId) rather than fade in. */
   morph: boolean;
   /** Motion allowed at all; false means every change lands at once or as a short fade. */
   allowed: boolean;
-  sheet: boolean;
-  panelRef: RefObject<HTMLDivElement>;
+  /** Where the open layer reports its panel, for the parent's Tab trap and first focus. */
+  panelRef: MutableRefObject<HTMLDivElement | null>;
   onClose: () => void;
 }
 
@@ -101,13 +99,25 @@ interface LayerProps {
  * The dialog itself, one per opening (keyed by slug under AnimatePresence).
  *
  * The moment its exit starts it goes inert, so a closing dialog cannot be
- * clicked or typed into while it shrinks back into its card or fades. That
- * has to happen in the commit that starts the exit, which is what
- * useIsPresent reports; the parent no longer knows about this layer by then.
+ * clicked or typed into while its figure shrinks back into its card or it
+ * fades. That has to happen in the commit that starts the exit, which is
+ * what useIsPresent reports; the parent no longer knows about this layer by
+ * then.
+ *
+ * A closing layer can still be on screen when the next one opens, so each
+ * layer keeps its own panel and its own title id. It hands its panel to the
+ * parent only while it is the open one, and on unmount takes it back only if
+ * the parent still holds this panel, never the next layer's.
+ *
+ * The panel itself does not scroll. Its figure sits on top, outside the part
+ * that does, so the figure can grow from wherever its card is on the page
+ * without being cut off at the panel's edge, and Close stays in reach.
  */
-function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelRef, onClose }: LayerProps) {
+function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onClose }: LayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const ownPanel = useRef<HTMLDivElement>(null);
   const present = useIsPresent();
+  const titleId = `dialog-title-${useId().replace(/:/g, "")}`;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -115,6 +125,17 @@ function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelR
     if (present) root.removeAttribute("inert");
     else root.setAttribute("inert", "");
   }, [present]);
+
+  useLayoutEffect(() => {
+    if (present) panelRef.current = ownPanel.current;
+  }, [present, panelRef]);
+
+  useLayoutEffect(() => {
+    const panel = ownPanel.current;
+    return () => {
+      if (panelRef.current === panel) panelRef.current = null;
+    };
+  }, [panelRef]);
 
   const shown: ProjectSummary = full ?? project;
   const number = projectNumber(shown.slug);
@@ -131,17 +152,13 @@ function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelR
   // in for a repository: the note below keys off a real url, not off the count.
   const hasPublishedLink = shown.links.some((link) => link.url);
 
-  // The bottom sheet keeps square lower corners. Radii live in style so
-  // Motion can correct them while the panel is scaled during the morph.
-  const radius = sheet
-    ? { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }
-    : { borderRadius: 20 };
-
-  // Morphing: the frame grows out of the card and the text, held at its own
-  // size, fades in once the frame is most of the way there. Otherwise one
-  // short fade (with a small rise when motion is allowed).
+  // Morphing: the figure grows out of the card, the panel's surface opens
+  // around it, and the text fades in once the figure is most of the way
+  // there. Nothing transforms the panel itself, so the box the figure is
+  // measured into is where it really lands. Otherwise the whole panel takes
+  // one short fade (with a small rise when motion is allowed).
   const panelMotion = morph
-    ? { transition: { layout: MORPH_SPRING } }
+    ? {}
     : {
         initial: { opacity: 0, y: allowed ? 12 : 0 },
         animate: { opacity: 1, y: 0 },
@@ -149,10 +166,18 @@ function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelR
         transition: allowed ? { duration: 0.24, ease: FADE.ease } : FADE,
       };
 
+  const surfaceMotion = morph
+    ? {
+        initial: { opacity: 0, scale: 0.97 },
+        animate: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: FADE.ease } },
+        exit: { opacity: 0, transition: { duration: 0.2 } },
+      }
+    : {};
+
   const contentMotion = morph
     ? {
         initial: { opacity: 0 },
-        animate: { opacity: 1, transition: { delay: 0.1, duration: 0.26, ease: FADE.ease } },
+        animate: { opacity: 1, transition: { delay: 0.12, duration: 0.26, ease: FADE.ease } },
         exit: { opacity: 0, transition: { duration: 0.1 } },
       }
     : {};
@@ -171,38 +196,50 @@ function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelR
       <div className="dialog-viewport">
         <m.div
           className="dialog-panel"
-          ref={panelRef}
+          ref={ownPanel}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="dialog-title"
+          aria-labelledby={titleId}
           tabIndex={-1}
-          layoutId={morph ? morphId(project.slug) : undefined}
-          style={radius}
           {...panelMotion}
         >
-          <m.div className="dialog-inner" layout={morph ? "position" : undefined} {...contentMotion}>
-            <div className="dialog-bar">
-              <p className="dialog-readout">
-                <span className="dialog-num">{number}</span>
-                {shown.category && <span> · {shown.category}</span>}
-              </p>
-              <button
-                type="button"
-                className="dialog-close"
-                onClick={onClose}
-                aria-label="Close project details"
-              >
-                Close
-                <span className="dialog-close-x" aria-hidden="true" />
-              </button>
-            </div>
+          <m.span className="dialog-surface" aria-hidden="true" {...surfaceMotion} />
 
+          {/* The card's picture at the head of the dialog: the one thing that
+              travels between the two. */}
+          <m.div
+            className={shot ? "case-figure dialog-figure has-shot" : "case-figure dialog-figure"}
+            layoutId={morph ? figureId(project.slug) : undefined}
+            style={FIGURE_RADIUS}
+            transition={{ layout: MORPH_SPRING }}
+          >
+            <FigureContents project={shown} shot={shot} eager holdShape={morph} />
+          </m.div>
+
+          <m.button
+            type="button"
+            className="dialog-close"
+            onClick={onClose}
+            aria-label="Close project details"
+            {...contentMotion}
+          >
+            Close
+            <span className="dialog-close-x" aria-hidden="true" />
+          </m.button>
+
+          <m.div className="dialog-scroll" {...contentMotion}>
             <div className="dialog-body">
               <header className="dialog-head">
-                <h2 className="dialog-title" id="dialog-title">
+                <p className="dialog-readout">
+                  <span className="dialog-num">{number}</span>
+                  {shown.category && <span> · {shown.category}</span>}
+                </p>
+                <h2 className="dialog-title" id={titleId}>
                   {shown.title}
                 </h2>
-                <p className="dialog-subtitle">{shown.subtitle}</p>
+                {/* The plate above already says what the project is. A
+                    screenshot does not, so then the line comes down here. */}
+                {shot && <p className="dialog-subtitle">{shown.subtitle}</p>}
 
                 {facts.length > 0 && (
                   <dl className="dialog-facts">
@@ -216,18 +253,24 @@ function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelR
                     ))}
                   </dl>
                 )}
-
-                {shown.stack.length > 0 && <p className="dialog-stack">{shown.stack.join(" · ")}</p>}
               </header>
 
-              {shot && (
-                <figure className="dialog-shot">
-                  <img src={shot.src} alt={shot.alt} width={1600} height={1000} decoding="async" />
-                  <figcaption>{shot.caption}</figcaption>
-                </figure>
-              )}
+              {shot && <p className="dialog-caption">{shot.caption}</p>}
 
               <div className="dialog-sections">
+                {/* A list, so no name breaks across a line, under a label in
+                    the same column as the sections below it. */}
+                {shown.stack.length > 0 && (
+                  <section className="dialog-section">
+                    <h3 className="dialog-section-title">Stack</h3>
+                    <ul className="dialog-stack">
+                      {shown.stack.map((tech) => (
+                        <li key={tech}>{tech}</li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
                 {!full && !detailError && (
                   <div className="dialog-pending">
                     <p className="visually-hidden" role="status">
@@ -295,19 +338,20 @@ function DialogLayer({ project, full, detailError, morph, allowed, sheet, panelR
  * reader's cursor cannot walk out of the dialog into the page behind).
  *
  * It opens at once with the summary the page already has and fills in the
- * rest when /api/projects/:slug answers. Opened from a case card, it grows
- * out of that card (the card and the panel share a layoutId inside App's
- * LayoutGroup) and shrinks back into it on close. Opened from an Other work
- * row, or with reduced motion or motion paused, it fades.
+ * rest when /api/projects/:slug answers. Opened from a case card, the card's
+ * figure grows out of the card into the head of the dialog (the two figures
+ * share a layoutId inside App's LayoutGroup) and shrinks back into it on
+ * close. Opened from an Other work row, or with reduced motion or motion
+ * paused, it fades.
  *
  * Nothing renders until the page has hydrated: the prerendered HTML has no
  * dialog, and createPortal needs document.body.
  */
 export function ProjectModal({ project, detail, detailError = false, onClose, returnFocusTo }: Props) {
-  const panelRef = useRef<HTMLDivElement>(null);
+  // The open layer's panel, which that layer sets (see DialogLayer).
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const hydrated = useHydrated();
   const allowed = useMotionAllowed();
-  const sheet = useMediaQuery(SHEET_QUERY);
   // The latest values, read by the effect's cleanup without re-running it.
   const returnRef = useRef(returnFocusTo);
   returnRef.current = returnFocusTo;
@@ -319,7 +363,7 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
 
   // Decided once per opening: grow out of the card only when the control that
   // opened the dialog sits inside that project's case card. The layoutId has
-  // to be fixed for the panel's whole life, because Motion registers a shared
+  // to be fixed for the figure's whole life, because Motion registers a shared
   // element when it mounts.
   const morph = useMemo(
     () => Boolean(slug && allowed && returnFocusTo?.closest(`[id="${morphId(slug)}"]`)),
@@ -389,7 +433,6 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
           detailError={detailError}
           morph={morph}
           allowed={allowed}
-          sheet={sheet}
           panelRef={panelRef}
           onClose={onClose}
         />

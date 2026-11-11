@@ -1,10 +1,11 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   IndexRail,
   Marquee,
+  PIN_QUERY,
   PauseMotionToggle,
   TextLoop,
   useMediaQuery,
@@ -141,6 +142,12 @@ describe("Marquee", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
     expect(find(container, ".marquee").className).not.toContain("is-running");
     expect(container.querySelectorAll("ul")).toHaveLength(1);
+    // Its own toggle goes with it: a "not paused" button on a still strip
+    // would tell a screen reader the wrong thing.
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
+    expect(screen.getByRole("button", { name: "Pause" })).toHaveAttribute("aria-pressed", "false");
   });
 });
 
@@ -199,6 +206,34 @@ describe("IndexRail", () => {
       </Wrap>,
     );
     for (const s of SECTIONS) expect(screen.getByRole("link", { name: s.label })).not.toHaveAttribute("aria-current");
+  });
+
+  it("is faded out at the top of the page while the hero pins, and only then", async () => {
+    // A hero 3000px tall at the top of the page: pinned from 0 until its end
+    // meets the window's, so at scroll 0 the rail is not shown.
+    const hero = document.createElement("div");
+    hero.id = "top";
+    hero.getBoundingClientRect = () => ({ top: 0, bottom: 3000, left: 0, right: 0, width: 0, height: 3000, x: 0, y: 0, toJSON() {} }) as DOMRect;
+    document.body.appendChild(hero);
+
+    media.set([PIN_QUERY]);
+    const { unmount } = render(
+      <Wrap>
+        <IndexRail sections={SECTIONS} hideWhilePinned="top" />
+      </Wrap>,
+    );
+    const nav = screen.getByRole("navigation", { name: "Section index" });
+    await waitFor(() => expect(nav.style.opacity).toBe("0"));
+    unmount();
+
+    // Without the pin (a short window, reduced motion) the rail just shows.
+    media.set([]);
+    render(
+      <Wrap>
+        <IndexRail sections={SECTIONS} hideWhilePinned="top" />
+      </Wrap>,
+    );
+    expect(screen.getByRole("navigation", { name: "Section index" }).style.opacity).toBe("");
   });
 });
 

@@ -25,7 +25,9 @@ export interface MountOptions {
   /**
    * Pixel ratio, antialiasing and frame-rate cap. A function rather than a
    * value because it is read again on every resize: rotating a phone across
-   * a breakpoint should change the budget, not keep the one from mount.
+   * a breakpoint should change the budget, not keep the one from mount. It is
+   * read at mount and on resize only, never per frame: each read asks
+   * matchMedia, and nothing it depends on changes between resizes.
    */
   budget?: () => SceneBudget;
   /** Start with the loop stopped (the visitor has paused motion). */
@@ -72,12 +74,14 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
 
   const { onLive } = options;
   const budget = options.budget ?? (() => sceneBudget());
+  // The budget as last read: at mount, then again by applySize on each resize.
+  let current = budget();
 
   let renderer: WebGLRenderer;
   try {
     renderer = new WebGLRenderer({
       alpha: true,
-      antialias: budget().antialias,
+      antialias: current.antialias,
       powerPreference: "low-power",
     });
   } catch {
@@ -101,7 +105,8 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
     // shrunken box and leave the scene soft when it grows back.
     const w = Math.max(1, el.clientWidth);
     const h = Math.max(1, el.clientHeight);
-    renderer.setPixelRatio(budget().pixelRatio);
+    current = budget();
+    renderer.setPixelRatio(current.pixelRatio);
     // updateStyle false: the element is already sized by CSS, and letting
     // three write inline px here is what desyncs buffer from box.
     renderer.setSize(w, h, false);
@@ -132,7 +137,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
     // A frame-rate cap skips display frames rather than using a timer, so the
     // frames that are drawn stay in step with the display. The millisecond of
     // slack keeps a 60Hz display from landing just short of every other frame.
-    const cap = budget().maxFps;
+    const cap = current.maxFps;
     if (cap > 0 && now - lastFrame < 1000 / cap - 1) {
       raf = requestAnimationFrame(tick);
       return;

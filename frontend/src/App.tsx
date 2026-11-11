@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LayoutGroup, LazyMotion, domMax } from "./motion/m";
-import { IndexRail, MotionPauseProvider, ScrollProgress } from "./motion";
+import { IndexRail, MotionPauseProvider, ScrollProgress, useIsomorphicLayoutEffect } from "./motion";
 import { Nav, PAGE_SECTIONS } from "./components/Nav";
 import { Scene } from "./components/Scene";
 import { Hero } from "./components/Hero";
@@ -12,7 +12,6 @@ import { Skills } from "./components/Skills";
 import { ContactSection } from "./components/ContactSection";
 import { Footer } from "./components/Footer";
 import { ProjectModal } from "./components/ProjectModal";
-import { useIsomorphicLayoutEffect } from "./lib/useHydrated";
 import { api } from "./api";
 import type { ProjectDetail, ProjectSummary } from "./types";
 
@@ -111,7 +110,8 @@ export default function App({ initialProjects }: AppProps) {
 
             <ScrollProgress />
             <Nav />
-            <IndexRail sections={PAGE_SECTIONS} />
+            {/* Faded out while the hero is pinned, beside the gyroscope's ring. */}
+            <IndexRail sections={PAGE_SECTIONS} hideWhilePinned="top" />
 
             {/* Page-wide, fixed, and purely a backdrop. */}
             <Scene variant="starfield" className="scene-starfield" />
