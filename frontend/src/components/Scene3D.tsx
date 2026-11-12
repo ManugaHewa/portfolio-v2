@@ -14,12 +14,14 @@ import {
   PlaneGeometry,
   Points,
   PointsMaterial,
+  ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
 } from "three";
 import { mountScene } from "../lib/threeScene";
 import type { SceneController, SceneDef } from "../lib/threeScene";
 import { sceneBudget, scaled } from "../lib/sceneQuality";
+import { readScrollVelocity, watchScrollVelocity } from "../lib/scrollVelocity";
 import type { SceneVariant } from "../lib/sceneQuality";
 
 export type { SceneVariant };
@@ -123,7 +125,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     return {
       fov: 42,
       dispose: t.disposeAll,
-      setup: ({ scene, camera }) => {
+      setup: ({ scene, camera, renderer }) => {
         camera.position.set(0, 0.5, 4.95);
         camera.lookAt(0, 0, 0);
 
@@ -351,6 +353,37 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           g.rotation.z = Math.PI / 2;
         });
 
+        // The assembly leans a few degrees toward a mouse anywhere in the
+        // hero, and spins up while the page scrolls (lib/scrollVelocity.ts).
+        const lean = { x: 0, y: 0, tx: 0, ty: 0 };
+        const area = renderer.domElement.closest("section");
+        const mouse = window.matchMedia?.("(pointer: fine) and (hover: hover)").matches ?? false;
+        const onMove = (e: PointerEvent) => {
+          if (e.pointerType !== "mouse" || !area) return;
+          const r = area.getBoundingClientRect();
+          // -1..1 across the hero, from its own centre.
+          lean.ty = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
+          lean.tx = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));
+        };
+        const onLeave = () => {
+          lean.tx = 0;
+          lean.ty = 0;
+        };
+        if (area && mouse) {
+          area.addEventListener("pointermove", onMove);
+          area.addEventListener("pointerleave", onLeave);
+          t.track({
+            dispose: () => {
+              area.removeEventListener("pointermove", onMove);
+              area.removeEventListener("pointerleave", onLeave);
+            },
+          });
+        }
+        t.track({ dispose: watchScrollVelocity() });
+        // Spin time: runs at 1x at rest and up to 3.5x at a fast scroll.
+        let spin = 0;
+        let boost = 0;
+
         // A faint atmosphere so the core sits in something.
         const haloPts: number[] = [];
         const N = scaled(90, detail, 40);
@@ -381,16 +414,24 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         );
         world.add(halo);
 
-        return (time) => {
+        return (time, dt) => {
+          const target = Math.min(1, Math.abs(readScrollVelocity()) / 2600);
+          boost += (target - boost) * (1 - Math.exp(-dt * 5));
+          spin += dt * (1 + 2.5 * boost);
+          // Spring-smoothed toward the cursor.
+          const k = 1 - Math.exp(-dt * 4);
+          lean.x += (lean.tx - lean.x) * k;
+          lean.y += (lean.ty - lean.y) * k;
+
           // Each gimbal turns on its own axis; because they are nested the
           // inner ones are carried by the outer ones as well.
-          outer.rotation.y = time * 0.5;
-          middle.rotation.x = time * 0.7;
-          inner.rotation.z = time * 0.95;
+          outer.rotation.y = spin * 0.5;
+          middle.rotation.x = spin * 0.7;
+          inner.rotation.z = spin * 0.95;
 
           // Electrons sweep their own ring on top of the inherited motion.
           electrons.forEach((e) => {
-            e.g.rotation.y = time * e.rate + e.phase;
+            e.g.rotation.y = spin * e.rate + e.phase;
           });
 
           // The core turns on its own, slowly, so the surface grid reads as
@@ -401,7 +442,9 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           halo.rotation.y = -time * 0.05;
           // Kept on top of the standing tilt, not replacing it.
           world.rotation.z = Math.sin(time * 0.15) * 0.08;
-          world.rotation.x = -0.34 + Math.sin(time * 0.11) * 0.09;
+          // About 8 degrees of lean at the hero's edges.
+          world.rotation.x = -0.34 + Math.sin(time * 0.11) * 0.09 + lean.x * 0.14;
+          world.rotation.y = 0.22 + lean.y * 0.2;
         };
       },
     };
@@ -705,6 +748,13 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
      bands drifting at different rates, so scrolling gives parallax
      without anything sweeping across the content - the page-wide radar
      that came before this was removed for exactly that reason.
+
+     The scroll speed (lib/scrollVelocity.ts) stretches the stars into
+     streaks behind their direction of travel, the nearer bands more, and
+     carries each band a little way with the page; both ease out within
+     about half a second of the scroll stopping. Each star also has a line
+     from itself to itself: a tiny shader moves its tail end by one uniform,
+     so a frame costs one number per band, not a rebuilt buffer.
   --------------------------------------------------------------- */
   starfield: (detail) => {
     const t = makeTracker();
@@ -719,7 +769,8 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         scene.add(world);
 
         // Three bands: far ones smaller, dimmer and slower.
-        const bands: Array<{ g: Group; rate: number }> = [];
+        const bands: Array<{ g: Group; rate: number; streak: ShaderMaterial; reach: number }> = [];
+        t.track({ dispose: watchScrollVelocity() });
         // The page-wide layer, and the only one that is always on screen,
         // so it is the one worth thinning most on a phone.
         const LAYERS: Array<[number, number, number, number]> = [
@@ -731,12 +782,21 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
         LAYERS.forEach(([count, spread, size, opacity], li) => {
           const pts: number[] = [];
+          // The streaks: two vertices per star, both on the star; "tail"
+          // marks the end the shader moves.
+          const linePts: number[] = [];
+          const tails: number[] = [];
           for (let i = 0; i < count; i++) {
             // Golden-angle scatter: deterministic, so the sky is identical
             // on every load instead of reshuffling on each mount.
             const a = i * 2.399963 + li * 1.7;
             const r = Math.sqrt((i + 0.5) / count) * spread;
-            pts.push(Math.cos(a) * r, Math.sin(a) * r * 0.62, -li * 2.2 - ((i % 7) * 0.3));
+            const x = Math.cos(a) * r;
+            const y = Math.sin(a) * r * 0.62;
+            const z = -li * 2.2 - ((i % 7) * 0.3);
+            pts.push(x, y, z);
+            linePts.push(x, y, z, x, y, z);
+            tails.push(0, 1);
           }
           const g = t.track(new BufferGeometry());
           g.setAttribute("position", new Float32BufferAttribute(pts, 3));
@@ -756,14 +816,30 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
               )
             )
           );
+          const lineGeo = t.track(new BufferGeometry());
+          lineGeo.setAttribute("position", new Float32BufferAttribute(linePts, 3));
+          lineGeo.setAttribute("tail", new Float32BufferAttribute(tails, 1));
+          const streak = t.track(streakMaterial(li === 2 ? EMBER : SKY, opacity));
+          grp.add(new LineSegments(lineGeo, streak));
           world.add(grp);
-          bands.push({ g: grp, rate: 0.004 + li * 0.004 });
+          // The near bands streak further, as they would in depth.
+          bands.push({ g: grp, rate: 0.004 + li * 0.004, streak, reach: 0.45 + li * 0.35 });
         });
 
-        return (time) => {
-          bands.forEach(({ g, rate }, i) => {
+        // How far each band has been carried along by the scroll, easing
+        // back to its own drift once the scroll stops.
+        const carried = [0, 0, 0];
+        return (time, dt) => {
+          // -1..1: a fast fling reads as 1 and goes no further, so the sky
+          // never whites out.
+          const speed = Math.max(-1, Math.min(1, readScrollVelocity() / 3200));
+          bands.forEach(({ g, rate, streak, reach }, i) => {
+            carried[i] = carried[i] * Math.exp(-dt * 3) + speed * dt * reach * 0.9;
             g.rotation.z = time * rate * (i % 2 === 0 ? 1 : -1);
-            g.position.y = Math.sin(time * 0.07 + i) * 0.25;
+            g.position.y = Math.sin(time * 0.07 + i) * 0.25 + carried[i];
+            // Scrolling down moves the page up, so the tails trail below.
+            streak.uniforms.uStretch.value = -speed * reach;
+            streak.uniforms.uStrength.value = Math.abs(speed);
           });
         };
       },
@@ -829,6 +905,48 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     };
   },
 };
+
+/**
+ * The starfield's streak lines: each segment runs from a star to itself,
+ * and the vertex shader moves its "tail" end by uStretch along y, fading
+ * along its length. uStrength scales the whole line, so at rest (no
+ * stretch) nothing is drawn. The colour goes through the renderer's output
+ * colour space like every other material on the page.
+ */
+function streakMaterial(colour: string, opacity: number): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: {
+      uColor: { value: new Color(colour) },
+      uOpacity: { value: opacity },
+      uStretch: { value: 0 },
+      uStrength: { value: 0 },
+    },
+    vertexShader: /* glsl */ `
+      attribute float tail;
+      uniform float uStretch;
+      varying float vFade;
+      void main() {
+        vec3 p = position;
+        p.y += tail * uStretch;
+        vFade = 1.0 - tail;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uColor;
+      uniform float uOpacity;
+      uniform float uStrength;
+      varying float vFade;
+      void main() {
+        gl_FragColor = vec4(uColor, uOpacity * uStrength * vFade);
+        #include <colorspace_fragment>
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+  });
+}
 
 /**
  * A small white disc with a soft edge, drawn once into a canvas, for use as a
