@@ -31,7 +31,7 @@
 .dialog-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(13, 21, 24, 0.84);
+  background: rgba(8, 9, 11, 0.84);
 }
 
 /* Covers the backdrop but lets clicks through to it, so a click anywhere
@@ -459,4 +459,77 @@
   background: var(--surface-2);
   color: var(--text);
   font-size: var(--fs-small);
+}
+
+/* ------------------------------------------------------ process timeline */
+
+/* A case study's delivery as a line (ProcessTimeline.tsx): a rail down the
+   left that draws itself, a tick of the rail for each step, and an ember
+   stop at the end holding the outcomes. */
+.process {
+  position: relative;
+  max-width: 64ch;
+}
+
+.process-rail {
+  position: absolute;
+  top: 0.55em;
+  bottom: 0.9em;
+  left: 4px;
+  width: 1px;
+  background: linear-gradient(var(--line-strong), var(--ember-line));
+  transform-origin: 50% 0;
+}
+
+.process-list {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.process-step {
+  position: relative;
+  padding-left: var(--s5);
+  color: var(--text-2);
+}
+
+.process-step::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--line-control);
+  border-radius: 50%;
+  background: var(--surface-1);
+}
+
+.process-step.is-outcome {
+  color: var(--text);
+}
+
+.process-step.is-outcome::before {
+  border-color: var(--ember);
+  background: var(--ember);
+  box-shadow: 0 0 0 4px rgba(233, 142, 73, 0.18);
+}
+
+.process-outcome-label {
+  display: block;
+  margin-bottom: var(--s1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+  color: var(--ember);
+}
+
+.process-outcomes {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }

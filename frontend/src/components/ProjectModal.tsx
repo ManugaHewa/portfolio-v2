@@ -11,6 +11,7 @@ import { SCREENSHOTS } from "../screenshots";
 import type { ProjectDetail, ProjectLink, ProjectSummary } from "../types";
 import { lockScroll, unlockScroll } from "../lib/scrollLock";
 import { FigureContents } from "./work/CaseFigure";
+import { ProcessTimeline } from "./ProcessTimeline";
 import { FADE, FIGURE_RADIUS, MORPH_SPRING, figureId, isOngoing } from "./work/workUtils";
 
 interface Props {
@@ -298,12 +299,18 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
                     <ListSection title="Highlights" items={full.highlights} />
                     <ListSection title="Key requirements" items={full.requirements} />
                     <ListSection title="Non-functional targets" items={full.nonFunctional} />
-                    <ListSection title="How it was delivered" items={full.deliveryProcess} />
                     <ListSection title="Technical challenges" items={full.challenges} />
                     <ListSection title="Risks handled" items={full.risks} />
                   </>
                 )}
-                <ListSection title="Outcomes" items={shown.outcomes} />
+                {/* The delivery steps lead into the outcomes on one line; with no
+                    steps (or before the full case study arrives) the outcomes
+                    stand as their own list. */}
+                {full && full.deliveryProcess.length > 0 ? (
+                  <ProcessTimeline steps={full.deliveryProcess} outcomes={shown.outcomes} />
+                ) : (
+                  <ListSection title="Outcomes" items={shown.outcomes} />
+                )}
                 {full && <ListSection title="Next steps" items={full.nextSteps} />}
                 {full && <TextSection title="What I learned" text={full.learned} />}
 

@@ -144,12 +144,32 @@ describe("ProjectModal", () => {
   it("renders only the sections that have content", () => {
     renderModal();
 
-    for (const title of ["Context", "Problem", "Scope", "Technical challenges", "Outcomes", "What I learned", "Links"]) {
+    for (const title of [
+      "Context",
+      "Problem",
+      "Scope",
+      "Technical challenges",
+      "How it was delivered, and what came of it",
+      "What I learned",
+      "Links",
+    ]) {
       expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
     }
     // highlights and nextSteps are empty, so their headings must not appear.
     expect(screen.queryByRole("heading", { name: "Highlights" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Next steps" })).not.toBeInTheDocument();
+  });
+
+  it("tells the delivery as one line that ends in the outcomes, said once", () => {
+    renderModal();
+    const dialog = screen.getByRole("dialog");
+    const steps = Array.from(dialog.querySelectorAll(".process-list > li"));
+    expect(steps).toHaveLength(detail.deliveryProcess.length + (detail.outcomes.length > 0 ? 1 : 0));
+    expect(steps[0]).toHaveTextContent(detail.deliveryProcess[0]);
+    const last = steps[steps.length - 1];
+    expect(last).toHaveClass("is-outcome");
+    for (const o of detail.outcomes) expect(screen.getAllByText(o)).toHaveLength(1);
+    expect(screen.queryByRole("heading", { name: "Outcomes" })).not.toBeInTheDocument();
   });
 
   it("shows the number and category as a readout, and role, timeline and status as facts", () => {
