@@ -8,6 +8,7 @@ import { Work } from "./components/work/Work";
 import type { OpenProject } from "./components/work/Work";
 import { TechBand } from "./components/TechBand";
 import { Pipeline } from "./components/Pipeline";
+import { Statement } from "./components/Statement";
 import { Skills } from "./components/Skills";
 import { ContactSection } from "./components/ContactSection";
 import { Footer } from "./components/Footer";
@@ -126,6 +127,7 @@ export default function App({ initialProjects }: AppProps) {
                 onOpen={onOpen}
               />
               <TechBand />
+              <Statement />
               <Pipeline />
               <Skills />
               <ContactSection />
