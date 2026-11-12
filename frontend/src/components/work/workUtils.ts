@@ -24,6 +24,14 @@ export const FIGURE_RADIUS = {
   borderBottomRightRadius: 0,
 } as const;
 
+/** The same, in the stacked deck (work.css), where the figure is the card's left edge. */
+export const FIGURE_RADIUS_STACKED = {
+  borderTopLeftRadius: 19,
+  borderTopRightRadius: 0,
+  borderBottomLeftRadius: 19,
+  borderBottomRightRadius: 0,
+} as const;
+
 /** The card-to-dialog morph (SPEC.md, section 4): firm, no overshoot on text. */
 export const MORPH_SPRING = { type: "spring", stiffness: 320, damping: 34 } as const;
 

@@ -1,12 +1,12 @@
-import { useRef } from "react";
 import { m } from "../../motion/m";
-import { Reveal, TiltSurface, morphId, useMotionAllowed } from "../../motion";
-import type { TiltSurfaceHandle } from "../../motion";
+import { useRef } from "react";
+import type { CSSProperties } from "react";
+import { PIN_QUERY, Reveal, morphId, useMediaQuery, useMotionAllowed } from "../../motion";
 import { SCREENSHOTS } from "../../screenshots";
 import type { ProjectSummary } from "../../types";
 import type { OpenProject } from "./Work";
 import { FigureContents } from "./CaseFigure";
-import { FIGURE_RADIUS, MORPH_SPRING, figureId, isOngoing, stackLine } from "./workUtils";
+import { FIGURE_RADIUS, FIGURE_RADIUS_STACKED, MORPH_SPRING, figureId, isOngoing, stackLine } from "./workUtils";
 
 interface CaseCardProps {
   project: ProjectSummary;
@@ -20,8 +20,10 @@ interface CaseCardProps {
  * top edge and its text below.
  *
  * The figure is the project's picture (CaseFigure.tsx): its number and what
- * it is. Its plate stays put and only what is drawn on it tilts toward the
- * cursor, so the plate's edge always meets the card's. The text below says
+ * it is. Hovering the card, or moving keyboard focus into it, locks on to the
+ * figure (work.css): four ember corner marks close in on the plate, a sweep
+ * runs along its scale and the number fills from its tint to solid ember.
+ * Nothing follows the cursor. The text below says
  * the rest once each: category and status, title, role, the problem and the
  * result, the stack, then the button and the links. It never moves, so it
  * stays crisp and every control stays where it looks.
@@ -33,9 +35,10 @@ interface CaseCardProps {
  * rows link to, and what the dialog checks to know it was opened from here.
  */
 export function CaseCard({ project: p, index, onOpen }: CaseCardProps) {
-  const tiltRef = useRef<TiltSurfaceHandle>(null);
   const openRef = useRef<HTMLButtonElement>(null);
   const allowed = useMotionAllowed();
+  // The deck (Work.tsx) lays the card out sideways, figure on the left.
+  const stacked = useMediaQuery(PIN_QUERY);
   const id = morphId(p.slug);
   const titleId = `${id}-title`;
   const shot = SCREENSHOTS[p.slug]?.[0];
@@ -44,35 +47,29 @@ export function CaseCard({ project: p, index, onOpen }: CaseCardProps) {
   const open = () => {
     const button = openRef.current;
     if (!button) return;
-    // Level the drawing first: the morph measures the figure as it stands,
-    // and a tilted layer would fly in crooked.
-    tiltRef.current?.reset();
     onOpen(p, button);
   };
 
   return (
-    <Reveal className="case-cell" index={index % 2} stagger={0.08} y={24}>
+    <Reveal className="case-cell" index={index % 2} stagger={0.08} y={24} style={{ "--n": index } as CSSProperties}>
       <article className="case-card" id={id} aria-labelledby={titleId}>
         {/* A pointer can open the case study from the picture too. It sits
-            above the button's stretched target so the tilt sees the cursor;
-            the button stays the one control for the keyboard and for a
+            above the button's stretched target; the button stays the one control for the keyboard and for a
             screen reader, and is what focus returns to. */}
         <m.div
           className={shot ? "case-figure has-shot" : "case-figure"}
           layoutId={figureId(p.slug)}
-          style={FIGURE_RADIUS}
+          style={stacked ? FIGURE_RADIUS_STACKED : FIGURE_RADIUS}
           transition={{ layout: allowed ? MORPH_SPRING : { duration: 0 } }}
           onClick={open}
         >
-          <TiltSurface
-            ref={tiltRef}
-            className="case-figure-tilt"
-            visual={<FigureContents project={p} shot={shot} holdShape />}
-            maxTilt={4}
-          >
-            <span className="case-light" aria-hidden="true" />
-            <span className="case-glow" aria-hidden="true" />
-          </TiltSurface>
+          <FigureContents project={p} shot={shot} holdShape />
+          <span className="case-lock" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+            <span />
+          </span>
         </m.div>
 
         <div className="case-content">

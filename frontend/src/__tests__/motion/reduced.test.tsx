@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Marquee, Odometer, Reveal, Scramble, SplitTitle, TextLoop, TiltSurface } from "../../motion";
+import { Marquee, Odometer, Reveal, Scramble, SplitTitle, TextLoop } from "../../motion";
 import { FINE, REDUCED, Wrap, find, installMatchMedia } from "./helpers";
 
 /*
@@ -84,17 +84,6 @@ describe("under reduced motion", () => {
     expect(find(container, ".marquee").className).not.toContain("is-running");
     expect(container.querySelector("button")).toBeNull();
   });
-
-  it("TiltSurface stays off, even on a fine pointer", () => {
-    const { container } = render(
-      <Wrap>
-        <TiltSurface visual={<figure>f</figure>}>
-          <p>content</p>
-        </TiltSurface>
-      </Wrap>,
-    );
-    expect(find(container, ".tilt-surface").hasAttribute("data-tilt")).toBe(false);
-  });
 });
 
 describe("with motion allowed (for contrast)", () => {
@@ -128,18 +117,6 @@ describe("with motion allowed (for contrast)", () => {
     );
     expect(container.querySelector(".odometer-slot")).toBeNull();
     expect(find(container, ".odometer-digits").textContent).toBe("13");
-  });
-
-  it("TiltSurface switches on for a fine pointer", () => {
-    media.set([FINE]);
-    const { container } = render(
-      <Wrap>
-        <TiltSurface visual={<figure>f</figure>}>
-          <p>content</p>
-        </TiltSurface>
-      </Wrap>,
-    );
-    expect(find(container, ".tilt-surface").getAttribute("data-tilt")).toBe("on");
   });
 
   it("switching reduced motion on mid-visit stops the marquee", () => {

@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CaseCard } from "../components/work/CaseCard";
 import { isOngoing, stackLine } from "../components/work/workUtils";
 import { projectNumber } from "../stats";
 import type { ProjectSummary } from "../types";
-import { FINE, REDUCED, Wrap, find, installMatchMedia } from "./motion/helpers";
+import { Wrap, find } from "./motion/helpers";
 
 const project: ProjectSummary = {
   slug: "dms",
@@ -23,13 +23,6 @@ const project: ProjectSummary = {
     { label: "Live demo", url: "" },
   ],
 };
-
-let media: ReturnType<typeof installMatchMedia> | null = null;
-
-afterEach(() => {
-  media?.restore();
-  media = null;
-});
 
 const renderCard = (p: ProjectSummary = project, onOpen = vi.fn()) => {
   const view = render(
@@ -128,28 +121,15 @@ describe("CaseCard", () => {
     expect(find(container, ".case-cell")).toHaveAttribute("data-reveal");
   });
 
-  it("tilts only for a fine pointer with motion allowed", () => {
-    media = installMatchMedia([FINE]);
-    const fine = renderCard();
-    expect(find(fine.card, ".tilt-surface")).toHaveAttribute("data-tilt", "on");
-    fine.unmount();
-
-    media.set([FINE, REDUCED]);
-    const reduced = renderCard();
-    expect(find(reduced.card, ".tilt-surface")).not.toHaveAttribute("data-tilt");
-    reduced.unmount();
-
-    media.set([]);
-    const coarse = renderCard();
-    expect(find(coarse.card, ".tilt-surface")).not.toHaveAttribute("data-tilt");
-  });
-
-  it("tilts only what is drawn on the figure: not the plate, not the text", () => {
+  it("locks on with decorative marks on the figure, and nothing tracks the cursor", () => {
     const { card } = renderCard();
-    const visual = find(card, ".tilt-visual");
-    expect(visual.contains(find(card, ".case-content"))).toBe(false);
-    expect(visual.contains(find(card, ".case-figure-line"))).toBe(true);
-    expect(find(card, ".case-figure").contains(visual)).toBe(true);
+    const lock = find(card, ".case-lock");
+    expect(lock).toHaveAttribute("aria-hidden", "true");
+    expect(lock.children).toHaveLength(4);
+    expect(find(card, ".case-figure").contains(lock)).toBe(true);
+    fireEvent.pointerMove(find(card, ".case-figure"), { clientX: 40, clientY: 40 });
+    expect(card.querySelector(".tilt-surface, .case-light, .case-glow")).toBeNull();
+    expect(find(card, ".case-figure").getAttribute("style") ?? "").not.toMatch(/--[mv][xy]/);
   });
 });
 

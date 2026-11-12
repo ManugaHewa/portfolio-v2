@@ -9,9 +9,6 @@ import { MotionPauseContext, usePrefersReducedMotion } from "./hooks";
 /** The site's one easing curve, the same as --ease-out in tokens.css. */
 export const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-/** Tilt and magnetic springs: firm enough that nothing wobbles after the cursor stops. */
-export const TILT_SPRING = { stiffness: 260, damping: 26 };
-
 // Defined once in ./hooks (it is public: the app shell and the contact form
 // use it too) and passed on here for the primitives that import it from here.
 export { useIsomorphicLayoutEffect } from "./hooks";

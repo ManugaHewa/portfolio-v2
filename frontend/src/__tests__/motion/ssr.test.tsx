@@ -15,7 +15,6 @@ import {
   SectionHead,
   SplitTitle,
   TextLoop,
-  TiltSurface,
 } from "../../motion";
 import { Wrap, find } from "./helpers";
 
@@ -117,17 +116,6 @@ describe("server output carries the finished text", () => {
     expect(items[0].style.getPropertyValue("--pos")).toBe("0");
     expect(items[1].style.getPropertyValue("--pos")).toBe("1");
   });
-
-  it("TiltSurface writes no transform into the HTML", () => {
-    const dom = serverDom(
-      <TiltSurface visual={<figure>f</figure>}>
-        <p>content</p>
-      </TiltSurface>,
-    );
-    const visual = find(dom, ".tilt-visual");
-    expect(visual.style.transform === "" || visual.style.transform === "none").toBe(true);
-    expect(find(dom, ".tilt-surface").hasAttribute("data-tilt")).toBe(false);
-  });
 });
 
 describe("hydration", () => {
@@ -148,9 +136,6 @@ describe("hydration", () => {
         <Magnetic>
           <a href="#work-index">See the work</a>
         </Magnetic>
-        <TiltSurface visual={<figure>f</figure>}>
-          <p>content</p>
-        </TiltSurface>
         <Marquee items={["TypeScript", "React"]} label="Technologies" />
       </Wrap>
     );

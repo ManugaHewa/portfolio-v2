@@ -1,7 +1,9 @@
-import { SectionHead } from "../../motion";
+import { useRef } from "react";
+import { PIN_QUERY, SectionHead, useMediaQuery } from "../../motion";
 import { Scene } from "../Scene";
 import { CaseCard } from "./CaseCard";
 import { OtherWork } from "./OtherWork";
+import { useCaseStack } from "./useCaseStack";
 import type { ProjectSummary } from "../../types";
 
 /**
@@ -47,6 +49,12 @@ function CaseSkeleton() {
  * pairings (7 and 5, 5 and 7, 6 and 6), so no row repeats the one above it.
  * The two cards in a row share one figure height and one bottom edge.
  *
+ * On a screen big enough to pin (PIN_QUERY, the same query in work.css) the
+ * grid becomes a deck instead: one wide card per row, each sticking a little
+ * lower than the last, so each slides up over the one before as the visitor
+ * scrolls (useCaseStack.ts). CSS owns that layout; the hook adds the
+ * covered cards' shrink and keeps a reached card on top.
+ *
  * The field scene is pinned behind the section one viewport tall rather
  * than stretched over all of it: a canvas the height of the section would
  * mean a drawing buffer several screens tall for a backdrop you only ever
@@ -54,6 +62,8 @@ function CaseSkeleton() {
  */
 export function Work({ cases, otherWork, loading, error, onOpen }: WorkProps) {
   const empty = cases.length === 0 && otherWork.length === 0;
+  const gridRef = useRef<HTMLDivElement>(null);
+  useCaseStack(gridRef, useMediaQuery(PIN_QUERY));
 
   return (
     <section className="section work" id="work" aria-labelledby="work-heading">
@@ -92,7 +102,7 @@ export function Work({ cases, otherWork, loading, error, onOpen }: WorkProps) {
         {!loading && !error && empty && <p className="work-state">No projects to show yet.</p>}
 
         {cases.length > 0 && (
-          <div className="case-grid">
+          <div className="case-grid" ref={gridRef}>
             {cases.map((p, i) => (
               <CaseCard key={p.slug} project={p} index={i} onOpen={onOpen} />
             ))}

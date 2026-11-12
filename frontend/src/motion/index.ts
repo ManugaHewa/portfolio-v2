@@ -19,8 +19,6 @@ export { Odometer } from "./Odometer";
 export type { OdometerProps } from "./Odometer";
 export { Reveal } from "./Reveal";
 export type { RevealProps, RevealTag } from "./Reveal";
-export { TiltSurface } from "./TiltSurface";
-export type { TiltSurfaceHandle, TiltSurfaceProps } from "./TiltSurface";
 export { Magnetic } from "./Magnetic";
 export type { MagneticProps } from "./Magnetic";
 export { Marquee } from "./Marquee";

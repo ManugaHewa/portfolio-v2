@@ -2,11 +2,9 @@
  * Work: the case studies and the other work (redesign SPEC.md, section 5.3).
  *
  * Each case card is one surface: its figure is the top edge, its text
- * below. The figure's plate stays put and only what is drawn on it tilts.
- * The spotlight and the glow border are drawn on the figure and follow the
- * cursor through --vx / --vy, which TiltSurface writes on its root; both
- * show only while the tilt is live (.tilt-surface[data-tilt]), and the glow
- * also shows, still, while anything in the card has keyboard focus.
+ * below. Hover or keyboard focus locks on to the figure: corner marks close
+ * in, a sweep runs along the scale, the number fills with ember. Nothing
+ * follows the cursor; the same state shows for the mouse and the keyboard.
  *
  * The figure's base look (.case-figure, without .case-card around it) is
  * shared with the head of the dialog (dialog.css), so the morph between the
@@ -126,6 +124,57 @@
   border-color: var(--line-strong);
 }
 
+/* --------------------------------------------------------------- deck */
+
+/* On a screen big enough to pin (PIN_QUERY in motion/hooks.ts) the grid
+   becomes a deck: one wide card per row, each sticking 14px lower than the
+   one before, so each slides up over the last as the page scrolls. The gap
+   is the scroll each card holds for. Every card has one height, which is
+   what lets useCaseStack.ts work out where each first sticks. The covered
+   card's shrink and --cover come from there; the shade is drawn here. */
+@media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
+  .case-grid {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 36svh;
+  }
+
+  .case-grid > .case-cell.case-cell {
+    grid-column: 1 / -1;
+    position: sticky;
+    top: calc(var(--header-h) + 24px + var(--n, 0) * 14px);
+    height: min(560px, calc(100svh - var(--header-h) - 48px - 5 * 14px));
+  }
+
+  .case-grid .case-card {
+    flex-direction: row;
+    transform-origin: 50% 0;
+    background: var(--surface-1);
+  }
+
+  .case-grid .case-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border-radius: inherit;
+    background: var(--bg);
+    opacity: calc(var(--cover, 0) * 0.6);
+    pointer-events: none;
+  }
+
+  .case-grid .case-card > .case-figure {
+    width: 40%;
+    height: auto;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+
+  .case-grid .case-content {
+    padding-top: var(--pad);
+    overflow: hidden;
+  }
+}
+
 /* ------------------------------------------------------------- figure */
 
 /* The plate. Its corners are set in style (workUtils.ts, FIGURE_RADIUS) so
@@ -141,8 +190,8 @@
 }
 
 /* In a card: flush with the card's top edge, with a hairline under it.
-   Above the button's stretched target, so the tilt sees the cursor; a click
-   on it opens the case study too. In one column it is as tall as what it
+   Above the button's stretched target; a click on it opens the case study
+   too. In one column it is as tall as what it
    shows; from 960px every card's figure has one height, so the two cards
    in a row line up. */
 .case-card > .case-figure {
@@ -157,12 +206,6 @@
   .case-card > .case-figure {
     height: clamp(252px, 19.5vw, 280px);
   }
-}
-
-.case-figure-tilt,
-.case-figure-tilt > .tilt-visual {
-  display: grid;
-  border-radius: inherit;
 }
 
 /* The number at the top left, what the project is along the bottom: the
@@ -190,6 +233,20 @@
   line-height: 0.8;
   letter-spacing: -0.04em;
   color: rgba(233, 142, 73, 0.3);
+}
+
+/* For the lock-on: the same tint as a gradient clipped to the glyphs, half
+   solid ember, half tint, parked on the tint. Moving it fills the number
+   from the left. Only where text clipping exists; elsewhere the colour
+   above stays. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .case-card .case-figure-num::before {
+    background: linear-gradient(90deg, var(--ember) 0 50%, rgba(233, 142, 73, 0.3) 50% 100%) 100% 0 / 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: background-position 520ms var(--ease-out);
+  }
 }
 
 /* A calibration scale along the top right: fine ticks every 8px, a longer
@@ -235,50 +292,122 @@
   object-fit: cover;
 }
 
-/* The cursor's spotlight on the plate. */
-.case-light {
+/* The lock-on. Four corner marks, parked outside the plate and invisible,
+   close in to frame the drawing; a short ember sweep runs once along the
+   calibration scale; the number fills (above). Hover only where a real
+   hover exists, so a tap on a phone does not leave it stuck on; keyboard
+   focus anywhere in the card shows it too. */
+.case-lock {
+  position: absolute;
+  inset: calc(var(--pad, var(--s6)) * 0.5);
+  pointer-events: none;
+}
+
+.case-lock > span {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 0 solid var(--ember);
+  opacity: 0;
+  transition:
+    transform 420ms var(--ease-out),
+    opacity 240ms var(--ease-out);
+}
+
+.case-lock > span:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-width: 2px 0 0 2px;
+  transform: translate(-10px, -10px);
+}
+
+.case-lock > span:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-width: 2px 2px 0 0;
+  transform: translate(10px, -10px);
+}
+
+.case-lock > span:nth-child(3) {
+  bottom: 0;
+  right: 0;
+  border-width: 0 2px 2px 0;
+  transform: translate(10px, 10px);
+}
+
+.case-lock > span:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 2px 2px;
+  transform: translate(-10px, 10px);
+}
+
+/* The sweep: a bright band on the scale, parked off its left end. */
+.case-scale::after {
+  content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(260px circle at var(--vx, 50%) var(--vy, 50%), rgba(106, 185, 231, 0.08), transparent 70%);
+  background: linear-gradient(90deg, transparent, var(--ember) 45% 55%, transparent) -60% 0 / 40% 100% no-repeat;
   opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-2) var(--ease-out);
 }
 
-/* A 1px ring over the figure's edge: sky where the cursor is, the plain
-   hairline elsewhere. The mask keeps only the ring (the padding box is cut
-   out of the border box). */
-.case-glow {
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: var(--sky-line);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box exclude,
-    linear-gradient(#000 0 0);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity var(--dur-2) var(--ease-out);
+@media (hover: hover) {
+  .case-card:hover .case-lock > span {
+    opacity: 1;
+    transform: none;
+  }
+
+  .case-card:hover .case-figure-num::before {
+    background-position: 0 0;
+  }
+
+  .case-card:hover .case-scale::after {
+    animation: case-sweep 900ms var(--ease-out) both;
+  }
 }
 
-/* Keyboard focus anywhere in the card: the ring, still. */
-.case-card:focus-within .case-glow {
+/* Arrived at from a skill's number (or a work index row): the card shows
+   the same lock-on, so the eye finds it. */
+.case-card:target .case-lock > span,
+.case-card:focus-within .case-lock > span {
   opacity: 1;
+  transform: none;
 }
 
-/* The live effect, only while TiltSurface is running. */
-.case-figure-tilt[data-tilt]:hover .case-light {
-  opacity: 1;
+.case-card:target .case-figure-num::before,
+.case-card:focus-within .case-figure-num::before {
+  background-position: 0 0;
 }
 
-.case-figure-tilt[data-tilt]:hover .case-glow {
-  opacity: 1;
-  background: radial-gradient(240px circle at var(--vx, 50%) var(--vy, 50%), var(--sky), var(--line) 70%);
+.case-card:focus-within .case-scale::after {
+  animation: case-sweep 900ms var(--ease-out) both;
+}
+
+@keyframes case-sweep {
+  from {
+    opacity: 1;
+    background-position: -60% 0;
+  }
+  80% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    background-position: 160% 0;
+  }
+}
+
+/* Reduced motion: the same locked-on state, arriving at once and without the
+   sweep. */
+@media (prefers-reduced-motion: reduce) {
+  .case-lock > span,
+  .case-card .case-figure-num::before {
+    transition: none;
+  }
+
+  .case-card .case-scale::after {
+    animation: none !important;
+  }
 }
 
 /* ------------------------------------------------------------ content */
@@ -602,6 +731,23 @@
   background: var(--surface-1);
 }
 
+/* Arrived at from a skill's number: the row's tint fades out once, so the
+   eye finds it, and its number stays ember while it is the target. */
+@media (prefers-reduced-motion: no-preference) {
+  .other-row:target {
+    animation: row-arrive 1.8s var(--ease-out);
+  }
+}
+
+@keyframes row-arrive {
+  from {
+    background-color: rgba(233, 142, 73, 0.14);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
 .other-num {
   grid-row: 1;
   font-family: var(--font-mono);
@@ -615,7 +761,8 @@
 }
 
 .other-row:hover .other-num,
-.other-row:focus-within .other-num {
+.other-row:focus-within .other-num,
+.other-row:target .other-num {
   color: var(--ember);
 }
 
