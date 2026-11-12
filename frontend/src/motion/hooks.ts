@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 /**
  * The one query that decides whether the page pins (the hero stage, the
@@ -148,6 +148,53 @@ export function useActiveSection(ids: string[]): string | null {
   }, [key]);
 
   return active;
+}
+
+/**
+ * Whether an entrance should stand in its finished state: true once `amount`
+ * of the element has come into view, false again only when the element has
+ * gone back below the bottom of the viewport. So every scroll down plays the
+ * entrance again, and scrolling up past something that has played never
+ * hides it in front of the visitor: leaving through the top keeps it shown,
+ * and the reset happens out of sight, below the fold.
+ *
+ * False on the server and until the observer first reports, which is the
+ * prerendered (hidden) state, so hydration agrees.
+ */
+export function useReplayInView(ref: RefObject<Element>, amount = 0.2): boolean {
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver !== "function") {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          // An element too tall for `amount` of it ever to fit counts once
+          // it fills that share of the viewport.
+          const viewH = entry.rootBounds?.height ?? window.innerHeight;
+          const tall = (entry.boundingClientRect?.height ?? 0) * amount > viewH;
+          if (entry.isIntersecting && (entry.intersectionRatio >= amount * 0.99 || tall)) {
+            setShown(true);
+          } else if (!entry.isIntersecting) {
+            // Below the viewport (the visitor scrolled back up): re-arm. Above
+            // it (scrolled on past): leave it as it is.
+            const top = entry.boundingClientRect?.top ?? 0;
+            const bottom = entry.rootBounds?.bottom ?? window.innerHeight;
+            if (top >= bottom) setShown(false);
+          }
+        }
+      },
+      { threshold: [0, amount, 0.5, 1].filter((t, i, a) => a.indexOf(t) === i) },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [ref, amount]);
+
+  return shown;
 }
 
 export interface MotionPause {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { animate, m, useInView, useMotionValue, useTransform } from "./m";
+import { animate, m, useMotionValue, useTransform } from "./m";
 import type { MotionValue } from "./m";
-import { useHydrated, useMotionAllowed } from "./hooks";
+import { useHydrated, useMotionAllowed, useReplayInView } from "./hooks";
 import { useIsomorphicLayoutEffect } from "./internal";
 import { cx } from "../lib/cx";
 
@@ -52,7 +52,9 @@ const digitAt = (value: number, place: number) => Math.floor(value / place) % 10
  * the number comes into view. A number already on screen at that moment
  * keeps its plain digits: the visitor has read it, and any roll would first
  * have to show a wrong value (a spin to 13 passes through 03). Under reduced
- * motion or "Pause motion" the final digits simply stay too. The reel faces
+ * motion or "Pause motion" the final digits simply stay too. Once the number
+ * has gone back below the fold (the visitor scrolled up past it), its reels
+ * return to 0 out of sight, so the next scroll down rolls it again. The reel faces
  * are drawn by CSS (motion.css), so the page text stays the number itself.
  */
 export function Odometer({ value, className }: OdometerProps) {
@@ -61,7 +63,8 @@ export function Odometer({ value, className }: OdometerProps) {
   const hydrated = useHydrated();
   const allowed = useMotionAllowed();
   const count = useMotionValue(target);
-  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const inView = useReplayInView(ref, 0.6);
+  const wasInView = useRef(false);
   const decided = useRef(false);
   // false: plain digits. true: reels, waiting at 0 for the first view.
   const [reels, setReels] = useState(false);
@@ -78,6 +81,18 @@ export function Odometer({ value, className }: OdometerProps) {
     count.jump(0);
     setReels(true);
   }, [hydrated, allowed, target, count]);
+
+  // Re-armed below the fold: back to 0 where nobody sees it, ready to roll.
+  useEffect(() => {
+    if (inView) {
+      wasInView.current = true;
+      return;
+    }
+    if (!wasInView.current || !allowed || target === 0) return;
+    wasInView.current = false;
+    count.jump(0);
+    setReels(true);
+  }, [inView, allowed, target, count]);
 
   const armed = reels && inView;
 

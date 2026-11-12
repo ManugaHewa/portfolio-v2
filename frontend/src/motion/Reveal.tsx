@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { m } from "./m";
+import { useReplayInView } from "./hooks";
 import { EASE_OUT, useInstantMotion } from "./internal";
 
 export type RevealTag = "div" | "li" | "article" | "section" | "ul" | "ol" | "span";
@@ -19,7 +21,9 @@ export interface RevealProps {
 }
 
 /**
- * An entrance on first view: rise and fade, staggered within a group. Each
+ * An entrance each time it is scrolled down to: rise and fade, staggered
+ * within a group, reset out of sight when the visitor scrolls back above it
+ * (useReplayInView). Each
  * element watches its own visibility, so a group that arrives together
  * staggers by index and one that arrives row by row does not wait for the
  * rows above it.
@@ -42,20 +46,23 @@ export function Reveal({
   children,
 }: RevealProps) {
   const instant = useInstantMotion();
+  const ref = useRef<HTMLDivElement>(null);
+  const shown = useReplayInView(ref, 0.2);
   // Every tag in RevealTag takes the same motion props; the cast only names one.
   const Tag = m[as] as typeof m.div;
 
   return (
     <Tag
       className={className}
+      ref={ref}
       id={id}
       style={style}
       data-reveal=""
       initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
+      animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y }}
+      // The reset happens below the fold, so it lands at once.
       transition={
-        instant ? { duration: 0 } : { duration: 0.6, ease: EASE_OUT, delay: index * stagger }
+        instant || !shown ? { duration: 0 } : { duration: 0.6, ease: EASE_OUT, delay: index * stagger }
       }
     >
       {children}

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useInView } from "./m";
-import { useMotionAllowed } from "./hooks";
+import { useMotionAllowed, useReplayInView } from "./hooks";
 import { clamp } from "./internal";
 import { cx } from "../lib/cx";
 
@@ -44,7 +43,9 @@ export function scrambleFrame(chars: string[], progress: number): string {
 }
 
 /**
- * A mono label that decodes left to right, once. The final text is what the
+ * A mono label that decodes left to right: once on mount, or (trigger
+ * "inView" or an `active` flag) each time it is reached, re-armed when the
+ * visitor scrolls back above it. The final text is what the
  * server renders, what screen readers get and, outside the decode itself,
  * the only copy in the DOM.
  *
@@ -62,21 +63,28 @@ export function Scramble({ text, className, trigger = "mount" }: ScrambleProps) 
   const rootRef = useRef<HTMLSpanElement>(null);
   const outRef = useRef<HTMLSpanElement>(null);
   const allowed = useMotionAllowed();
-  const inView = useInView(rootRef, { once: true, amount: 0.6 });
+  const inView = useReplayInView(rootRef, 0.6);
   const [running, setRunning] = useState(false);
   const done = useRef(false);
 
   const fire = typeof trigger === "object" ? trigger.active : trigger === "inView" ? inView : true;
+  // Anything but "mount" can fire again: back out of view, or the pipeline's
+  // stage scrolled back, re-arms the decode.
+  const rearm = trigger !== "mount";
 
   useEffect(() => {
     if (!allowed) {
       setRunning(false);
       return;
     }
-    if (!fire || done.current) return;
+    if (!fire) {
+      if (rearm) done.current = false;
+      return;
+    }
+    if (done.current) return;
     done.current = true;
     setRunning(true);
-  }, [allowed, fire]);
+  }, [allowed, fire, rearm]);
 
   useEffect(() => {
     const out = outRef.current;

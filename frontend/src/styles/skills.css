@@ -148,6 +148,29 @@
   color: var(--sky-hover);
 }
 
+/* One project lit across the columns: its rows keep full colour and an
+   ember number, every other row steps back to the quiet text colour. */
+.skills-row {
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.skills-name,
+.skills-number {
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.skills-groups[data-hot] .skills-row:not(.is-related) .skills-name {
+  color: var(--text-3);
+}
+
+.skills-groups[data-hot] .skills-row.is-related .skills-number {
+  color: var(--ember);
+}
+
+.skills-groups[data-hot] .skills-row.is-related .skills-leader {
+  border-bottom-color: var(--ember-line);
+}
+
 /* Evidence that is not a project on the page ("coursework" and the like). */
 .skills-note {
   color: var(--text-3);

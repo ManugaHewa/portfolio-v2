@@ -1,6 +1,7 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useMemo, useRef } from "react";
 import { m } from "./m";
 import type { Variants } from "./m";
+import { useReplayInView } from "./hooks";
 import { EASE_OUT, useInstantMotion } from "./internal";
 
 export type SplitTitleTag = "h1" | "h2" | "h3";
@@ -17,7 +18,8 @@ const STAGGER = 0.07;
 
 /**
  * A heading split into words, each in a mask, so the words slide up into
- * place once the heading is in view. The spaces stay real text nodes between
+ * place each time the heading is scrolled down to (reset out of sight when
+ * the visitor scrolls back above it). The spaces stay real text nodes between
  * the masks, so the heading's text and accessible name are the sentence and
  * a long title still wraps between words.
  *
@@ -30,12 +32,14 @@ const STAGGER = 0.07;
 export function SplitTitle({ as = "h2", id, className, text }: SplitTitleProps) {
   const words = text.split(/\s+/).filter(Boolean);
   const instant = useInstantMotion();
+  const ref = useRef<HTMLHeadingElement>(null);
+  const shown = useReplayInView(ref, 0.6);
   // m.h1 / m.h2 / m.h3 share one props shape; the cast only names one of them.
   const Tag = m[as] as typeof m.h2;
 
   const word = useMemo<Variants>(
     () => ({
-      hidden: { y: "120%" },
+      hidden: { y: "120%", transition: { duration: 0 } },
       visible: (i: number) => ({
         y: "0%",
         transition: instant
@@ -48,11 +52,11 @@ export function SplitTitle({ as = "h2", id, className, text }: SplitTitleProps) 
 
   return (
     <Tag
+      ref={ref}
       id={id}
       className={className}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.6 }}
+      animate={shown ? "visible" : "hidden"}
     >
       {words.map((w, i) => (
         <Fragment key={i}>

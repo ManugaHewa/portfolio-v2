@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { NUMBERING, Skills, evidenceProject, projectAnchor } from "../components/Skills";
+import { NUMBERING, Skills, evidenceProject, projectAnchor, rowProject } from "../components/Skills";
 import { CATEGORIES, SKILLS, skillsIn } from "../skills";
 import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
 import { Wrap } from "./motion/helpers";
@@ -101,5 +101,40 @@ describe("Skills section", () => {
     const { container } = renderSkills();
     expect(container.querySelector("meter, progress, [role='meter'], [role='progressbar']")).toBeNull();
     expect(container.textContent).not.toMatch(/\blevel\b|\/\s?5\b/i);
+  });
+});
+
+describe("skill-to-project highlight", () => {
+  it("lights every row that names the same project, and clears on leave", () => {
+    const { container } = renderSkills();
+    const groups = container.querySelector<HTMLElement>(".skills-groups")!;
+    const row = container.querySelector<HTMLElement>(".skills-row[data-project]")!;
+    const slug = row.dataset.project!;
+    const expected = SKILLS.filter((s) => evidenceProject(s.evidence)?.slug === slug).length;
+
+    fireEvent.pointerOver(row.querySelector(".skills-name")!);
+    expect(groups).toHaveAttribute("data-hot", slug);
+    const lit = container.querySelectorAll(".skills-row.is-related");
+    expect(lit).toHaveLength(expected);
+    for (const r of lit) expect((r as HTMLElement).dataset.project).toBe(slug);
+
+    fireEvent.pointerLeave(groups);
+    expect(groups).not.toHaveAttribute("data-hot");
+    expect(container.querySelector(".skills-row.is-related")).toBeNull();
+  });
+
+  it("follows keyboard focus on a project number", () => {
+    const { container } = renderSkills();
+    const link = container.querySelector<HTMLAnchorElement>(".skills-number")!;
+    fireEvent.focus(link);
+    expect(container.querySelector(".skills-groups")).toHaveAttribute(
+      "data-hot",
+      link.closest<HTMLElement>("[data-project]")!.dataset.project!,
+    );
+  });
+
+  it("reads no project outside a row tied to one", () => {
+    expect(rowProject(null)).toBeNull();
+    expect(rowProject(document.createElement("div"))).toBeNull();
   });
 });
