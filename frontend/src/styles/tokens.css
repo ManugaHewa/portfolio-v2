@@ -1,9 +1,10 @@
 /*
  * Design tokens for every page, the privacy page and the 404 included.
  *
- * The colours are the old site's, unchanged: the owner asked to keep the
- * scheme. Each accent has a fixed job (redesign SPEC.md, section 3), and the
- * jobs matter more than the values. Ember marks the one thing to press and a
+ * The ink is a neutral near-black (the owner asked for black over the old
+ * blue-teal); the two accents are the old site's. Each accent has a fixed
+ * job (redesign SPEC.md, section 3), and the jobs matter more than the
+ * values. Ember marks the one thing to press and a
  * few live indicators; sky marks links, focus, labels and linework. Depth
  * comes from the ink ramp, not from shadows.
  */
@@ -11,24 +12,24 @@
   color-scheme: dark;
 
   /* Ink. Each surface is a measured step brighter than the one under it. */
-  --bg: #0d1518;
-  --surface-1: #131c20;
-  --surface-2: #1a262a;
-  --surface-3: #223035;
+  --bg: #08090b;
+  --surface-1: #0f1113;
+  --surface-2: #16181b;
+  --surface-3: #1e2124;
 
   /* Hairlines on the same ink. --line-control is the one new value: form
-     controls need a 3:1 border (3.74:1 on surface-2, 4.17:1 on surface-1),
+     controls need a 3:1 border (3.61:1 on surface-2, 3.84:1 on surface-1),
      which none of the decorative hairlines reach. */
-  --line-soft: #1d292e;
-  --line: #2a393f;
-  --line-strong: #3c4d54;
-  --line-control: #6b8088;
+  --line-soft: #17191c;
+  --line: #24272b;
+  --line-strong: #363a3f;
+  --line-control: #6b7178;
 
-  /* --text-3 is 4.62:1 at worst (on surface-3), so it is only ever used on
-     the plain ink ramp, never on a tinted or spotlit surface. */
-  --text: #e7eaeb;
-  --text-2: #aab6bb;
-  --text-3: #89999f;
+  /* --text-3 is 5.29:1 at worst (on surface-3), so it is only ever used on
+     the plain ink ramp, never on a tinted surface. */
+  --text: #edeeef;
+  --text-2: #b1b5ba;
+  --text-3: #8f949a;
 
   --ember: #e98e49;
   --ember-hover: #f0ae75;

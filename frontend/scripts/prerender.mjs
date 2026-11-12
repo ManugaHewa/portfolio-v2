@@ -84,7 +84,7 @@ writeFileSync(
     <meta name="robots" content="noindex" />
     <title>Page not found | Manuga Hewa Pathirana</title>
     ${FONT_PRELOAD}
-    <meta name="theme-color" content="#0d1518" />
+    <meta name="theme-color" content="#08090b" />
     ${favicon}
     ${stylesheets.join("\n    ")}
   </head>

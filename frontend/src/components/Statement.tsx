@@ -11,10 +11,10 @@ import type { MotionValue } from "../motion/m";
 export const STATEMENT =
   "Everything on this page runs on code I wrote and a server I host. The project list starts in one TypeScript file, goes through a Postgres database and an Express API, and is written into the page at build time too, with a test in CI that checks the two agree. Here is how that fits together.";
 
-// The two ends of a word's colour: the quiet control ink (4.4:1 on the
-// page, enough for text this large) and the full text colour.
-const DIM = "#6b8088";
-const LIT = "#e7eaeb";
+// The two ends of a word's colour: the quiet control ink (4:1 on the page,
+// past the 3:1 text this large needs) and the full text colour.
+const DIM = "#6b7178";
+const LIT = "#edeeef";
 
 /**
  * One paragraph that reads itself in as the visitor scrolls: each word goes
