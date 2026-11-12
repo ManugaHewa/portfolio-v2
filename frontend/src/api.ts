@@ -3,17 +3,31 @@ import { recordProjectsTiming } from "./lib/liveStats";
 
 const BASE = "/api";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** A request the server answered with an error status, carrying that status. */
+export class HttpError extends Error {
+  constructor(
+    path: string,
+    readonly httpStatus: number,
+  ) {
+    super(`Request to ${path} failed with ${httpStatus}`);
+  }
+}
+
+async function requestWithStatus<T>(path: string, init?: RequestInit): Promise<{ body: T; httpStatus: number }> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
 
   if (!res.ok) {
-    throw new Error(`Request to ${path} failed with ${res.status}`);
+    throw new HttpError(path, res.status);
   }
 
-  return res.json() as Promise<T>;
+  return { body: (await res.json()) as T, httpStatus: res.status };
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  return (await requestWithStatus<T>(path, init)).body;
 }
 
 /** Mirrors the strict Zod schema in backend/src/routes/contact.ts. */
@@ -49,9 +63,12 @@ async function getProjects(): Promise<ProjectSummary[]> {
 export const api = {
   getProjects,
   getProject: (slug: string) => request<ProjectDetail>(`/projects/${slug}`),
-  sendContactMessage: (data: ContactPayload) =>
-    request<{ status: string }>("/contact", {
+  /** Also hands back the HTTP status the server answered with, which the page shows. */
+  sendContactMessage: async (data: ContactPayload): Promise<{ status: string; httpStatus?: number }> => {
+    const { body, httpStatus } = await requestWithStatus<{ status: string }>("/contact", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
+    });
+    return { ...body, httpStatus };
+  },
 };

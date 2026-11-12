@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import {
   AdditiveBlending,
   BackSide,
+  BufferAttribute,
   BufferGeometry,
   CanvasTexture,
   Color,
@@ -24,6 +25,8 @@ import { mountScene } from "../lib/threeScene";
 import type { SceneController, SceneDef } from "../lib/threeScene";
 import { sceneBudget, scaled } from "../lib/sceneQuality";
 import { readScrollVelocity, watchScrollVelocity } from "../lib/scrollVelocity";
+import { hashKey, readConstellation } from "../lib/constellation";
+import { readSend } from "../lib/sendSignal";
 import type { SceneVariant } from "../lib/sceneQuality";
 
 export type { SceneVariant };
@@ -116,6 +119,13 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
      each turning at its own rate, with a shell of particles orbiting
      outside them. Reads as a precision instrument rather than a radar,
      and the differing rates mean the silhouette never repeats.
+
+     It boots when it first appears: the rings fly in from beyond the edge
+     of the frame, spinning, and settle into their gimbals one after the
+     other; the core flares as the last one locks, and the electrons spread
+     out from the centre onto their rings. About 1.4 seconds, run once per
+     mount on the scene's own clock, and never under reduced motion (no
+     scene runs then).
   --------------------------------------------------------------- */
   core: (detail) => {
     const t = makeTracker();
@@ -145,7 +155,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
         const body = new Mesh(
           t.track(new SphereGeometry(R_CORE, SEG_W, SEG_H)),
-          t.track(new MeshBasicMaterial({ color: new Color("#0f171b") }))
+          t.track(new MeshBasicMaterial({ color: new Color("#0e1013") }))
         );
         core.add(body);
 
@@ -183,6 +193,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           )
         );
         core.add(limb);
+        const limbMat = limb.material as MeshBasicMaterial;
 
         // "MH" painted into a texture and hung on the front of the sphere,
         // square to the camera. It sits just proud of the surface, so the
@@ -258,10 +269,15 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           return seg;
         };
 
-        // Lateral (equatorial) and longitudinal (meridian) rings.
-        ring(1.62, outer, SKY, 0.62, [0, 0, 0]);
-        ring(1.34, middle, EMBER, 0.78, [Math.PI / 2, 0, 0]);
-        ring(1.12, inner, SKY, 0.58, [0, 0, Math.PI / 2]);
+        // Lateral (equatorial) and longitudinal (meridian) rings, kept with
+        // their resting opacity and tilt for the boot.
+        const RING_OPACITY = [0.62, 0.78, 0.58];
+        const ringSegs = [
+          ring(1.62, outer, SKY, RING_OPACITY[0], [0, 0, 0]),
+          ring(1.34, middle, EMBER, RING_OPACITY[1], [Math.PI / 2, 0, 0]),
+          ring(1.12, inner, SKY, RING_OPACITY[2], [0, 0, Math.PI / 2]),
+        ];
+        const ringTiltY = ringSegs.map((seg) => seg.rotation.y);
 
         /**
          * Electrons. Each rides its own ring, parented to the gimbal that
@@ -415,6 +431,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           )
         );
         world.add(halo);
+        const haloMat = halo.material as PointsMaterial;
 
         return (time, dt) => {
           const target = Math.min(1, Math.abs(readScrollVelocity()) / 2600);
@@ -435,6 +452,23 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           electrons.forEach((e) => {
             e.g.rotation.y = spin * e.rate + e.phase;
           });
+
+          // The boot. Each ring's flight starts 0.16s after the one outside
+          // it and takes 0.9s, overshooting its gimbal slightly as it locks.
+          if (time < 2.2) {
+            ringSegs.forEach((seg, i) => {
+              const k = Math.min(1, Math.max(0, (time - i * 0.16) / 0.9));
+              const e = easeOutBack(k);
+              seg.scale.setScalar(2.9 - 1.9 * e);
+              seg.rotation.y = ringTiltY[i] + (1 - e) * 2.4;
+              (seg.material as LineBasicMaterial).opacity = RING_OPACITY[i] * Math.min(1, k * 3);
+            });
+            const spread = easeOutCubic(Math.min(1, Math.max(0, (time - 0.95) / 0.55)));
+            electrons.forEach((e) => e.g.scale.setScalar(Math.max(0.001, spread)));
+            // The lock: a short flare on the core's rim.
+            limbMat.opacity = 0.22 + 0.6 * Math.exp(-(((time - 1.22) / 0.13) ** 2));
+            haloMat.opacity = 0.55 * Math.min(1, time / 1.3);
+          }
 
           // The core turns on its own, slowly, so the surface grid reads as
           // a rotating body and not a static decal.
@@ -563,8 +597,160 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           )
         );
         world.add(origin);
+        const originMat = origin.material as PointsMaterial;
 
-        return (time) => {
+        /*
+         * The visitor's message (lib/sendSignal.ts). Pressing send launches
+         * a packet from the side of the section the form is on; it curves
+         * down to the origin and holds there, pulsing, until the server
+         * answers. Then it lands: on success an ember shockwave runs out
+         * across the plane and the origin flares; on a failure a short grey
+         * ring, and nothing goes out. What the server said is written
+         * beside the form; this is the same event, seen.
+         */
+        const glow = softDot();
+        if (glow) t.track(glow);
+        const packetGeo = t.track(new BufferGeometry());
+        packetGeo.setAttribute("position", new Float32BufferAttribute([0, 0, 0], 3));
+        const packetMat = t.track(
+          new PointsMaterial({
+            color: new Color("#ffffff"),
+            size: glow ? 0.55 : 0.16,
+            map: glow,
+            transparent: true,
+            opacity: 0,
+            blending: AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        const packet = new Points(packetGeo, packetMat);
+        packet.visible = false;
+        world.add(packet);
+
+        // Its trail: the last few positions, brightest nearest the packet.
+        const TRAIL = 16;
+        const trailPos = new Float32Array(TRAIL * 3);
+        const trailCol: number[] = [];
+        const emberCol = new Color(EMBER);
+        for (let i = 0; i < TRAIL; i++) {
+          const f = (1 - i / TRAIL) ** 1.6;
+          trailCol.push(emberCol.r * f, emberCol.g * f, emberCol.b * f);
+        }
+        const trailGeo = t.track(new BufferGeometry());
+        const trailAttr = new BufferAttribute(trailPos, 3);
+        trailGeo.setAttribute("position", trailAttr);
+        trailGeo.setAttribute("color", new Float32BufferAttribute(trailCol, 3));
+        const trailMat = t.track(
+          new PointsMaterial({
+            size: glow ? 0.22 : 0.07,
+            map: glow,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0,
+            blending: AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        const trail = new Points(trailGeo, trailMat);
+        trail.frustumCulled = false;
+        trail.visible = false;
+        world.add(trail);
+
+        const burstMat = t.track(
+          new LineBasicMaterial({ color: new Color(EMBER), transparent: true, opacity: 0, depthWrite: false })
+        );
+        const burst = new LineSegments(ringGeo, burstMat);
+        burst.position.y = 0.015;
+        burst.visible = false;
+        world.add(burst);
+
+        // Off to the right and in front, where the form is; in over the
+        // plane; down onto the origin.
+        const FROM = [2.9, 1.9, 2.5];
+        const VIA = [1.4, 2.5, 0.3];
+        const TO = [0, 0.06, 0];
+        const FLY = 1.05;
+        let seen = readSend()?.seq ?? 0;
+        let flight = -1;
+        let answer: { ok: boolean } | null = null;
+        let burstAge = -1;
+        let burstOk = true;
+        let trailCount = 0;
+
+        const place = (k: number, out: number[]) => {
+          const a = (1 - k) * (1 - k);
+          const b = 2 * (1 - k) * k;
+          const c = k * k;
+          for (let i = 0; i < 3; i++) out[i] = a * FROM[i] + b * VIA[i] + c * TO[i];
+        };
+        const at = [0, 0, 0];
+
+        const stepPacket = (dt: number) => {
+          const sent = readSend();
+          if (sent && sent.seq !== seen) {
+            seen = sent.seq;
+            if (sent.event.kind === "launch") {
+              flight = 0;
+              answer = null;
+              trailCount = 0;
+            } else if (flight >= 0) {
+              answer = { ok: sent.event.ok };
+            }
+          }
+
+          if (flight >= 0) {
+            flight += dt;
+            const k = Math.min(1, flight / FLY);
+            place(easeInOutCubic(k), at);
+            packet.visible = true;
+            trail.visible = true;
+            packet.position.set(at[0], at[1], at[2]);
+            // Holding over the origin: a pulse, the way a request waits.
+            packetMat.size = (glow ? 0.55 : 0.16) * (k < 1 ? 1 : 1 + 0.25 * Math.sin(flight * 9));
+            packetMat.opacity = Math.min(1, flight / 0.12);
+            trailMat.opacity = packetMat.opacity * 0.9;
+            trailPos.copyWithin(3, 0, (TRAIL - 1) * 3);
+            trailPos[0] = at[0];
+            trailPos[1] = at[1];
+            trailPos[2] = at[2];
+            trailCount = Math.min(TRAIL, trailCount + 1);
+            trailGeo.setDrawRange(0, trailCount);
+            trailAttr.needsUpdate = true;
+
+            if (k >= 1 && answer) {
+              burstOk = answer.ok;
+              burstAge = 0;
+              burstMat.color.set(burstOk ? EMBER : "#8f949a");
+              burst.visible = true;
+              flight = -1;
+              answer = null;
+              packet.visible = false;
+              trail.visible = false;
+            } else if (flight > FLY + 30) {
+              // No answer worth waiting for: let it go quietly.
+              flight = -1;
+              packet.visible = false;
+              trail.visible = false;
+            }
+          }
+
+          if (burstAge >= 0) {
+            burstAge += dt;
+            const u = Math.min(1, burstAge / (burstOk ? 1.4 : 0.8));
+            const r = 0.2 + easeOutCubic(u) * (burstOk ? 7 : 1.6);
+            burst.scale.set(r, 1, r);
+            burstMat.opacity = (burstOk ? 0.95 : 0.6) * (1 - u);
+            originMat.size = 0.16 * (1 + (burstOk ? 2.2 : 0.4) * (1 - u));
+            if (u >= 1) {
+              burstAge = -1;
+              burst.visible = false;
+              originMat.size = 0.16;
+            }
+          }
+        };
+
+        return (time, dt) => {
+          stepPacket(dt);
           rings.forEach(({ o, m, phase }) => {
             // 0 at the origin, 1 at the far edge of the travel.
             const u = ((time / PERIOD + phase) % 1 + 1) % 1;
@@ -773,6 +959,8 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
         // Three bands: far ones smaller, dimmer and slower.
         const bands: Array<{ g: Group; rate: number }> = [];
+        // Each band's star positions, kept for the constellations.
+        const bandPts: number[][] = [];
         // The page-wide layer, and the only one that is always on screen,
         // so it is the one worth thinning most on a phone.
         const LAYERS: Array<[number, number, number, number]> = [
@@ -811,7 +999,125 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           );
           world.add(grp);
           bands.push({ g: grp, rate: 0.004 + li * 0.004 });
+          bandPts.push(pts);
         });
+
+        /*
+         * Constellations (lib/constellation.ts): while the page points at a
+         * project (a skill row, a case card), the middle band joins one of
+         * its stars per technology that project used into a figure, drawn a
+         * line at a time. The stars are chosen among those on screen, from a
+         * start fixed by the project's name, walking to the nearest unused
+         * star each step, so a project always draws its own shape.
+         */
+        const MAX_STARS = 16;
+        const host = bands[1];
+        const hostPts = bandPts[1];
+        const figPos = new Float32Array((MAX_STARS - 1) * 2 * 3);
+        const figGeo = t.track(new BufferGeometry());
+        const figAttr = new BufferAttribute(figPos, 3);
+        figGeo.setAttribute("position", figAttr);
+        const figMat = t.track(
+          new LineBasicMaterial({ color: new Color(SKY), transparent: true, opacity: 0, depthWrite: false })
+        );
+        const figLines = new LineSegments(figGeo, figMat);
+        figLines.frustumCulled = false;
+        const starPos = new Float32Array(MAX_STARS * 3);
+        const starGeo = t.track(new BufferGeometry());
+        const starAttr = new BufferAttribute(starPos, 3);
+        starGeo.setAttribute("position", starAttr);
+        const starGlow = softDot();
+        if (starGlow) t.track(starGlow);
+        const starMat = t.track(
+          new PointsMaterial({
+            color: new Color(EMBER),
+            size: starGlow ? 0.34 : 0.1,
+            map: starGlow,
+            transparent: true,
+            opacity: 0,
+            blending: AdditiveBlending,
+            depthWrite: false,
+          })
+        );
+        const figStars = new Points(starGeo, starMat);
+        figStars.frustumCulled = false;
+        host?.g.add(figLines, figStars);
+        let figKey: string | null = null;
+        let figCount = 0;
+        let figAge = 0;
+        let figFade = 0;
+
+        const drawFigure = (key: string, want: number) => {
+          const g = host.g;
+          const cos = Math.cos(g.rotation.z);
+          const sin = Math.sin(g.rotation.z);
+          const halfH = Math.tan(((camera.fov / 2) * Math.PI) / 180);
+          // Stars on screen now, by index into the band.
+          const seen: number[] = [];
+          for (let i = 0; i < hostPts.length / 3; i++) {
+            const x = hostPts[i * 3];
+            const y = hostPts[i * 3 + 1];
+            const z = hostPts[i * 3 + 2];
+            const wx = x * cos - y * sin;
+            const wy = x * sin + y * cos + g.position.y;
+            const h = halfH * (camera.position.z - z);
+            if (Math.abs(wx) < h * camera.aspect * 0.86 && Math.abs(wy) < h * 0.8) seen.push(i);
+          }
+          if (seen.length === 0) return 0;
+          const n = Math.min(want, MAX_STARS, seen.length);
+          const chosen = [seen[hashKey(key) % seen.length]];
+          const used = new Set(chosen);
+          while (chosen.length < n) {
+            const last = chosen[chosen.length - 1];
+            let best = -1;
+            let bestD = Infinity;
+            for (const i of seen) {
+              if (used.has(i)) continue;
+              const dx = hostPts[i * 3] - hostPts[last * 3];
+              const dy = hostPts[i * 3 + 1] - hostPts[last * 3 + 1];
+              const d = dx * dx + dy * dy;
+              if (d < bestD) {
+                bestD = d;
+                best = i;
+              }
+            }
+            if (best < 0) break;
+            chosen.push(best);
+            used.add(best);
+          }
+          chosen.forEach((i, k) => {
+            starPos.set([hostPts[i * 3], hostPts[i * 3 + 1], hostPts[i * 3 + 2]], k * 3);
+            if (k > 0) {
+              const j = chosen[k - 1];
+              figPos.set([hostPts[j * 3], hostPts[j * 3 + 1], hostPts[j * 3 + 2]], (k - 1) * 6);
+              figPos.set([hostPts[i * 3], hostPts[i * 3 + 1], hostPts[i * 3 + 2]], (k - 1) * 6 + 3);
+            }
+          });
+          figAttr.needsUpdate = true;
+          starAttr.needsUpdate = true;
+          return chosen.length;
+        };
+
+        const stepFigure = (dt: number) => {
+          if (!host) return;
+          const want = readConstellation();
+          if (want && want.key !== figKey) {
+            figKey = want.key;
+            figCount = drawFigure(want.key, want.count);
+            figAge = 0;
+          } else if (!want) {
+            figKey = null;
+          }
+          figAge += dt;
+          figFade = Math.max(0, Math.min(1, figFade + (figKey ? dt / 0.2 : -dt / 0.35)));
+          // A star every 70ms, each line drawn as its far star arrives.
+          const lit = Math.min(figCount, Math.floor(figAge / 0.07) + 1);
+          starGeo.setDrawRange(0, lit);
+          figGeo.setDrawRange(0, Math.max(0, lit - 1) * 2);
+          starMat.opacity = figFade;
+          figMat.opacity = 0.85 * figFade;
+          figLines.visible = figStars.visible = figFade > 0;
+        };
 
         // Two shooting stars, reused: a lead and the odd follower.
         const glow = softDot();
@@ -841,6 +1147,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
             next = time + 5 + Math.random() * 8;
           }
           meteors.forEach((m) => stepMeteor(m, dt));
+          stepFigure(dt);
         };
       },
     };
@@ -904,6 +1211,14 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
       },
     };
   },
+};
+
+const easeOutCubic = (k: number) => 1 - (1 - k) ** 3;
+const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+/** Past the target and back: a part settling into place. */
+const easeOutBack = (k: number) => {
+  const c = 1.4;
+  return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2;
 };
 
 interface Meteor {

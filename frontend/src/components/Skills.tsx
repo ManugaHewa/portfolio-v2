@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FocusEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Odometer, SectionHead, useMotionAllowed, useReplayInView } from "../motion";
 import { m } from "../motion/m";
 import type { Variants } from "../motion/m";
 import { Scene } from "./Scene";
+import { hideConstellation, showConstellation } from "../lib/constellation";
 import { CATEGORIES, skillsIn } from "../skills";
 import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
 
@@ -97,6 +98,15 @@ export function Skills() {
   const [hot, setHot] = useState<string | null>(null);
   const point = (e: ReactPointerEvent | FocusEvent) => setHot(rowProject(e.target));
   const clear = () => setHot(null);
+
+  // The sky draws the lit project as a constellation, one star per
+  // technology it used (lib/constellation.ts, the starfield in Scene3D).
+  useEffect(() => {
+    const project = hot ? PROJECT_INDEX.find((p) => p.slug === hot) : undefined;
+    if (!project) return;
+    showConstellation(project.slug, project.stackSize);
+    return () => hideConstellation(project.slug);
+  }, [hot]);
 
   return (
     <section className="section skills" id="skills" aria-labelledby="skills-heading">

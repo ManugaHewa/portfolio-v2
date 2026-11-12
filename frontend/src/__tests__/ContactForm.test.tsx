@@ -112,6 +112,22 @@ describe("ContactForm", () => {
     await waitFor(() => expect(screen.getByLabelText(/^name$/i)).toHaveValue("Ada Lovelace"));
   });
 
+  it("says which status the server answered a failed send with", async () => {
+    sendMock.mockRejectedValue(Object.assign(new Error("server"), { httpStatus: 429 }));
+    render(<ContactForm />);
+    fillValid();
+    fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/the server answered 429/i);
+  });
+
+  it("shows the status the server answered a delivered message with", async () => {
+    sendMock.mockResolvedValue({ status: "received", httpStatus: 201 });
+    render(<ContactForm />);
+    fillValid();
+    fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+    expect(await screen.findByText(/the server answered 201 Created/i, {}, { timeout: 3000 })).toBeInTheDocument();
+  });
+
   it("counts characters against the limit the API enforces", () => {
     render(<ContactForm />);
     fill(/^message$/i, "hello");

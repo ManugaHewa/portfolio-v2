@@ -190,6 +190,24 @@
   opacity: 0;
 }
 
+/* The gyroscope in flight to the header (Hero.tsx): fixed, above the work
+   index and the header, placed and sized from script on each scroll change. */
+.gyro-flight {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 70;
+  visibility: hidden;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.gyro-flight .gyro-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 /* -------------------------------------------------------- the work index */
 
 .work-index {

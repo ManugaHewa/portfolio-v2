@@ -3,6 +3,7 @@ import { useRef } from "react";
 import type { CSSProperties } from "react";
 import { PIN_QUERY, Reveal, morphId, useMediaQuery, useMotionAllowed } from "../../motion";
 import { SCREENSHOTS } from "../../screenshots";
+import { hideConstellation, showConstellation } from "../../lib/constellation";
 import type { ProjectSummary } from "../../types";
 import type { OpenProject } from "./Work";
 import { FigureContents } from "./CaseFigure";
@@ -57,7 +58,17 @@ export function CaseCard({ project: p, index, onOpen }: CaseCardProps) {
 
   return (
     <Reveal className="case-cell" index={index % 2} stagger={0.08} y={24} style={{ "--n": index } as CSSProperties}>
-      <article className="case-card" id={id} aria-labelledby={titleId}>
+      {/* Pointing at the card draws its project in the sky behind
+          (lib/constellation.ts): a star per technology it used. */}
+      <article
+        className="case-card"
+        id={id}
+        aria-labelledby={titleId}
+        onPointerEnter={() => showConstellation(p.slug, p.stack.length)}
+        onPointerLeave={() => hideConstellation(p.slug)}
+        onFocus={() => showConstellation(p.slug, p.stack.length)}
+        onBlur={() => hideConstellation(p.slug)}
+      >
         {/* A pointer can open the case study from the picture too. It sits
             above the button's stretched target; the button stays the one control for the keyboard and for a
             screen reader, and is what focus returns to. */}

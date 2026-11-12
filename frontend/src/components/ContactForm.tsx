@@ -4,8 +4,20 @@ import type { Variants } from "../motion/m";
 import { Magnetic, Scramble, useIsomorphicLayoutEffect, useMotionAllowed } from "../motion";
 import { api } from "../api";
 import { SendTrace } from "./SendTrace";
+import { signalSend } from "../lib/sendSignal";
 import { Turnstile, TURNSTILE_SITE_KEY } from "./Turnstile";
 import { RETENTION, SITE } from "../site";
+
+// The reason phrases for the answers the contact route gives.
+const STATUS_TEXT: Record<number, string> = {
+  200: "OK",
+  201: "Created",
+  400: "Bad Request",
+  413: "Payload Too Large",
+  429: "Too Many Requests",
+  500: "Internal Server Error",
+  503: "Service Unavailable",
+};
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -133,6 +145,8 @@ function SubmitLabel({ label }: { label: string }) {
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
+  // The HTTP status the server answered the last send with, shown as is.
+  const [httpCode, setHttpCode] = useState<number | null>(null);
   const [values, setValues] = useState<Fields>(EMPTY);
   // Errors surface once a field has been left or a submit has been attempted,
   // rather than shouting at someone who has only just started typing.
@@ -222,6 +236,9 @@ export function ContactForm() {
     setTurnstileMissing(false);
 
     setStatus("sending");
+    setHttpCode(null);
+    // The contact scene launches its packet (lib/sendSignal.ts).
+    signalSend({ kind: "launch" });
     // Validation has genuinely already passed at this point, so the first
     // step is shown as complete rather than pending.
     setStage(0);
@@ -237,7 +254,7 @@ export function ContactForm() {
         setTurnstileToken(null);
         setTurnstileRound((round) => round + 1);
       }
-      await api.sendContactMessage({
+      const answer = await api.sendContactMessage({
         ...values,
         website,
         elapsedMs: Date.now() - shownAt.current,
@@ -245,6 +262,9 @@ export function ContactForm() {
       });
       // The server answered, which means it parsed and persisted. Walk the
       // last two hops at a readable pace before switching to the success view.
+      const code = answer.httpStatus ?? null;
+      setHttpCode(code);
+      signalSend({ kind: "land", ok: true, code });
       setDelivered(true);
       setStage(2);
       await new Promise((r) => setTimeout(r, 260));
@@ -258,7 +278,12 @@ export function ContactForm() {
       setValues(EMPTY);
       setTouched({});
       setSubmitted(false);
-    } catch {
+    } catch (err) {
+      // api.ts's HttpError carries the status; a network failure has none.
+      const status = (err as { httpStatus?: unknown } | null)?.httpStatus;
+      const code = typeof status === "number" ? status : null;
+      setHttpCode(code);
+      signalSend({ kind: "land", ok: false, code });
       setStatus("error");
       setStage(-1);
       setDelivered(false);
@@ -288,6 +313,12 @@ export function ContactForm() {
           Message received
         </h3>
         <p className="contact-success-text">Thanks for writing.</p>
+        {httpCode !== null && (
+          <p className="contact-success-code mono">
+            The server answered {httpCode}
+            {STATUS_TEXT[httpCode] ? ` ${STATUS_TEXT[httpCode]}` : ""}
+          </p>
+        )}
         <button
           type="button"
           className="btn btn-secondary"
@@ -442,7 +473,9 @@ export function ContactForm() {
 
       {status === "error" && (
         <p className="field-error field-error-block" role="alert">
-          Something went wrong sending that. Try again, or email me directly at {SITE.email}.
+          Something went wrong sending that
+          {httpCode !== null ? ` (the server answered ${httpCode})` : ""}. Try again, or email me directly at{" "}
+          {SITE.email}.
         </p>
       )}
 

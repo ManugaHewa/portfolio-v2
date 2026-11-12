@@ -30,14 +30,14 @@ export const STATS = {
 } as const;
 
 /**
- * Each project's slug, title and tier in page order: the case studies first,
+ * Each project's slug, title, tier and stack size in page order: the case studies first,
  * then the other work, each in content order. The skills section uses it to
  * turn an evidence title into a link.
  */
-export const PROJECT_INDEX: ReadonlyArray<{ slug: string; title: string; tier: number }> = [
+export const PROJECT_INDEX: ReadonlyArray<{ slug: string; title: string; tier: number; stackSize: number }> = [
   ...caseStudies,
   ...otherProjects,
-].map(({ slug, title, tier }) => ({ slug, title, tier }));
+].map(({ slug, title, tier, stack }) => ({ slug, title, tier, stackSize: stack.length }));
 
 const NUMBERS = new Map(PROJECT_INDEX.map((p, i) => [p.slug, String(i + 1).padStart(2, "0")]));
 

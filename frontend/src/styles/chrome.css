@@ -15,7 +15,7 @@
   top: 0;
   z-index: 50;
   height: var(--header-h);
-  background: rgba(13, 21, 24, 0.82);
+  background: rgba(8, 9, 11, 0.82);
   border-bottom: 1px solid transparent;
   transition:
     border-color var(--dur-2) var(--ease-out),
@@ -23,7 +23,7 @@
 }
 
 .site-header.is-scrolled {
-  background: rgba(13, 21, 24, 0.96);
+  background: rgba(8, 9, 11, 0.96);
   border-bottom-color: var(--line-soft);
 }
 
@@ -48,6 +48,102 @@
 
 .brand:hover {
   color: var(--text);
+}
+
+/* The docked gyroscope beside the name (GyroMark.tsx). --dock-mark is 0
+   while the hero's own gyroscope is still in view and flying here
+   (Hero.tsx); everywhere else it is unset and the mark shows. */
+.brand {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The empty socket the gyroscope docks into: a dashed ring in the mark's
+   place while it is still in the hero, gone once it has landed. */
+.brand::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin-top: -11px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 50%;
+  opacity: calc(1 - var(--dock-mark, 1));
+  pointer-events: none;
+}
+
+.brand-mark {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  opacity: var(--dock-mark, 1);
+}
+
+/* Hairlines in screen pixels at any size, so the mark in flight (several
+   hundred px wide) and docked (26px) draw the same weight of line. */
+.gyro-mark {
+  overflow: visible;
+  fill: none;
+  stroke-width: 1.6px;
+}
+
+.gyro-mark ellipse,
+.gyro-mark-core {
+  vector-effect: non-scaling-stroke;
+}
+
+.gyro-mark-core {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+}
+
+.gyro-mark-ring.is-outer ellipse,
+.gyro-mark-ring.is-inner ellipse {
+  stroke: var(--sky);
+}
+
+.gyro-mark-ring.is-inner ellipse {
+  opacity: 0.7;
+}
+
+.gyro-mark-ring.is-middle ellipse {
+  stroke: var(--ember);
+}
+
+.gyro-mark-electron {
+  fill: var(--ember);
+  stroke: none;
+}
+
+/* Each ring turns about the mark's centre (the viewBox origin) at its own
+   rate, the middle one the other way. */
+@media (prefers-reduced-motion: no-preference) {
+  .gyro-mark-ring {
+    animation: gyro-turn 9s linear infinite;
+  }
+
+  .gyro-mark-ring.is-middle {
+    animation-duration: 6.5s;
+    animation-direction: reverse;
+  }
+
+  .gyro-mark-ring.is-inner {
+    animation-duration: 4.8s;
+  }
+
+  .gyro-mark.is-paused .gyro-mark-ring {
+    animation-play-state: paused;
+  }
+}
+
+@keyframes gyro-turn {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .nav-panel {

@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FocusEvent } from "react";
 import { HeroName, Magnetic, PIN_QUERY, Scramble, TextLoop, useMediaQuery } from "../motion";
 import { m, useScroll, useTransform } from "../motion/m";
 import { cx } from "../lib/cx";
 import { Scene } from "./Scene";
+import { GyroMark } from "./GyroMark";
 import { WorkIndex } from "./WorkIndex";
 import { SITE } from "../site";
 import type { ProjectSummary } from "../types";
@@ -26,6 +27,31 @@ const HEADER_PX = 64;
 // index, so focus landing in it scrolls the hero back to its start.
 const FOCUS_RETURN_AT = 0.05;
 
+// The stretch of the pin over which the gyroscope flies into the header:
+// it leaves once the work index has covered the copy, and has docked before
+// the stage lets go.
+const DOCK_FROM = 0.5;
+const DOCK_TO = 0.9;
+
+/**
+ * Where the flying gyroscope is at `k` (0 at the hero, 1 docked): its centre
+ * and size, eased, on an arc that bows up and out rather than a straight
+ * diagonal.
+ */
+export function dockFrame(
+  k: number,
+  from: { x: number; y: number; size: number },
+  to: { x: number; y: number; size: number },
+) {
+  const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+  const bow = Math.sin(Math.PI * e) * Math.min(160, Math.abs(from.x - to.x) * 0.18);
+  return {
+    x: from.x + (to.x - from.x) * e,
+    y: from.y + (to.y - from.y) * e - bow,
+    size: from.size + (to.size - from.size) * e,
+  };
+}
+
 // Where the work index's heading has risen to, in px below the header, when
 // the copy it rises over has faded out.
 const COPY_GONE_AT = 120;
@@ -47,6 +73,8 @@ export function Hero({ cases }: HeroProps) {
   const pinned = useMediaQuery(PIN_QUERY);
   const [live, setLive] = useState(false);
   const [keyboardInCopy, setKeyboardInCopy] = useState(false);
+  const gyroStageRef = useRef<HTMLDivElement>(null);
+  const flightRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -71,6 +99,56 @@ export function Hero({ cases }: HeroProps) {
   const copyOpacity = useTransform(indexRise, [0.45, 1], [1, 0]);
   const gyroScale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
   const ringRotate = useTransform(scrollYProgress, [0, 1], [0, 40]);
+
+  /*
+   * The dock. Over the second half of the pin the gyroscope leaves the hero
+   * for the mark beside the name in the header (Nav.tsx): the live scene
+   * hands over to a fixed SVG copy of itself (GyroMark) where it stands,
+   * and the copy flies on an arc and shrinks onto the mark, which then
+   * takes over. Scrolling back reverses it. Written straight to the nodes
+   * on each scroll change; --dock-mark on <html> tells the header's mark
+   * when to show. Only with the pinned layout (so never under reduced
+   * motion); everywhere else the header's mark simply shows.
+   */
+  useEffect(() => {
+    const stage = gyroStageRef.current;
+    const flight = flightRef.current;
+    const root = document.documentElement;
+    if (!pinned || !stage || !flight) return;
+
+    const update = (p: number) => {
+      const k = Math.min(1, Math.max(0, (p - DOCK_FROM) / (DOCK_TO - DOCK_FROM)));
+      const mark = document.querySelector(".brand-mark");
+      root.style.setProperty("--dock-mark", k >= 1 ? "1" : "0");
+      // The instrument fades out over the first tenth of the flight as its
+      // copy fades in on top of it.
+      stage.style.opacity = String(1 - Math.min(1, k / 0.1));
+      if (k <= 0 || k >= 1 || !mark) {
+        flight.style.visibility = "hidden";
+        return;
+      }
+      const a = stage.getBoundingClientRect();
+      const b = mark.getBoundingClientRect();
+      const f = dockFrame(
+        k,
+        { x: a.left + a.width / 2, y: a.top + a.height / 2, size: a.width * 0.86 },
+        { x: b.left + b.width / 2, y: b.top + b.height / 2, size: b.width },
+      );
+      flight.style.visibility = "visible";
+      flight.style.opacity = String(Math.min(1, k / 0.06));
+      flight.style.width = flight.style.height = `${f.size}px`;
+      flight.style.transform = `translate(${f.x - f.size / 2}px, ${f.y - f.size / 2}px)`;
+    };
+
+    update(scrollYProgress.get());
+    const stop = scrollYProgress.on("change", update);
+    return () => {
+      stop();
+      root.style.removeProperty("--dock-mark");
+      stage.style.opacity = "";
+      flight.style.visibility = "hidden";
+    };
+  }, [pinned, scrollYProgress]);
 
   // A keyboard user tabbing back into the faded copy (WCAG 2.4.11): bring the
   // hero back to its start so nothing focused sits under the work index, and
@@ -157,6 +235,7 @@ export function Hero({ cases }: HeroProps) {
 
           <div className="hero-gyro" aria-hidden="true">
             <m.div
+              ref={gyroStageRef}
               className={cx("hero-gyro-stage", live && "is-live")}
               style={pinned ? { scale: gyroScale } : { scale: 1 }}
             >
@@ -174,6 +253,13 @@ export function Hero({ cases }: HeroProps) {
       </div>
 
       <WorkIndex cases={cases} headRef={indexHeadRef} />
+
+      {/* The gyroscope on its way to the header (see the dock above). */}
+      {pinned && (
+        <div className="gyro-flight" ref={flightRef} aria-hidden="true">
+          <GyroMark />
+        </div>
+      )}
     </div>
   );
 }
