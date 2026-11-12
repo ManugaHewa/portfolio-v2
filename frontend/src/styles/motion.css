@@ -32,6 +32,12 @@
   display: inline-block;
 }
 
+/* The letters that answer the cursor (HeroName.tsx). The transition smooths
+   the per-frame axis values and carries each letter back to rest. */
+.hero-name.is-pressable .hero-name-char {
+  transition: font-variation-settings 260ms var(--ease-out);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .hero-name-word {
     /* both: each word waits below its mask through its delay. No `to`
@@ -182,14 +188,6 @@
 
 .magnetic-inner {
   display: inline-block;
-}
-
-/* --------------------------------------------------------------- tilt */
-
-/* The root is deliberately not positioned: the card's stretched "Read the
-   case study" target is placed against the card itself. */
-.tilt-visual {
-  transform-origin: 50% 50%;
 }
 
 /* ------------------------------------------------------------ marquee */
