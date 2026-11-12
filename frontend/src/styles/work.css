@@ -142,7 +142,7 @@
     grid-column: 1 / -1;
     position: sticky;
     top: calc(var(--header-h) + 24px + var(--n, 0) * 14px);
-    height: min(560px, calc(100svh - var(--header-h) - 48px - 5 * 14px));
+    height: min(440px, calc(100svh - var(--header-h) - 48px - 5 * 14px));
   }
 
   .case-grid .case-card {
@@ -163,15 +163,21 @@
   }
 
   .case-grid .case-card > .case-figure {
-    width: 40%;
+    width: 46%;
     height: auto;
     border-bottom: 0;
     border-right: 1px solid var(--line);
   }
 
+  /* Less to say, so it is said larger: the title carries the card. */
   .case-grid .case-content {
     padding-top: var(--pad);
+    gap: var(--s5);
     overflow: hidden;
+  }
+
+  .case-grid .case-title {
+    font-size: clamp(2.25rem, 1.2rem + 2.2vw, 3.25rem);
   }
 }
 
@@ -477,58 +483,6 @@
   color: var(--text-2);
 }
 
-.case-role {
-  color: var(--text-2);
-}
-
-.case-blocks {
-  display: grid;
-  gap: var(--s4);
-}
-
-/* A wide card sets Problem and Result side by side. */
-@container (min-width: 560px) {
-  .case-blocks {
-    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-    gap: var(--s5);
-  }
-}
-
-.case-block {
-  display: grid;
-  gap: var(--s1);
-  align-content: start;
-}
-
-/* The result is what the card is for: ember, the colour of things done,
-   on its label and a rule beside it. */
-.case-block.is-result {
-  padding-left: var(--s4);
-  border-left: 2px solid var(--ember-line);
-}
-
-.case-label {
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  color: var(--text-2);
-}
-
-.case-block.is-result .case-label {
-  color: var(--ember);
-}
-
-.case-value {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
-  color: var(--text);
-}
-
 .case-stack {
   padding-top: var(--s4);
   border-top: 1px solid var(--line-soft);
@@ -596,25 +550,6 @@
   border-top: 1.5px solid currentColor;
   border-right: 1.5px solid currentColor;
   transform: translateY(-50%) rotate(45deg);
-}
-
-.case-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--fs-small);
-}
-
-.case-link {
-  position: relative;
-  z-index: 1;
-}
-
-.case-link.is-pending {
-  color: var(--text-3);
 }
 
 /* ----------------------------------------------------------- skeleton */

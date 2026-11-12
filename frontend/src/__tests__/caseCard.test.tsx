@@ -67,29 +67,21 @@ describe("CaseCard", () => {
     expect(card).not.toHaveTextContent(/screenshot/i);
   });
 
-  it("says each thing once: the outcome in Result, the stack in one line", () => {
+  it("keeps only the essentials and leaves the write-up to the case study", () => {
     const { card } = renderCard();
-    const blocks = within(find(card, ".case-blocks"));
-    expect(blocks.getByText("Problem")).toBeInTheDocument();
-    expect(blocks.getByText(project.problem as string)).toBeInTheDocument();
-    expect(blocks.getByText(project.outcomes[0])).toBeInTheDocument();
-    expect(within(card).getAllByText(project.outcomes[0])).toHaveLength(1);
     expect(within(card).getAllByText(project.subtitle)).toHaveLength(1);
     expect(card.querySelectorAll(".case-stack")).toHaveLength(1);
     expect(find(card, ".case-figure")).not.toHaveTextContent("TypeScript");
+    // In the dialog, not on the card.
+    expect(card).not.toHaveTextContent(project.problem as string);
+    expect(card).not.toHaveTextContent(project.outcomes[0]);
+    expect(card).not.toHaveTextContent(/Problem|Result/);
+    expect(card.querySelector(".case-links")).toBeNull();
   });
 
-  it("leaves Result out when there are no outcomes", () => {
-    const { card } = renderCard({ ...project, outcomes: [] });
-    expect(find(card, ".case-figure-line")).toHaveTextContent(project.subtitle);
-    expect(within(card).queryByText("Result")).not.toBeInTheDocument();
-  });
-
-  it("shortens the stack to six names and a count", () => {
+  it("shortens the stack to four names and a count", () => {
     const { card } = renderCard();
-    expect(find(card, ".case-stack")).toHaveTextContent(
-      "React · TypeScript · Node.js · Express · Prisma · PostgreSQL +2",
-    );
+    expect(find(card, ".case-stack")).toHaveTextContent("React · TypeScript · Node.js · Express +4");
   });
 
   it("opens with a real button, named for its project, handing itself over as the trigger", () => {
@@ -104,16 +96,6 @@ describe("CaseCard", () => {
     fireEvent.click(find(card, ".case-figure-line"));
     const button = screen.getByRole("button", { name: `Read the case study for ${project.title}` });
     expect(onOpen).toHaveBeenCalledWith(project, button);
-  });
-
-  it("links what is published and marks what is not", () => {
-    const { card } = renderCard();
-    expect(within(card).getByRole("link", { name: "GitHub repository" })).toHaveAttribute(
-      "href",
-      "https://github.com/example/dms",
-    );
-    expect(within(card).queryByRole("link", { name: /live demo/i })).not.toBeInTheDocument();
-    expect(within(card).getByText(/link not published yet/)).toBeInTheDocument();
   });
 
   it("enters with data-reveal, so the no-JS and reduced-motion rules can show it", () => {

@@ -23,9 +23,15 @@ interface CaseCardProps {
  * it is. Hovering the card, or moving keyboard focus into it, locks on to the
  * figure (work.css): four ember corner marks close in on the plate, a sweep
  * runs along its scale and the number fills from its tint to solid ember.
- * Nothing follows the cursor. The text below says
- * the rest once each: category and status, title, role, the problem and the
- * result, the stack, then the button and the links. It never moves, so it
+ * Nothing follows the cursor.
+ *
+ * The card carries only what a visitor needs to choose: the number and what
+ * the project is (the figure), its category and status, its title, the four
+ * main technologies and the way in. The role, timeline, problem, outcomes,
+ * full stack and links are all in the case study the card opens. The text
+ * below says
+ * the rest once each: category and status, title, stack, then the button.
+ * It never moves, so it
  * stays crisp and every control stays where it looks.
  *
  * The figure carries the shared layoutId: opening the case study grows it out
@@ -42,7 +48,6 @@ export function CaseCard({ project: p, index, onOpen }: CaseCardProps) {
   const id = morphId(p.slug);
   const titleId = `${id}-title`;
   const shot = SCREENSHOTS[p.slug]?.[0];
-  const result = p.outcomes[0];
 
   const open = () => {
     const button = openRef.current;
@@ -89,53 +94,15 @@ export function CaseCard({ project: p, index, onOpen }: CaseCardProps) {
             {/* A screenshot does not say what the project is; the plate
                 does, so the line moves down here only when there is one. */}
             {shot && <p className="case-subtitle">{p.subtitle}</p>}
-            {(p.role || p.timeline) && (
-              <p className="case-role small">{[p.role, p.timeline].filter(Boolean).join(" · ")}</p>
-            )}
           </div>
 
-          {(p.problem || result) && (
-            <div className="case-blocks">
-              {p.problem && (
-                <div className="case-block">
-                  <p className="case-label">Problem</p>
-                  <p className="case-value">{p.problem}</p>
-                </div>
-              )}
-              {result && (
-                <div className="case-block is-result">
-                  <p className="case-label">Result</p>
-                  <p className="case-value">{result}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {p.stack.length > 0 && <p className="case-stack">{stackLine(p.stack, 6)}</p>}
+          {p.stack.length > 0 && <p className="case-stack">{stackLine(p.stack, 4)}</p>}
 
           <div className="case-footer">
             <button type="button" className="case-open" ref={openRef} onClick={open}>
               Read the case study<span className="visually-hidden"> for {p.title}</span>
               <span className="case-open-arrow" aria-hidden="true" />
             </button>
-            {p.links.length > 0 && (
-              <ul className="case-links">
-                {p.links.map((link) => (
-                  <li key={link.label}>
-                    {link.url ? (
-                      <a className="case-link" href={link.url} target="_blank" rel="noreferrer">
-                        {link.label}
-                      </a>
-                    ) : (
-                      <span className="case-link is-pending">
-                        {link.label}
-                        <span className="visually-hidden"> (link not published yet)</span>
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
       </article>

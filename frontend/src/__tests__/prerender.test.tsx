@@ -71,12 +71,12 @@ describe("the prerendered home page", () => {
     for (const project of PROJECTS) {
       expect(text, project.slug).toContain(project.title);
     }
-    // Each case study card carries its problem (when it has one) and its
-    // first outcome; each Other work row its one-line summary.
+    // Each case study carries its problem (the work index row, when it has
+    // one) and what it is (its card); the outcomes are in the case study
+    // the card opens. Each Other work row carries its one-line summary.
     for (const project of PROJECTS.filter((p) => p.tier === 1)) {
       if (project.problem) expect(text, `${project.slug} problem`).toContain(project.problem);
-      // A case study with no outcomes yet shows its subtitle in that place.
-      expect(text, `${project.slug} first outcome`).toContain(project.outcomes?.[0] ?? project.subtitle);
+      expect(text, `${project.slug} subtitle`).toContain(project.subtitle);
     }
     for (const project of PROJECTS.filter((p) => p.tier !== 1)) {
       expect(text, `${project.slug} subtitle`).toContain(project.subtitle);
