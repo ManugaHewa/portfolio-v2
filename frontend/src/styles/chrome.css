@@ -491,7 +491,29 @@
 
 .site-footer {
   border-top: 1px solid var(--line);
-  padding-block: var(--s7);
+  padding-block: var(--block-gap) var(--s7);
+}
+
+/* The engraved wordmark (Footer.tsx): the name in the display face, filled a
+   step above the page and outlined in a hairline, fitted to the column. */
+.site-footer-mark {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: var(--s7);
+  overflow: visible;
+}
+
+.site-footer-mark text {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+  font-family: var(--font-sans);
+  font-size: 96px;
+  font-weight: 800;
+  font-stretch: 118%;
+  letter-spacing: -0.02em;
 }
 
 .site-footer-inner {

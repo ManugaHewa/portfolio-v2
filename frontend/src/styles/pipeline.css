@@ -505,10 +505,26 @@
 /* Real numbers about the system above (LiveReadout.tsx): gauges in the
    site's readout style, a numeral over its label, under a hairline that
    continues the diagram's. */
-.live-readout {
+/* The readout and the commit history share one row under the diagram
+   (Pipeline.tsx, .pipeline-panel): the measured numbers on the left, the
+   repository's history on the right; stacked below 1100px. */
+.pipeline-panel {
   position: relative;
   z-index: 1;
-  padding-top: var(--s6);
+  display: grid;
+  gap: var(--block-gap) var(--s7);
+  padding-top: var(--block-gap);
+}
+
+@media (min-width: 1100px) {
+  .pipeline-panel {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    align-items: start;
+  }
+}
+
+.live-readout {
+  position: relative;
 }
 
 .live-readout-title {
@@ -689,8 +705,6 @@ button.pl-node.is-open .pl-node-label {
 
 .commit-strip {
   position: relative;
-  z-index: 1;
-  padding-top: var(--s7);
 }
 
 .commit-grid {
@@ -738,4 +752,12 @@ button.pl-node.is-open .pl-node-label {
 .commit-caption {
   margin-top: var(--s3);
   color: var(--text-2);
+}
+
+/* The history's title takes the same hairline as the readout beside it, so
+   the two read as one instrument row. */
+.commit-strip > .live-readout-title {
+  margin-bottom: var(--s5);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--line);
 }

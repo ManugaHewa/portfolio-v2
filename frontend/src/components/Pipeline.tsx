@@ -357,8 +357,10 @@ export function Pipeline() {
       </div>
       {/* After the pinned stage, so it never crowds the drawing on a short
           screen: the numbers arrive as the diagram lets go. */}
-      <LiveReadout />
-      <CommitStrip />
+      <div className="container pipeline-panel">
+        <LiveReadout />
+        <CommitStrip />
+      </div>
     </section>
   );
 }

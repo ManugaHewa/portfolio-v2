@@ -135,14 +135,14 @@
 @media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
   .case-grid {
     grid-template-columns: minmax(0, 1fr);
-    row-gap: 36svh;
+    row-gap: 26svh;
   }
 
   .case-grid > .case-cell.case-cell {
     grid-column: 1 / -1;
     position: sticky;
     top: calc(var(--header-h) + 24px + var(--n, 0) * 14px);
-    height: min(440px, calc(100svh - var(--header-h) - 48px - 5 * 14px));
+    height: min(400px, calc(100svh - var(--header-h) - 48px - 5 * 14px));
   }
 
   .case-grid .case-card {
@@ -171,9 +171,16 @@
 
   /* Less to say, so it is said larger: the title carries the card. */
   .case-grid .case-content {
+    justify-content: center;
     padding-top: var(--pad);
     gap: var(--s5);
     overflow: hidden;
+  }
+
+  /* One block in the middle of the card rather than the way in pinned to
+     its foot with an empty band above it. */
+  .case-grid .case-footer {
+    margin-top: var(--s2);
   }
 
   .case-grid .case-title {
@@ -238,7 +245,7 @@
   font-variant-numeric: normal;
   line-height: 0.8;
   letter-spacing: -0.04em;
-  color: rgba(233, 142, 73, 0.3);
+  color: rgba(233, 142, 73, 0.6);
 }
 
 /* For the lock-on: the same tint as a gradient clipped to the glyphs, half
@@ -247,7 +254,7 @@
    above stays. */
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .case-card .case-figure-num::before {
-    background: linear-gradient(90deg, var(--ember) 0 50%, rgba(233, 142, 73, 0.3) 50% 100%) 100% 0 / 200% 100%;
+    background: linear-gradient(90deg, var(--ember) 0 50%, rgba(233, 142, 73, 0.6) 50% 100%) 100% 0 / 200% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -613,7 +620,7 @@
 /* ---------------------------------------------------------- other work */
 
 .other-work {
-  margin-top: var(--s9);
+  margin-top: var(--block-gap);
 }
 
 .other-head {
@@ -683,7 +690,11 @@
   }
 }
 
+/* The number with its suit beside it, as on the deck's cards. */
 .other-num {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   grid-row: 1;
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -816,5 +827,28 @@
     grid-column: 4;
     grid-row: 1;
     flex-direction: column;
+  }
+}
+
+/* The suit's pip, engraved in the plate's open middle, as on the deck's
+   cards (styles/deck.css): the case studies are the ember suit. */
+.case-figure-inner:not(.has-shot)::after {
+  content: none;
+  position: absolute;
+  top: 44%;
+  right: 16%;
+  width: clamp(36px, 9cqi, 64px);
+  aspect-ratio: 1;
+  border: 1px solid var(--ember);
+  opacity: 0.4;
+  transform: translate(50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* Only where the plate is wide enough to leave its middle open: the two
+   columns from 960px. On a phone the line of text runs through it. */
+@media (min-width: 960px) {
+  .case-card > .case-figure .case-figure-inner:not(.has-shot)::after {
+    content: "";
   }
 }

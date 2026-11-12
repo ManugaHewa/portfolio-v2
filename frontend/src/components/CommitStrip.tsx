@@ -78,7 +78,7 @@ export function CommitStrip({ grid = GRID }: { grid?: CommitGrid | null }) {
   const summary = `${grid.total} commits on ${grid.activeDays} days, ${label(grid.first)} to ${label(grid.last)}`;
 
   return (
-    <div className="commit-strip container">
+    <div className="commit-strip">
       <p className="live-readout-title mono">This repository, commit by commit</p>
       <div
         ref={ref}

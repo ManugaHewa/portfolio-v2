@@ -19,7 +19,7 @@ export function LiveReadout({ build = __BUILD__ }: { build?: typeof __BUILD__ })
   const timing = useProjectsTiming();
 
   return (
-    <div className="live-readout container">
+    <div className="live-readout">
       <p className="live-readout-title mono" id="live-readout-title">
         Measured on this visit
       </p>

@@ -2,7 +2,7 @@ import { projectNumber } from "../../stats";
 import { ALSO_ON_GITHUB } from "../../repositories";
 import type { ProjectSummary } from "../../types";
 import type { OpenProject } from "./Work";
-import { stackLine } from "./workUtils";
+import { Suit } from "../deck/PlayingCard";
 
 interface OtherWorkProps {
   /** Tier 2, in content order. */
@@ -33,7 +33,10 @@ export function OtherWork({ projects, onOpen }: OtherWorkProps) {
       <ul className="other-list">
         {projects.map((p) => (
           <li className="other-row" id={`other-${p.slug}`} key={p.slug}>
-            <span className="other-num">{projectNumber(p.slug)}</span>
+            <span className="other-num">
+              {projectNumber(p.slug)}
+              <Suit tier={p.tier} />
+            </span>
             <button
               type="button"
               className="other-title"
@@ -45,7 +48,6 @@ export function OtherWork({ projects, onOpen }: OtherWorkProps) {
             <p className="other-summary">{p.subtitle}</p>
             <p className="other-meta">
               {p.category && <span className="other-category">{p.category}</span>}
-              {p.stack.length > 0 && <span className="other-stack">{stackLine(p.stack, 3)}</span>}
             </p>
           </li>
         ))}

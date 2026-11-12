@@ -63,7 +63,12 @@
 
   --container: 1240px;
   --gutter: clamp(16px, 4vw, 48px);
-  --section-pad: clamp(96px, 12vw, 176px);
+  /* The page's vertical rhythm, three steps and nothing else: a section's
+     own padding, its heading to its content, and one block to the next
+     inside a section. */
+  --section-pad: clamp(80px, 8vw, 128px);
+  --head-gap: clamp(40px, 4.5vw, 64px);
+  --block-gap: clamp(56px, 6vw, 96px);
   --header-h: 64px;
 
   /* Type. "Mona Sans Fallback" is Arial resized to Mona Sans's proportions

@@ -7,10 +7,21 @@ import { SITE } from "../site";
  *
  * "Back to top" goes to #top, which every page that renders this footer has
  * (the hero on the home page, the header elsewhere).
+ *
+ * Above the row, the name once more as an engraved wordmark across the full
+ * column: SVG text fitted to the width (textLength), so it spans the page
+ * exactly at every size, and decoration only (the name is in the row below).
  */
 export function Footer() {
   return (
     <footer className="site-footer">
+      <div className="container">
+        <svg className="site-footer-mark" viewBox="0 0 1000 96" aria-hidden="true" focusable="false">
+          <text x="0" y="80" textLength="1000" lengthAdjust="spacingAndGlyphs">
+            {SITE.name}
+          </text>
+        </svg>
+      </div>
       <div className="container site-footer-inner">
         <div className="site-footer-who">
           <p className="site-footer-name">{SITE.name}</p>

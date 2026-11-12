@@ -5,11 +5,11 @@
  * (research-ui.json 9-11), redrawn in the site's tokens.
  */
 
-/* A little more room under the columns than other sections get, so the
+/* A block more room under the columns than other sections get, so the
    signal scene has somewhere to show below the form rather than only
    behind it. */
 .contact {
-  padding-bottom: calc(var(--section-pad) + var(--s8));
+  padding-bottom: calc(var(--section-pad) + var(--block-gap) * 0.5);
 }
 
 /* The last heading on the page, set a size up from the others: a closing
