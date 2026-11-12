@@ -1,4 +1,5 @@
 import type { ProjectDetail, ProjectSummary } from "./types";
+import { recordProjectsTiming } from "./lib/liveStats";
 
 const BASE = "/api";
 
@@ -28,8 +29,25 @@ export interface ContactPayload {
   turnstileToken?: string;
 }
 
+/**
+ * The project list, timed: how long this visit's request took and how many
+ * projects came back go to the live readout (lib/liveStats.ts). A failure is
+ * recorded as one, never as a number.
+ */
+async function getProjects(): Promise<ProjectSummary[]> {
+  const start = performance.now();
+  try {
+    const list = await request<ProjectSummary[]>("/projects");
+    recordProjectsTiming({ ok: true, ms: Math.max(1, Math.round(performance.now() - start)), count: list.length });
+    return list;
+  } catch (err) {
+    recordProjectsTiming({ ok: false });
+    throw err;
+  }
+}
+
 export const api = {
-  getProjects: () => request<ProjectSummary[]>("/projects"),
+  getProjects,
   getProject: (slug: string) => request<ProjectDetail>(`/projects/${slug}`),
   sendContactMessage: (data: ContactPayload) =>
     request<{ status: string }>("/contact", {

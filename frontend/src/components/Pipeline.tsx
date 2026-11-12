@@ -4,6 +4,7 @@ import { PIN_QUERY, Scramble, SectionHead, useMediaQuery } from "../motion";
 import { m, useMotionValue, useScroll, useSpring, useTransform } from "../motion/m";
 import type { MotionValue } from "../motion/m";
 import { Scene } from "./Scene";
+import { LiveReadout } from "./LiveReadout";
 import { projectNumber } from "../stats";
 
 /**
@@ -299,6 +300,9 @@ export function Pipeline() {
           </div>
         </div>
       </div>
+      {/* After the pinned stage, so it never crowds the drawing on a short
+          screen: the numbers arrive as the diagram lets go. */}
+      <LiveReadout />
     </section>
   );
 }

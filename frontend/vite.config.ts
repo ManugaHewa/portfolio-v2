@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { defineConfig, transformWithOxc, type Plugin } from "vite";
@@ -51,8 +52,38 @@ function projectIndex(): Plugin {
   };
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * The commit this build was made from, for the live readout in the pipeline
+ * section: its short hash and its date as the committer wrote it, formatted
+ * here ("11 Nov 2026") so the prerendered page and the browser print the
+ * same string whatever their time zones. scripts/deploy.sh builds from a git
+ * checkout, so in production this is the deployed commit. Null wherever git
+ * is not available, and the readout then leaves the item out.
+ */
+export function buildStamp(): { commit: string; date: string } | null {
+  try {
+    // No shell: on Windows cmd.exe would read the "|" as a pipe.
+    const [commit, iso] = execFileSync("git", ["log", "-1", "--format=%h|%cI"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .trim()
+      .split("|");
+    const [y, mo, d] = iso.slice(0, 10).split("-").map(Number);
+    if (!commit || !y || !mo || !d) return null;
+    return { commit, date: `${d} ${MONTHS[mo - 1]} ${y}` };
+  } catch {
+    return null;
+  }
+}
+
 export default defineConfig(({ isSsrBuild }) => ({
   plugins: [react(), projectIndex()],
+  define: {
+    __BUILD__: JSON.stringify(buildStamp()),
+  },
   // The build-time prerender (`vite build --ssr src/entry-server.tsx`, run by
   // `npm run build`) bundles every dependency into its one output file rather
   // than leaving Node to resolve the animation libraries' ESM builds itself.

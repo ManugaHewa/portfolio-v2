@@ -499,3 +499,62 @@
     font-size: var(--fs-body);
   }
 }
+
+/* --------------------------------------------------------- live readout */
+
+/* Real numbers about the system above (LiveReadout.tsx): gauges in the
+   site's readout style, a numeral over its label, under a hairline that
+   continues the diagram's. */
+.live-readout {
+  position: relative;
+  z-index: 1;
+  padding-top: var(--s6);
+}
+
+.live-readout-title {
+  margin-bottom: var(--s4);
+  color: var(--text-2);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+}
+
+.live-readout-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--s5) var(--s6);
+  margin: 0;
+  padding: var(--s5) 0 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.live-item {
+  display: grid;
+  align-content: start;
+  gap: var(--s1);
+}
+
+.live-item.is-wide {
+  grid-column: 1 / -1;
+}
+
+.live-value {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--sky);
+}
+
+.live-unit {
+  font-size: 1rem;
+  color: var(--text-2);
+}
+
+.live-label {
+  max-width: 34ch;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

@@ -87,7 +87,8 @@ describe("Pipeline: markup", () => {
   it("hides the drawing from assistive technology and lists the same steps instead", () => {
     const { container } = renderPipeline();
     expect(container.querySelector(".pl-diagram")).toHaveAttribute("aria-hidden", "true");
-    const list = screen.getByRole("list");
+    // The steps' list, in the stage; the live readout under it has its own.
+    const list = within(container.querySelector<HTMLElement>(".pipeline-stage")!).getByRole("list");
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(PIPELINE_NODES.length);
     items.forEach((item, i) => {
@@ -145,6 +146,8 @@ describe("Pipeline: markup", () => {
     // The counter reads step 1 from the moment the stage pins.
     expect(container.querySelector(".pl-counter")).toHaveTextContent(`1/${PIPELINE_NODES.length}`);
     // The text is still all there for anyone reading the list.
-    expect(screen.getByRole("list")).toHaveTextContent(PIPELINE_NODES[4].text);
+    expect(within(container.querySelector<HTMLElement>(".pipeline-stage")!).getByRole("list")).toHaveTextContent(
+      PIPELINE_NODES[4].text,
+    );
   });
 });
