@@ -7,11 +7,14 @@
 //                            rendered with, for hydration to start from
 //   dist/privacy/index.html  privacy page
 //   dist/404.html            served by Nginx with a 404 status; no script
+//   dist/work/<slug>/        each project's own page, the full case study;
+//                            no script
+//   dist/sitemap.xml         every page above but the 404
 //
 // Every page's head also gets a preload for the Latin Mona Sans file, so the
 // browser fetches the main typeface alongside the stylesheet rather than only
 // once it has parsed it, and the swap from the fallback face comes sooner.
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -95,6 +98,62 @@ writeFileSync(
 `,
 );
 
+// Each project's page: a document of its own like the 404 (the privacy
+// stylesheet, no script), with its own title, description, canonical
+// address and link preview.
+const SITE_URL = "https://manugahewa.dev";
+const attr = (text) =>
+  text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const appleIcon = homeTemplate.match(/<link rel="apple-touch-icon" href="[^"]*"\s*\/?>/)?.[0] ?? "";
+const cases = server.renderCaseStudies();
+for (const c of cases) {
+  const url = `${SITE_URL}/work/${c.slug}/`;
+  const title = `${c.title} | Case study | Manuga Hewa Pathirana`;
+  const dir = resolve(DIST, "work", c.slug);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    resolve(dir, "index.html"),
+    `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>${attr(title)}</title>
+    ${FONT_PRELOAD}
+    <meta name="description" content="${attr(c.subtitle)}" />
+    <link rel="canonical" href="${url}" />
+    <meta name="theme-color" content="#08090b" />
+    ${favicon}
+    ${appleIcon}
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Manuga Hewa Pathirana" />
+    <meta property="og:url" content="${url}" />
+    <meta property="og:title" content="${attr(`${c.title}, a case study by Manuga Hewa Pathirana`)}" />
+    <meta property="og:description" content="${attr(c.subtitle)}" />
+    <meta property="og:image" content="${SITE_URL}/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    ${stylesheets.join("\n    ")}
+  </head>
+  <body>
+    <div id="root">${c.html}</div>
+  </body>
+</html>
+`,
+  );
+}
+
+// The sitemap, from the pages actually written.
+const pages = ["/", "/privacy", ...cases.map((c) => `/work/${c.slug}/`)];
+writeFileSync(
+  resolve(DIST, "sitemap.xml"),
+  `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${pages.map((p) => `  <url>\n    <loc>${SITE_URL}${p}</loc>\n  </url>`).join("\n")}
+</urlset>
+`,
+);
+
 console.log(
-  `prerendered: index.html (${home.projects.length} projects), privacy/index.html, 404.html; preloading ${monaSans}`,
+  `prerendered: index.html (${home.projects.length} projects), privacy/index.html, 404.html, ${cases.length} case study pages, sitemap.xml; preloading ${monaSans}`,
 );

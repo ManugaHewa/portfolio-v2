@@ -60,3 +60,127 @@
 .legal-credits li + li {
   margin-top: var(--s2);
 }
+
+/* ------------------------------------------------------- case study pages */
+
+/* A project's own page (CaseStudyPage.tsx): the same reading column, with
+   the facts as a row of mono labels over values, lists marked by the scale's
+   hairline tick, and the neighbouring projects at the foot. */
+.case-page-index {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: var(--s4);
+  color: var(--text-3);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+}
+
+.legal .case-page-lede {
+  margin-top: var(--s6);
+  color: var(--text);
+  font-size: var(--fs-lede);
+  line-height: 1.5;
+}
+
+.case-page-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--s4) var(--s6);
+  margin: var(--s6) 0 0;
+  padding-block: var(--s5);
+  border-block: 1px solid var(--line);
+}
+
+.case-page-facts dt {
+  color: var(--text-3);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+}
+
+.case-page-facts dd {
+  margin: var(--s1) 0 0;
+  color: var(--text);
+}
+
+.case-page-section ul,
+.case-page-section ol {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+}
+
+.case-page-section li {
+  position: relative;
+  padding-left: var(--s5);
+}
+
+.case-page-section ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.8em;
+  width: 10px;
+  height: 1px;
+  background: var(--line-control);
+}
+
+.case-page-section ol {
+  counter-reset: step;
+}
+
+.case-page-section ol > li::before {
+  counter-increment: step;
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-label);
+  line-height: 2;
+  color: var(--ember);
+}
+
+.case-page-section ol > li {
+  padding-left: var(--s6);
+}
+
+.case-page-stack {
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  column-gap: var(--s5);
+}
+
+.case-page-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--s4);
+  margin-top: var(--s8);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line);
+}
+
+.case-page-nav a {
+  display: grid;
+  gap: var(--s1);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.case-page-nav a:hover {
+  color: var(--sky);
+}
+
+.case-page-nav .mono {
+  color: var(--text-3);
+  font-size: var(--fs-label);
+  font-weight: 500;
+}
+
+/* The header these pages share has no script to tell it the page has
+   scrolled, so it starts as opaque as the home page's becomes. */
+.site-header.legal-header {
+  background: rgba(8, 9, 11, 0.96);
+}

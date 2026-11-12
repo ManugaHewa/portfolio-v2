@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -95,8 +95,13 @@ describe("crawler files", () => {
     expect(robots).toMatch(/^Disallow: \/api\/$/m);
   });
 
-  it("the sitemap lists each page by its canonical URL", () => {
-    const locs = [...read("public/sitemap.xml").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-    expect(locs).toEqual([`${ORIGIN}/`, `${ORIGIN}/privacy`]);
+  it("the sitemap is written at build time from the pages actually written", () => {
+    // No hand-kept copy to fall out of date: prerender.mjs writes it from
+    // the home page, the privacy page and every case study page.
+    expect(existsSync(join(FRONTEND, "public/sitemap.xml"))).toBe(false);
+    const script = read("scripts/prerender.mjs");
+    expect(script).toContain('const pages = ["/", "/privacy", ...cases.map((c) => `/work/${c.slug}/`)]');
+    expect(script).toContain('resolve(DIST, "sitemap.xml")');
+    expect(script).toContain(`const SITE_URL = "${ORIGIN}"`);
   });
 });

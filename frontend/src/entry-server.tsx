@@ -3,7 +3,9 @@ import { renderToString } from "react-dom/server";
 import App from "./App";
 import { PrivacyPage } from "./components/PrivacyPage";
 import { NotFoundPage } from "./components/NotFoundPage";
-import { projectSummaries } from "../../content/projects";
+import { CaseStudyPage } from "./components/CaseStudyPage";
+import { PROJECTS, projectSummaries } from "../../content/projects";
+import { PROJECT_INDEX } from "./stats";
 import type { ProjectSummary } from "./types";
 
 /**
@@ -36,4 +38,21 @@ export function renderPrivacy(): string {
 
 export function renderNotFound(): string {
   return renderToString(<NotFoundPage />);
+}
+
+/**
+ * Every project's page (/work/<slug>/), in page order, each linking to its
+ * neighbours. The head is written around it by prerender.mjs from the
+ * title and subtitle returned here.
+ */
+export function renderCaseStudies(): Array<{ slug: string; title: string; subtitle: string; html: string }> {
+  const ordered = PROJECT_INDEX.map((entry) => PROJECTS.find((p) => p.slug === entry.slug)).filter(
+    (p): p is (typeof PROJECTS)[number] => p !== undefined,
+  );
+  return ordered.map((p, i) => ({
+    slug: p.slug,
+    title: p.title,
+    subtitle: p.subtitle,
+    html: renderToString(<CaseStudyPage project={p} previous={ordered[i - 1]} next={ordered[i + 1]} />),
+  }));
 }

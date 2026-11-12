@@ -12,6 +12,7 @@ import type { ProjectDetail, ProjectLink, ProjectSummary } from "../types";
 import { lockScroll, unlockScroll } from "../lib/scrollLock";
 import { FigureContents } from "./work/CaseFigure";
 import { ProcessTimeline } from "./ProcessTimeline";
+import { caseStudyPath } from "../lib/paths";
 import { FADE, FIGURE_RADIUS, MORPH_SPRING, figureId, isOngoing } from "./work/workUtils";
 
 interface Props {
@@ -320,6 +321,12 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
                     <LinkList links={shown.links} />
                   </section>
                 )}
+
+                {/* The same case study at an address of its own, to share or
+                    to keep (scripts/prerender.mjs writes it). */}
+                <p className="dialog-permalink">
+                  <a href={caseStudyPath(shown.slug)}>Open this case study as a page</a>
+                </p>
               </div>
 
               {/* Several of these have no published repository yet. Saying so

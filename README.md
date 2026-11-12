@@ -11,14 +11,22 @@ portfolio-v2/
 │                         API, and prerendered into the HTML at build time
 ├── frontend/             React 18 + TypeScript + Vite
 │   ├── src/
-│   │   ├── components/   Hero, ProjectCard, ProjectModal, SkillsGraph,
-│   │   │                 ContactForm, PrivacyPage, Footer...
+│   │   ├── components/   Hero, WorkIndex and deck/ (the deck of project
+│   │   │                 cards), work/ (case studies), ProjectModal,
+│   │   │                 Pipeline, Skills, ContactForm, CaseStudyPage,
+│   │   │                 PrivacyPage, Scene3D (the WebGL scenes)...
+│   │   ├── motion/       animation primitives on Motion (framer-motion)
+│   │   ├── styles/       plain CSS, one file per section, tokens.css
 │   │   ├── api.ts        typed fetch client for the backend
 │   │   ├── types.ts      types matching the API's responses
 │   │   ├── entry-server.tsx  the build-time render
 │   │   └── __tests__/    Vitest + React Testing Library + axe-core
 │   ├── privacy/index.html    the second page
-│   └── scripts/prerender.mjs writes the rendered pages into dist/
+│   ├── build/repoFacts.ts    build-time facts about this repo: the code
+│   │                         excerpts on the pipeline, the commit history
+│   └── scripts/prerender.mjs writes the rendered pages into dist/: the home
+│                             page, privacy, 404, a page per project
+│                             (/work/<slug>/) and the sitemap
 │
 ├── backend/              Express + TypeScript + Prisma + PostgreSQL
 │   ├── src/
@@ -40,15 +48,15 @@ portfolio-v2/
 ## Why this shape
 
 - **Frontend claims React/TypeScript → the site is actually React/TypeScript.**
-  Same visual design as before, now as typed components instead of DOM manipulation.
+  Typed components, prerendered at build time and hydrated in the browser.
 - **Project data comes from a real API + Postgres**, not a hardcoded JS object —
   so "database design" and "REST APIs" on the skills list are backed by code
   a reviewer can open and run.
 - **Contact form POSTs to the backend** and is persisted, replacing the old
   `mailto:` link — a small but real demonstration of validation (Zod) and
   a data-writing endpoint.
-- **Tests on both sides** (Vitest/RTL on the frontend, Vitest/Supertest on the
-  backend) make "Jest/RTL" a verifiable claim, not just a bubble in a skills graph.
+- **Tests on both sides** (Vitest/RTL and axe-core on the frontend,
+  Vitest/Supertest on the backend) make "testing" a verifiable claim.
 - **CI on GitHub Actions** spins up a real Postgres service container and
   runs migrations + tests on every push — anyone can check the Actions tab
   instead of taking "CI/CD" on faith.

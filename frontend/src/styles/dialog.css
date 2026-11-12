@@ -533,3 +533,10 @@
   padding: 0;
   list-style: none;
 }
+
+/* The case study's own page, at the foot of the dialog. */
+.dialog-permalink {
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--fs-small);
+}
