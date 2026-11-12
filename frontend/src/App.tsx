@@ -8,7 +8,6 @@ import { Work } from "./components/work/Work";
 import type { OpenProject } from "./components/work/Work";
 import { TechBand } from "./components/TechBand";
 import { Pipeline } from "./components/Pipeline";
-import { Statement } from "./components/Statement";
 import { Skills } from "./components/Skills";
 import { ContactSection } from "./components/ContactSection";
 import { Footer } from "./components/Footer";
@@ -118,7 +117,7 @@ export default function App({ initialProjects }: AppProps) {
             <Scene variant="starfield" className="scene-starfield" />
 
             <main id="main">
-              <Hero cases={cases} />
+              <Hero projects={projects} onOpen={onOpen} />
               <Work
                 cases={cases}
                 otherWork={otherWork}
@@ -127,7 +126,6 @@ export default function App({ initialProjects }: AppProps) {
                 onOpen={onOpen}
               />
               <TechBand />
-              <Statement />
               <Pipeline />
               <Skills />
               <ContactSection />

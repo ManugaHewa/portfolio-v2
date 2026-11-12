@@ -1,0 +1,456 @@
+/*
+ * The deck of projects in the work index (components/deck).
+ *
+ * Layout: from 1100px the controls sit in the copy column under the heading
+ * and the card table takes columns 8 to 12, where the gyroscope stood before
+ * it flew into the header. Below that the sheet's box steps aside (display:
+ * contents) so the heading, the table and the controls stack in that order.
+ *
+ * The cards are sized from the table's width (cqi on .deck): one card, a
+ * little narrower than the table, so the deck on the right sits partly
+ * under the face-up card on the left and the fan of earlier draws has room
+ * behind it.
+ */
+
+/* ------------------------------------------------------------ placement */
+
+.work-index-table {
+  min-width: 0;
+}
+
+@media (max-width: 1099.98px) {
+  .work-index-grid {
+    row-gap: var(--s6);
+    padding-block: var(--s8) var(--s9);
+  }
+
+  .work-index-sheet {
+    display: contents;
+  }
+
+  .work-index-head {
+    grid-column: 1 / -1;
+    order: 1;
+    margin-bottom: 0;
+  }
+
+  .work-index-table {
+    grid-column: 1 / -1;
+    order: 2;
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .deck-controls {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+
+@media (min-width: 1100px) {
+  .work-index-sheet {
+    grid-row: 1;
+  }
+
+  .work-index-table {
+    grid-column: 8 / span 5;
+    grid-row: 1;
+    align-self: start;
+    padding-top: var(--s8);
+  }
+}
+
+/* On the pinned hero the sheet is a screen tall: the heading, the controls
+   and the table sit in the middle of it rather than leaving the bottom
+   third empty. (PIN_QUERY, motion/hooks.ts.) */
+@media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
+  .work-index-sheet {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .work-index-table {
+    align-self: center;
+    padding-top: 0;
+  }
+}
+
+/* Keyboard focus in the table while the hand-off still has it faded: show
+   it. !important to beat Motion's inline style. */
+.deck:focus-within {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* --------------------------------------------------------------- table */
+
+.deck {
+  container-type: inline-size;
+}
+
+.deck-table {
+  --card-w: min(320px, 64cqi);
+  --card-r: calc(var(--card-w) * 0.055);
+  position: relative;
+  height: calc(var(--card-w) * 1.4 + 72px);
+}
+
+.pcard {
+  position: absolute;
+  top: 28px;
+  left: 40px;
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+  border-radius: var(--card-r);
+  perspective: 1400px;
+}
+
+.deck-pile {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+}
+
+.deck-pile .pcard {
+  top: 0;
+  left: 0;
+}
+
+/* The deck's thickness: the cards under the top one, each a step further
+   down and to the right. */
+.pcard.is-pile {
+  transform: translate(calc(var(--layer) * 1.6px), calc(var(--layer) * 1.6px)) rotate(-4deg);
+}
+
+.pcard.is-top {
+  z-index: 8;
+  cursor: grab;
+  /* A vertical swipe still scrolls the page; a sideways one throws the card. */
+  touch-action: pan-y;
+}
+
+.pcard.is-top:active {
+  cursor: grabbing;
+}
+
+/* The invitation (DeckTable.tsx): once per arrival, the top card lifts and
+   settles back, a little after the table lands. An animation rather than a
+   transition, so it can run over Motion's inline transform and hand back
+   to it when done. */
+@media (prefers-reduced-motion: no-preference) {
+  .deck-table.is-inviting .pcard.is-top {
+    animation: deck-invite 1.1s 0.5s var(--ease-out) backwards;
+  }
+}
+
+@keyframes deck-invite {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  38% {
+    transform: translate(-6px, -18px) rotate(-9deg);
+  }
+  64% {
+    transform: translate(-2px, -6px) rotate(-6deg);
+  }
+}
+
+.pcard-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform-style: preserve-3d;
+}
+
+.pcard-face,
+.pcard-back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+}
+
+/* In a face-up card the back is the far side of the turn. */
+.pcard-inner > .pcard-back {
+  transform: rotateY(180deg);
+}
+
+/* Earlier draws, under the face-up card: dimmed, so the eye stays on top. */
+.pcard.is-under .pcard-face {
+  filter: brightness(0.62);
+}
+
+.deck-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--card-r);
+  color: var(--text-3);
+  font-size: var(--fs-label);
+}
+
+/* ---------------------------------------------------------------- face */
+
+/* A printed card: the surface, a hairline frame inset from the edge in the
+   suit's colour, the corner indices, a pip in the open top half and the
+   words along the bottom. */
+.pcard-face {
+  --suit: var(--ember);
+  --suit-line: var(--ember-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: calc(var(--card-w) * 0.1) calc(var(--card-w) * 0.085) calc(var(--card-w) * 0.075);
+  background: var(--surface-1);
+}
+
+.pcard-face[data-tier="other"] {
+  --suit: var(--sky);
+  --suit-line: var(--sky-line);
+}
+
+.pcard-face::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--card-w) * 0.03);
+  border: 1px solid var(--suit-line);
+  border-radius: calc(var(--card-r) * 0.6);
+  pointer-events: none;
+}
+
+.pcard-index {
+  position: absolute;
+  top: calc(var(--card-w) * 0.065);
+  left: calc(var(--card-w) * 0.065);
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: calc(var(--card-w) * 0.052);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--suit);
+}
+
+.pcard-index.is-flipped {
+  top: auto;
+  left: auto;
+  right: calc(var(--card-w) * 0.065);
+  bottom: calc(var(--card-w) * 0.065);
+  transform: rotate(180deg);
+}
+
+/* The pip: the suit, large and engraved, in the card's open top half. */
+.pcard-face > .pcard-body::before {
+  content: "";
+  position: absolute;
+  top: 26%;
+  left: 50%;
+  width: calc(var(--card-w) * 0.2);
+  height: calc(var(--card-w) * 0.2);
+  border: 1px solid var(--suit);
+  opacity: 0.55;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.pcard-face[data-tier="other"] > .pcard-body::before {
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.pcard-body {
+  display: grid;
+  gap: calc(var(--card-w) * 0.035);
+}
+
+.pcard-title {
+  font-size: calc(var(--card-w) * 0.095);
+  font-weight: 700;
+  font-stretch: 108%;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.pcard-line {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+  font-size: max(12px, calc(var(--card-w) * 0.05));
+  line-height: 1.42;
+  color: var(--text-2);
+}
+
+.pcard-meta {
+  overflow: hidden;
+  font-size: max(10px, calc(var(--card-w) * 0.04));
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  color: var(--text-3);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pcard-open {
+  justify-self: start;
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sky);
+  font-size: max(13px, calc(var(--card-w) * 0.052));
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+
+.pcard-open:hover {
+  color: var(--sky-hover);
+}
+
+/* ---------------------------------------------------------------- back */
+
+/* Engraved: a fine two-way hatch in the two accents at a whisper, the
+   gyroscope's rings round the monogram, a printed double frame. */
+.pcard-back {
+  background:
+    repeating-linear-gradient(45deg, rgba(106, 185, 231, 0.06) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(-45deg, rgba(233, 142, 73, 0.05) 0 1px, transparent 1px 7px),
+    var(--surface-1);
+}
+
+.pcard-back-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.pcard-back-frame {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 0.6;
+}
+
+.pcard-back-frame.is-inner {
+  stroke: var(--ember-line);
+}
+
+.pcard-back-rings ellipse {
+  fill: none;
+  stroke: var(--sky);
+  stroke-width: 0.7;
+  opacity: 0.75;
+}
+
+.pcard-back-rings ellipse.is-ember {
+  stroke: var(--ember);
+}
+
+.pcard-back-core {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+  stroke-width: 0.6;
+}
+
+.pcard-back-mark {
+  fill: var(--ember);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.4px;
+}
+
+/* ------------------------------------------------------------ controls */
+
+.deck-controls {
+  display: grid;
+  gap: var(--s5);
+  max-width: 44ch;
+}
+
+@media (min-width: 1100px) {
+  .deck-controls {
+    margin-top: var(--s6);
+  }
+}
+
+.deck-intro {
+  color: var(--text-2);
+  font-size: var(--fs-lede);
+  line-height: 1.5;
+}
+
+.deck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s4);
+}
+
+.deck-count {
+  margin-left: var(--s2);
+  color: var(--text-3);
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+}
+
+.deck-list > summary {
+  width: max-content;
+  min-height: 32px;
+  color: var(--sky);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.deck-list > summary:hover {
+  color: var(--sky-hover);
+}
+
+.deck-list ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  column-gap: var(--s5);
+  margin: var(--s3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deck-list a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--text);
+  font-size: var(--fs-small);
+  text-decoration: none;
+}
+
+.deck-list a:hover .deck-list-title {
+  color: var(--sky);
+}
+
+.deck-list-num {
+  min-width: 2ch;
+  color: var(--text-3);
+  font-size: var(--fs-label);
+}

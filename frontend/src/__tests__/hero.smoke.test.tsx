@@ -9,12 +9,13 @@ import { projectSummaries } from "../../../content/projects";
 import type { ProjectSummary } from "../types";
 import { Wrap, installMatchMedia } from "./motion/helpers";
 
-const cases = projectSummaries().filter((p) => p.tier === 1) as ProjectSummary[];
+const all = projectSummaries() as ProjectSummary[];
+const projects = [...all.filter((p) => p.tier === 1), ...all.filter((p) => p.tier !== 1)];
 
 const renderHero = () =>
   render(
     <Wrap>
-      <Hero cases={cases} />
+      <Hero projects={projects} onOpen={() => {}} />
     </Wrap>,
   );
 
@@ -80,7 +81,7 @@ describe("Hero", () => {
     // and no offset in the server's HTML.
     const html = renderToString(
       <Wrap>
-        <Hero cases={cases} />
+        <Hero projects={projects} onOpen={() => {}} />
       </Wrap>,
     );
     expect(html).toContain("Milton, Ontario · 43.52° N, 79.88° W");

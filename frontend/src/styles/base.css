@@ -16,8 +16,18 @@ html {
      dialog (overflow: hidden on html, lib/scrollLock.ts) does not shift the
      page sideways when the scrollbar disappears. */
   scrollbar-gutter: stable;
+  /* The page's own scrollbar: a hairline thumb on the ink, not the system's
+     grey trough cutting down the right edge. */
+  scrollbar-color: var(--line-strong) var(--bg);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* Selected text in the action colour, at a strength the text stays legible
+   on. */
+::selection {
+  background: rgba(233, 142, 73, 0.32);
+  color: var(--text);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -204,7 +214,7 @@ a:hover {
   display: grid;
   gap: var(--s5);
   max-width: 880px;
-  margin-bottom: var(--s8);
+  margin-bottom: var(--head-gap);
 }
 
 .section-title {
@@ -275,6 +285,42 @@ a:hover {
 }
 
 /* ------------------------------------------------------------ buttons */
+
+/* The label roll (RollLabel.tsx): the words slide up out of a one-line
+   window and the same words follow them in from below. A sliver of padding
+   keeps descenders inside the window. */
+.roll {
+  display: inline-block;
+  overflow: hidden;
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+  vertical-align: top;
+}
+
+.roll-text {
+  position: relative;
+  display: block;
+}
+
+.roll-text::after {
+  content: attr(data-text);
+  content: attr(data-text) / "";
+  position: absolute;
+  top: calc(100% + 0.24em);
+  left: 0;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roll-text {
+    transition: transform 420ms var(--ease-out);
+  }
+
+  :is(a, button):hover > .roll > .roll-text,
+  :is(a, button):focus-visible > .roll > .roll-text {
+    transform: translateY(calc(-100% - 0.24em));
+  }
+}
 
 .btn {
   display: inline-flex;
@@ -408,4 +454,26 @@ html:not(.js) [data-reveal] {
     opacity: 1;
     transform: none;
   }
+}
+
+/* ---------------------------------------------------------------- suits */
+
+/* A project's suit (deck/PlayingCard.tsx): an ember diamond for a case
+   study, a sky ring for the other work. Here rather than in deck.css because
+   the case study pages, on the privacy stylesheet, show it too. */
+.pcard-suit {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+}
+
+.pcard-suit.is-case {
+  background: var(--ember);
+  transform: rotate(45deg);
+}
+
+.pcard-suit.is-other {
+  border: 1.5px solid var(--sky);
+  border-radius: 50%;
 }

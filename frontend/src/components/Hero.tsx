@@ -5,13 +5,16 @@ import { m, useScroll, useTransform } from "../motion/m";
 import { cx } from "../lib/cx";
 import { Scene } from "./Scene";
 import { GyroMark } from "./GyroMark";
+import { RollLabel } from "./RollLabel";
 import { WorkIndex } from "./WorkIndex";
 import { SITE } from "../site";
 import type { ProjectSummary } from "../types";
+import type { OpenProject } from "./work/Work";
 
 interface HeroProps {
-  /** The six case studies, in content order, for the work index. */
-  cases: ProjectSummary[];
+  /** Every project, case studies first, for the deck in the work index. */
+  projects: ProjectSummary[];
+  onOpen: OpenProject;
 }
 
 // Every item is true of a project on the page: web apps (DMS, Alice, Smart
@@ -67,7 +70,7 @@ const COPY_GONE_AT = 120;
  * useMediaQuery(PIN_QUERY) is true, which is never on the server or during
  * hydration: until then every style below is the resting one.
  */
-export function Hero({ cases }: HeroProps) {
+export function Hero({ projects, onOpen }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
   const indexHeadRef = useRef<HTMLDivElement>(null);
   const pinned = useMediaQuery(PIN_QUERY);
@@ -99,6 +102,9 @@ export function Hero({ cases }: HeroProps) {
   const copyOpacity = useTransform(indexRise, [0.45, 1], [1, 0]);
   const gyroScale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
   const ringRotate = useTransform(scrollYProgress, [0, 1], [0, 40]);
+  // The card table comes in as the gyroscope leaves for the header (the
+  // dock below), into the columns it vacates.
+  const deckReveal = useTransform(scrollYProgress, [DOCK_FROM + 0.06, DOCK_FROM + 0.32], [0, 1]);
 
   /*
    * The dock. Over the second half of the pin the gyroscope leaves the hero
@@ -208,11 +214,11 @@ export function Hero({ cases }: HeroProps) {
             <div className="hero-actions">
               <Magnetic strength={0.25} maxOffset={6}>
                 <a className="btn btn-primary" href="#work-index">
-                  See the work
+                  <RollLabel>See the work</RollLabel>
                 </a>
               </Magnetic>
               <a className="btn btn-secondary" href="#contact">
-                Get in touch
+                <RollLabel>Get in touch</RollLabel>
               </a>
             </div>
 
@@ -252,7 +258,12 @@ export function Hero({ cases }: HeroProps) {
         </div>
       </div>
 
-      <WorkIndex cases={cases} headRef={indexHeadRef} />
+      <WorkIndex
+        projects={projects}
+        onOpen={onOpen}
+        headRef={indexHeadRef}
+        reveal={pinned ? deckReveal : undefined}
+      />
 
       {/* The gyroscope on its way to the header (see the dock above). */}
       {pinned && (
