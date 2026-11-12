@@ -81,6 +81,40 @@
   color: var(--text);
 }
 
+/* The text roll: the label slides up out of a one-line window and the same
+   word follows it in from below. The window clips; the copy is ::after,
+   one line under the label, so the two move together. */
+.nav-roll {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+}
+
+.nav-roll-text {
+  position: relative;
+  display: block;
+}
+
+.nav-roll-text::after {
+  content: attr(data-text);
+  content: attr(data-text) / "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nav-roll-text {
+    transition: transform 380ms var(--ease-out);
+  }
+
+  .nav-link:hover .nav-roll-text,
+  .nav-link:focus-visible .nav-roll-text {
+    transform: translateY(-100%);
+  }
+}
+
 .nav-link.is-active::after {
   content: "";
   position: absolute;

@@ -83,7 +83,14 @@ export function Nav() {
                   aria-current={active === s.id ? "location" : undefined}
                   onClick={() => setOpen(false)}
                 >
-                  {s.label}
+                  {/* The label rolls up to a copy of itself on hover
+                      (chrome.css). The copy is generated content with empty
+                      alt text, so the link is still named once. */}
+                  <span className="nav-roll">
+                    <span className="nav-roll-text" data-text={s.label}>
+                      {s.label}
+                    </span>
+                  </span>
                 </a>
               </li>
             ))}

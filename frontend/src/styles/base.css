@@ -357,6 +357,48 @@ a:hover {
  * main.tsx puts .js on <html> before it hydrates, which turns this off and
  * leaves the entrances to Motion.
  */
+/*
+ * Page transitions between the home page and /privacy: cross-document View
+ * Transitions, CSS only, so the privacy page still loads no script for it.
+ * The page being left lifts away and dims while the next one is uncovered
+ * from the bottom up; the header carries its own name, so it holds still
+ * across the change. Browsers without support simply navigate, and under
+ * reduced motion there is no transition at all.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+
+  .site-header {
+    view-transition-name: site-header;
+  }
+
+  ::view-transition-old(root) {
+    animation: page-leave 320ms var(--ease-in-out) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: page-enter 520ms var(--ease-out) both;
+  }
+}
+
+@keyframes page-leave {
+  to {
+    opacity: 0.35;
+    transform: translateY(-32px);
+  }
+}
+
+@keyframes page-enter {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 html:not(.js) [data-reveal] {
   animation: reveal-failsafe 0s 3s forwards;
 }
