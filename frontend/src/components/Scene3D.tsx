@@ -5,6 +5,7 @@ import {
   BufferGeometry,
   CanvasTexture,
   Color,
+  DoubleSide,
   Float32BufferAttribute,
   Group,
   LineBasicMaterial,
@@ -17,6 +18,7 @@ import {
   ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
+  Vector2,
 } from "three";
 import { mountScene } from "../lib/threeScene";
 import type { SceneController, SceneDef } from "../lib/threeScene";
@@ -749,12 +751,13 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
      without anything sweeping across the content - the page-wide radar
      that came before this was removed for exactly that reason.
 
-     The scroll speed (lib/scrollVelocity.ts) stretches the stars into
-     streaks behind their direction of travel, the nearer bands more, and
-     carries each band a little way with the page; both ease out within
-     about half a second of the scroll stopping. Each star also has a line
-     from itself to itself: a tiny shader moves its tail end by one uniform,
-     so a frame costs one number per band, not a rebuilt buffer.
+     Every so often a shooting star crosses part of the sky: a white-hot
+     head with a soft glow, burning out through sky or ember into a long
+     tapering tail, gone in about a second. One every 5 to 13 seconds of
+     the scene's own clock (so none pile up while it is paused or off
+     screen), sometimes followed closely by a second. Each is one small
+     ribbon whose shape is drawn by its shader from a few uniforms, so a
+     frame moves numbers, never buffers.
   --------------------------------------------------------------- */
   starfield: (detail) => {
     const t = makeTracker();
@@ -769,8 +772,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         scene.add(world);
 
         // Three bands: far ones smaller, dimmer and slower.
-        const bands: Array<{ g: Group; rate: number; streak: ShaderMaterial; reach: number }> = [];
-        t.track({ dispose: watchScrollVelocity() });
+        const bands: Array<{ g: Group; rate: number }> = [];
         // The page-wide layer, and the only one that is always on screen,
         // so it is the one worth thinning most on a phone.
         const LAYERS: Array<[number, number, number, number]> = [
@@ -782,21 +784,12 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
         LAYERS.forEach(([count, spread, size, opacity], li) => {
           const pts: number[] = [];
-          // The streaks: two vertices per star, both on the star; "tail"
-          // marks the end the shader moves.
-          const linePts: number[] = [];
-          const tails: number[] = [];
           for (let i = 0; i < count; i++) {
             // Golden-angle scatter: deterministic, so the sky is identical
             // on every load instead of reshuffling on each mount.
             const a = i * 2.399963 + li * 1.7;
             const r = Math.sqrt((i + 0.5) / count) * spread;
-            const x = Math.cos(a) * r;
-            const y = Math.sin(a) * r * 0.62;
-            const z = -li * 2.2 - ((i % 7) * 0.3);
-            pts.push(x, y, z);
-            linePts.push(x, y, z, x, y, z);
-            tails.push(0, 1);
+            pts.push(Math.cos(a) * r, Math.sin(a) * r * 0.62, -li * 2.2 - ((i % 7) * 0.3));
           }
           const g = t.track(new BufferGeometry());
           g.setAttribute("position", new Float32BufferAttribute(pts, 3));
@@ -816,31 +809,38 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
               )
             )
           );
-          const lineGeo = t.track(new BufferGeometry());
-          lineGeo.setAttribute("position", new Float32BufferAttribute(linePts, 3));
-          lineGeo.setAttribute("tail", new Float32BufferAttribute(tails, 1));
-          const streak = t.track(streakMaterial(li === 2 ? EMBER : SKY, opacity));
-          grp.add(new LineSegments(lineGeo, streak));
           world.add(grp);
-          // The near bands streak further, as they would in depth.
-          bands.push({ g: grp, rate: 0.004 + li * 0.004, streak, reach: 0.45 + li * 0.35 });
+          bands.push({ g: grp, rate: 0.004 + li * 0.004 });
         });
 
-        // How far each band has been carried along by the scroll, easing
-        // back to its own drift once the scroll stops.
-        const carried = [0, 0, 0];
+        // Two shooting stars, reused: a lead and the odd follower.
+        const glow = softDot();
+        if (glow) t.track(glow);
+        const meteors = [0, 1].map(() => makeMeteor(t, glow));
+        meteors.forEach((m) => scene.add(m.group));
+        // The first one a few seconds in, so it is not lost in the load.
+        let next = 3.5;
+
         return (time, dt) => {
-          // -1..1: a fast fling reads as 1 and goes no further, so the sky
-          // never whites out.
-          const speed = Math.max(-1, Math.min(1, readScrollVelocity() / 3200));
-          bands.forEach(({ g, rate, streak, reach }, i) => {
-            carried[i] = carried[i] * Math.exp(-dt * 3) + speed * dt * reach * 0.9;
+          bands.forEach(({ g, rate }, i) => {
             g.rotation.z = time * rate * (i % 2 === 0 ? 1 : -1);
-            g.position.y = Math.sin(time * 0.07 + i) * 0.25 + carried[i];
-            // Scrolling down moves the page up, so the tails trail below.
-            streak.uniforms.uStretch.value = -speed * reach;
-            streak.uniforms.uStrength.value = Math.abs(speed);
+            g.position.y = Math.sin(time * 0.07 + i) * 0.25;
           });
+
+          if (time >= next) {
+            const halfH = Math.tan(((camera.fov / 2) * Math.PI) / 180) * camera.position.z;
+            const halfW = halfH * camera.aspect;
+            const lead = meteors[0];
+            if (!lead.active) {
+              launchMeteor(lead, halfW, halfH, Math.random() < 0.35 ? EMBER : SKY);
+              // Now and then a second, close behind on a near-parallel path.
+              if (Math.random() < 0.3 && !meteors[1].active) {
+                launchMeteor(meteors[1], halfW, halfH, SKY, lead, 0.22 + Math.random() * 0.25);
+              }
+            }
+            next = time + 5 + Math.random() * 8;
+          }
+          meteors.forEach((m) => stepMeteor(m, dt));
         };
       },
     };
@@ -906,46 +906,163 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   },
 };
 
+interface Meteor {
+  group: Group;
+  ribbon: ShaderMaterial;
+  head: PointsMaterial;
+  headPoint: Points;
+  active: boolean;
+  /** Seconds since launch, or a negative wait before a follower sets off. */
+  age: number;
+  life: number;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  speed: number;
+}
+
 /**
- * The starfield's streak lines: each segment runs from a star to itself,
- * and the vertex shader moves its "tail" end by uStretch along y, fading
- * along its length. uStrength scales the whole line, so at rest (no
- * stretch) nothing is drawn. The colour goes through the renderer's output
- * colour space like every other material on the page.
+ * One shooting star: a ribbon (two triangles) whose shader lays it out
+ * from the head back along the direction of travel, wide and white-hot at
+ * the head and tapering to nothing, through the meteor's colour, at the
+ * tail; and a soft glow sprite on the head. Hidden until launched.
  */
-function streakMaterial(colour: string, opacity: number): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: {
-      uColor: { value: new Color(colour) },
-      uOpacity: { value: opacity },
-      uStretch: { value: 0 },
-      uStrength: { value: 0 },
-    },
-    vertexShader: /* glsl */ `
-      attribute float tail;
-      uniform float uStretch;
-      varying float vFade;
-      void main() {
-        vec3 p = position;
-        p.y += tail * uStretch;
-        vFade = 1.0 - tail;
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform vec3 uColor;
-      uniform float uOpacity;
-      uniform float uStrength;
-      varying float vFade;
-      void main() {
-        gl_FragColor = vec4(uColor, uOpacity * uStrength * vFade);
-        #include <colorspace_fragment>
-      }
-    `,
-    transparent: true,
-    depthWrite: false,
-    blending: AdditiveBlending,
-  });
+function makeMeteor(t: ReturnType<typeof makeTracker>, glow: CanvasTexture | null): Meteor {
+  const geo = t.track(new BufferGeometry());
+  // (along, across): along 0 is the head, 1 the tail end.
+  geo.setAttribute(
+    "position",
+    new Float32BufferAttribute([0, -1, 0, 0, 1, 0, 1, -1, 0, 1, 1, 0], 3),
+  );
+  geo.setIndex([0, 2, 1, 1, 2, 3]);
+  const ribbon = t.track(
+    new ShaderMaterial({
+      uniforms: {
+        uHead: { value: new Vector2() },
+        uDir: { value: new Vector2(1, 0) },
+        uLen: { value: 2.4 },
+        uWidth: { value: 0.05 },
+        uAlpha: { value: 0 },
+        uColor: { value: new Color(SKY) },
+      },
+      vertexShader: /* glsl */ `
+        uniform vec2 uHead;
+        uniform vec2 uDir;
+        uniform float uLen;
+        uniform float uWidth;
+        varying float vAlong;
+        varying float vAcross;
+        void main() {
+          float along = position.x;
+          vAlong = along;
+          vAcross = position.y;
+          vec2 normal = vec2(-uDir.y, uDir.x);
+          // Full width at the head, a thread at the tail.
+          float w = uWidth * (1.0 - along * 0.92);
+          vec2 p = uHead - uDir * uLen * along + normal * position.y * w;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uColor;
+        uniform float uAlpha;
+        varying float vAlong;
+        varying float vAcross;
+        void main() {
+          float fade = pow(1.0 - vAlong, 1.8);
+          float core = 1.0 - smoothstep(0.0, 1.0, abs(vAcross));
+          // White at the head, the meteor's colour down the tail.
+          vec3 colour = mix(vec3(1.0), uColor, smoothstep(0.0, 0.35, vAlong));
+          gl_FragColor = vec4(colour, uAlpha * fade * core);
+          #include <colorspace_fragment>
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      // Laid out by the shader, so which way the triangles wind depends on
+      // the direction of flight: drawn from both sides.
+      side: DoubleSide,
+    }),
+  );
+  const mesh = new Mesh(geo, ribbon);
+  mesh.frustumCulled = false;
+
+  const headGeo = t.track(new BufferGeometry());
+  headGeo.setAttribute("position", new Float32BufferAttribute([0, 0, 0], 3));
+  const head = t.track(
+    new PointsMaterial({
+      color: new Color("#ffffff"),
+      size: glow ? 0.42 : 0.12,
+      map: glow,
+      transparent: true,
+      opacity: 0,
+      blending: AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  const headPoint = new Points(headGeo, head);
+
+  const group = new Group();
+  group.add(mesh, headPoint);
+  group.visible = false;
+  return { group, ribbon, head, headPoint, active: false, age: 0, life: 1, x: 0, y: 0, dx: 1, dy: 0, speed: 1 };
+}
+
+/**
+ * Sends a meteor across the upper part of the view, down and to one side at
+ * 18 to 38 degrees. A follower takes the leader's path, offset a little and
+ * a moment behind.
+ */
+function launchMeteor(m: Meteor, halfW: number, halfH: number, colour: string, lead?: Meteor, delay = 0) {
+  if (lead) {
+    m.dx = lead.dx;
+    m.dy = lead.dy;
+    m.x = lead.x - lead.dy * 0.35 + lead.dx * 0.2;
+    m.y = lead.y + lead.dx * 0.35;
+    m.speed = lead.speed * 0.92;
+    m.life = lead.life;
+  } else {
+    const rightward = Math.random() < 0.5;
+    const angle = ((18 + Math.random() * 20) * Math.PI) / 180;
+    m.dx = Math.cos(angle) * (rightward ? 1 : -1);
+    m.dy = -Math.sin(angle);
+    // From somewhere across the top half, starting on the side it leaves.
+    m.x = (rightward ? -1 : 1) * halfW * (0.15 + Math.random() * 0.75);
+    m.y = halfH * (0.25 + Math.random() * 0.7);
+    m.speed = halfW * (0.85 + Math.random() * 0.5);
+    m.life = 0.9 + Math.random() * 0.5;
+  }
+  (m.ribbon.uniforms.uColor.value as Color).set(colour);
+  (m.ribbon.uniforms.uDir.value as Vector2).set(m.dx, m.dy);
+  m.age = -delay;
+  m.active = true;
+  m.group.visible = false;
+}
+
+function stepMeteor(m: Meteor, dt: number) {
+  if (!m.active) return;
+  m.age += dt;
+  if (m.age < 0) return;
+  if (m.age >= m.life) {
+    m.active = false;
+    m.group.visible = false;
+    return;
+  }
+  m.group.visible = true;
+  m.x += m.dx * m.speed * dt;
+  m.y += m.dy * m.speed * dt;
+  const k = m.age / m.life;
+  // Flares in fast, burns, then fades over the last third.
+  const alpha = Math.min(1, k / 0.08) * (k > 0.66 ? 1 - (k - 0.66) / 0.34 : 1);
+  // The tail grows out of the head over the first part of the flight.
+  const length = Math.min(1, k / 0.35) * 2.6;
+  (m.ribbon.uniforms.uHead.value as Vector2).set(m.x, m.y);
+  m.ribbon.uniforms.uLen.value = length;
+  m.ribbon.uniforms.uAlpha.value = alpha * 0.95;
+  m.head.opacity = alpha;
+  m.headPoint.position.set(m.x, m.y, 0);
 }
 
 /**
