@@ -5,6 +5,9 @@ import { m, useMotionValue, useScroll, useSpring, useTransform } from "../motion
 import type { MotionValue } from "../motion/m";
 import { Scene } from "./Scene";
 import { LiveReadout } from "./LiveReadout";
+import { CodePeek } from "./CodePeek";
+import { CommitStrip } from "./CommitStrip";
+import { PEEKS } from "virtual:code-peeks";
 import { projectNumber } from "../stats";
 
 /**
@@ -192,6 +195,20 @@ export function Pipeline() {
     return () => ro.disconnect();
   }, [pinned]);
 
+  /*
+   * The code behind each step (CodePeek, built from the repository at build
+   * time). Each node is a button: focus or a click opens its excerpt, and on
+   * the pinned layout so does pointing at it; a click holds it open until
+   * the visitor moves on, Escape or a second click closes it. The excerpt
+   * opens above the row on the pinned layout and under its node in the list.
+   */
+  const [peek, setPeek] = useState<number | null>(null);
+  const [held, setHeld] = useState(false);
+  const closePeek = () => {
+    setPeek(null);
+    setHeld(false);
+  };
+
   const lit = (i: number) => stage === null || i < stage.lit;
   // Labels decode only on the way through the pinned drawing, the first time
   // their node lights. In the finished state they are simply there.
@@ -221,10 +238,20 @@ export function Pipeline() {
               </p>
             </SectionHead>
 
-            {/* The drawing. Hidden from assistive technology, which reads the
-                same steps from the list below it. */}
-            <div className="pl-diagram" aria-hidden="true">
-              <div className="pl-route" data-on={routeOn}>
+            {/* The drawing. Its lines, routes and citations are hidden from
+                assistive technology, which reads the same steps from the
+                list below it; the nodes are buttons that open their code. */}
+            <div
+              className="pl-diagram"
+              onPointerLeave={() => !held && setPeek(null)}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) closePeek();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && peek !== null) closePeek();
+              }}
+            >
+              <div className="pl-route" data-on={routeOn} aria-hidden="true">
                 <RouteLine
                   svgRef={routeRef}
                   box={routeBox}
@@ -245,7 +272,7 @@ export function Pipeline() {
                 {/* One rail behind the row: the opaque nodes cover it, so it
                     shows only in the gaps, as a connector from each node to
                     the next. */}
-                <span className="pl-rail">
+                <span className="pl-rail" aria-hidden="true">
                   <m.span className="pl-rail-fill" style={{ scaleX: driven ? railFill : done }} />
                   <m.span
                     className="pl-token-track"
@@ -259,26 +286,54 @@ export function Pipeline() {
                   const last = i === PIPELINE_NODES.length - 1;
                   return (
                     <Fragment key={node.label}>
-                      <div className={`pl-node${i === 0 ? " is-first" : ""}${last ? " is-last" : ""}`} data-on={lit(i)} style={col}>
+                      <button
+                        type="button"
+                        className={`pl-node${i === 0 ? " is-first" : ""}${last ? " is-last" : ""}${peek === i ? " is-open" : ""}`}
+                        data-on={lit(i)}
+                        style={col}
+                        aria-expanded={peek === i}
+                        aria-controls={peek === i ? "pl-peek" : undefined}
+                        onPointerEnter={(e) => {
+                          if (pinned && e.pointerType === "mouse" && !held) setPeek(i);
+                        }}
+                        onFocus={() => {
+                          if (!held) setPeek(i);
+                        }}
+                        onClick={() => {
+                          if (peek === i && held) closePeek();
+                          else {
+                            setPeek(i);
+                            setHeld(true);
+                          }
+                        }}
+                      >
+                        {/* Named by its visible text (WCAG 2.5.3), so a voice
+                            user can say what they see; the purpose follows. */}
                         <span className="pl-node-label mono">
                           <Scramble text={breakable(node.label)} trigger={{ active: decoding(i) }} />
                         </span>
                         <span className="pl-node-text">{node.text}</span>
-                      </div>
+                        <span className="visually-hidden"> (show the code)</span>
+                      </button>
+                      {peek === i && PEEKS[node.source] && (
+                        <div className="pl-peek" style={col}>
+                          <CodePeek id="pl-peek" peek={PEEKS[node.source]} />
+                        </div>
+                      )}
                       {/* A node named after its own file needs no citation
                           under it saying the same thing again. */}
                       {node.source !== node.label && (
-                        <span className="pl-cite mono" data-on={lit(i)} style={col}>
+                        <span className="pl-cite mono" data-on={lit(i)} style={col} aria-hidden="true">
                           <PathText path={node.source} />
                         </span>
                       )}
-                      {!last && <span className="pl-stem" data-on={lit(i + 1)} />}
+                      {!last && <span className="pl-stem" data-on={lit(i + 1)} aria-hidden="true" />}
                     </Fragment>
                   );
                 })}
               </div>
 
-              <div className="pl-ci" data-on={ciOn}>
+              <div className="pl-ci" data-on={ciOn} aria-hidden="true">
                 <span className="pl-ci-text small">{CI_CHECK.text}</span>
                 <span className="pl-cite mono">
                   <PathText path={CI_CHECK.source} />
@@ -303,6 +358,7 @@ export function Pipeline() {
       {/* After the pinned stage, so it never crowds the drawing on a short
           screen: the numbers arrive as the diagram lets go. */}
       <LiveReadout />
+      <CommitStrip />
     </section>
   );
 }

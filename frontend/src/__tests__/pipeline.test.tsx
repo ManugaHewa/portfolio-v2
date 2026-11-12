@@ -84,9 +84,14 @@ describe("Pipeline: markup", () => {
     expect(stage.querySelector(".pipeline-inner #pipeline-heading")).not.toBeNull();
   });
 
-  it("hides the drawing from assistive technology and lists the same steps instead", () => {
+  it("hides the drawing's lines from assistive technology and lists the same steps instead", () => {
     const { container } = renderPipeline();
-    expect(container.querySelector(".pl-diagram")).toHaveAttribute("aria-hidden", "true");
+    for (const sel of [".pl-route", ".pl-rail", ".pl-ci"]) {
+      expect(container.querySelector(sel)).toHaveAttribute("aria-hidden", "true");
+    }
+    for (const label of container.querySelectorAll(".pl-cite, .pl-stem")) {
+      expect(label.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
     // The steps' list, in the stage; the live readout under it has its own.
     const list = within(container.querySelector<HTMLElement>(".pipeline-stage")!).getByRole("list");
     const items = within(list).getAllByRole("listitem");
@@ -149,5 +154,38 @@ describe("Pipeline: markup", () => {
     expect(within(container.querySelector<HTMLElement>(".pipeline-stage")!).getByRole("list")).toHaveTextContent(
       PIPELINE_NODES[4].text,
     );
+  });
+});
+
+describe("Pipeline: the code behind each step", () => {
+  it("makes every node a button that opens its real excerpt, and Escape closes it", () => {
+    const { container } = renderPipeline();
+    const buttons = Array.from(container.querySelectorAll<HTMLButtonElement>("button.pl-node"));
+    expect(buttons).toHaveLength(PIPELINE_NODES.length);
+
+    PIPELINE_NODES.forEach((node, i) => {
+      const button = buttons[i];
+      expect(button.textContent).toContain(node.text);
+      expect(button).toHaveAccessibleName(expect.stringContaining("(show the code)"));
+      act(() => {
+        button.click();
+      });
+      const peek = container.querySelector("#pl-peek")!;
+      expect(button).toHaveAttribute("aria-expanded", "true");
+      expect(peek).toHaveAttribute("aria-label", expect.stringContaining(node.source));
+      // The excerpt is the file's own text at the lines it names.
+      const source = read(node.source).split(/\r?\n/);
+      const start = Number(/lines (\d+)/.exec(peek.getAttribute("aria-label")!)![1]);
+      const first = peek.querySelector(".code-line")!.textContent!.replace(/^\d+/, "").trim();
+      expect(source[start - 1].trim()).toBe(first);
+    });
+
+    act(() => {
+      buttons[0].click();
+    });
+    act(() => {
+      buttons[0].dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(container.querySelector("#pl-peek")).toBeNull();
   });
 });

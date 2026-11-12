@@ -558,3 +558,184 @@
   font-size: 0.75rem;
   line-height: 1.5;
 }
+
+/* ------------------------------------------------------------ code peek */
+
+/* The nodes are buttons (they open their code): the box keeps its look,
+   with the button's own defaults taken off. */
+button.pl-node {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.pl-node:hover,
+button.pl-node.is-open {
+  border-color: var(--sky-line);
+}
+
+button.pl-node.is-open .pl-node-label {
+  color: var(--sky);
+}
+
+/* The excerpt (CodePeek.tsx). In the list layout it opens in place, under
+   its node. */
+.pl-peek {
+  margin-top: var(--s3);
+}
+
+.code-peek {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md, 10px);
+  background: var(--surface-1);
+}
+
+.code-peek-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-label);
+  color: var(--text-2);
+}
+
+.code-peek-lines {
+  color: var(--text-3);
+}
+
+.code-peek-body {
+  margin: 0;
+  padding: var(--s3) 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text);
+  tab-size: 2;
+}
+
+.code-line {
+  display: block;
+  padding-right: var(--s4);
+  white-space: pre;
+}
+
+.code-num {
+  display: inline-block;
+  width: 3.5ch;
+  margin-right: var(--s3);
+  padding-left: var(--s2);
+  text-align: right;
+  color: var(--text-3);
+  user-select: none;
+}
+
+.tok-kw {
+  color: var(--ember);
+}
+
+.tok-str {
+  color: #a8d4a0;
+}
+
+.tok-com {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.tok-num {
+  color: #d9b36c;
+}
+
+.tok-fn {
+  color: var(--sky);
+}
+
+/* On the pinned layout it opens above the row of nodes, over the space the
+   route arcs through, centred on its node and kept inside the row. */
+@media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
+  .pl-peek {
+    position: absolute;
+    bottom: calc(100% + 14px);
+    left: clamp(0px, calc((var(--i) - 0.5) * 20% - 240px), calc(100% - 480px));
+    z-index: 4;
+    width: 480px;
+    margin: 0;
+  }
+
+  .code-peek {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .code-peek {
+    animation: peek-in 220ms var(--ease-out);
+  }
+}
+
+@keyframes peek-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* --------------------------------------------------------- commit strip */
+
+.commit-strip {
+  position: relative;
+  z-index: 1;
+  padding-top: var(--s7);
+}
+
+.commit-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--weeks), 18px);
+  grid-template-rows: repeat(7, 18px);
+  gap: 4px;
+  width: max-content;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.commit-cell {
+  border-radius: 3px;
+  background: var(--surface-2);
+  transition:
+    opacity 360ms var(--ease-out),
+    transform 360ms var(--ease-out);
+  transition-delay: calc(var(--c, 0) * 45ms);
+}
+
+.commit-cell[data-level="1"] {
+  background: rgba(233, 142, 73, 0.3);
+}
+
+.commit-cell[data-level="2"] {
+  background: rgba(233, 142, 73, 0.5);
+}
+
+.commit-cell[data-level="3"] {
+  background: rgba(233, 142, 73, 0.75);
+}
+
+.commit-cell[data-level="4"] {
+  background: var(--ember);
+}
+
+/* Waiting below the fold to fill in: the reset is instant. */
+.commit-grid.is-armed .commit-cell {
+  opacity: 0;
+  transform: scale(0.4);
+  transition: none;
+}
+
+.commit-caption {
+  margin-top: var(--s3);
+  color: var(--text-2);
+}

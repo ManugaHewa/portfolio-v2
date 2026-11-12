@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { defineConfig, transformWithOxc, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { repoFacts } from "./build/repoFacts";
 
 const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -80,7 +81,7 @@ export function buildStamp(): { commit: string; date: string } | null {
 }
 
 export default defineConfig(({ isSsrBuild }) => ({
-  plugins: [react(), projectIndex()],
+  plugins: [react(), projectIndex(), ...repoFacts()],
   define: {
     __BUILD__: JSON.stringify(buildStamp()),
   },
