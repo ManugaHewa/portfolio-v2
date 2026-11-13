@@ -26,7 +26,14 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
   const current = deck.current === null ? undefined : projects[deck.current];
   const moved = deck.deal > 0 || deck.drawn > 1;
   const shuffled = deck.deal > 0 && deck.drawn === 1 ? "Shuffled. " : "";
-  const said = moved && current ? `${shuffled}Card ${deck.drawn} of ${deck.size}: ${current.title}.` : "";
+  // A cut is said while it is the last thing that happened; a second cut in
+  // a row changes the text (a trailing no-break space) so it is said again.
+  const cutLast = deck.cuts > 0 && deck.cutMark === `${deck.deal}:${deck.drawn}`;
+  const said = cutLast
+    ? `Cut the deck. A different card is on top.${deck.cuts % 2 === 0 ? "\u00a0" : ""}`
+    : moved && current
+      ? `${shuffled}Card ${deck.drawn} of ${deck.size}: ${current.title}.`
+      : "";
   const empty = deck.remaining === 0;
 
   return (
@@ -71,7 +78,7 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
       {/* Shown once focus is in the section, where the keys work. The
           buttons carry the same keys for assistive technology. */}
       <p className="deck-keys mono" aria-hidden="true">
-        <kbd>D</kbd> draw <kbd>S</kbd> spread <kbd>R</kbd> shuffle
+        <kbd>D</kbd> draw <kbd>S</kbd> spread <kbd>R</kbd> shuffle <kbd>C</kbd> cut
       </p>
       <p className="visually-hidden" aria-live="polite">
         {said}

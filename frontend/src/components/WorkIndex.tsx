@@ -39,7 +39,7 @@ export function deckKey(e: Pick<ReactKeyboardEvent, "key" | "altKey" | "ctrlKey"
   if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return null;
   if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable]")) return null;
   const k = e.key.toLowerCase();
-  return k === "d" ? "draw" : k === "s" ? "spread" : k === "r" ? "shuffle" : null;
+  return k === "d" ? "draw" : k === "s" ? "spread" : k === "r" ? "shuffle" : k === "c" ? "cut" : null;
 }
 
 /**
@@ -52,14 +52,14 @@ export function deckKey(e: Pick<ReactKeyboardEvent, "key" | "altKey" | "ctrlKey"
  * hero stage. The sheet takes the copy column (the heading, the three
  * gauges read from the data, and the deck's controls) and carries the page
  * background, so the copy it rises over goes under it rather than showing
- * through. The card table takes the other five columns, which the gyroscope
+ * through. The card table takes the other five columns, which the wheel
  * leaves as it flies into the header; below 1100px it follows the sheet.
  *
  * The cards are in number order (the case studies, then the other work),
  * whatever order the list arrived in, so the deck's numbers count up.
  *
- * While focus is anywhere in the section, D draws, S spreads (or gathers)
- * and R shuffles (deckKey).
+ * While focus is anywhere in the section, D draws, S spreads (or gathers),
+ * R shuffles and C cuts (deckKey).
  */
 export function WorkIndex({ projects, loading = false, error = false, onOpen, headRef, reveal }: WorkIndexProps) {
   const ordered = useMemo(
@@ -76,7 +76,8 @@ export function WorkIndex({ projects, loading = false, error = false, onOpen, he
     if (action === "draw") (deck.remaining > 0 ? deck.draw : deck.shuffle)();
     else if (action === "spread") {
       if (deck.remaining >= 2) deck.setSpread(!deck.spread);
-    } else deck.shuffle();
+    } else if (action === "cut") deck.cut();
+    else deck.shuffle();
   };
 
   return (

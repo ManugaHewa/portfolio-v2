@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * The deck's state: the order the cards are in, how many have been drawn,
- * which deal this is, and whether the deck is spread out on the table or
- * being riffled. Drawn cards come off the top in order; the last one drawn
- * is the one face up. `deal` counts shuffles, so a reshuffled deck gets
- * fresh keys for its animations.
+ * which deal this is, and whether the deck is spread out on the table, being
+ * riffled or being cut. Drawn cards come off the top in order; the last one
+ * drawn is the one face up. `deal` counts shuffles, so a reshuffled deck
+ * gets fresh keys for its animations.
  */
 export interface DeckState {
   order: number[];
@@ -13,10 +13,17 @@ export interface DeckState {
   deal: number;
   spread: boolean;
   riffling: boolean;
+  /** How many cards are lifted off the top for a cut on its way, or 0. */
+  cutting: number;
+  /** Cuts so far, and when the last one was made (`deal:drawn`), so a cut is said once. */
+  cuts: number;
+  cutMark: string;
 }
 
 /** How long the riffle takes before the new top card is dealt (ms). */
 export const RIFFLE_MS = 1050;
+/** How long a cut's top packet is held aside before it goes under (ms). */
+export const CUT_MS = 420;
 
 /**
  * The opening state, the same on the server and in the browser: the
@@ -30,6 +37,9 @@ export function initialDeck(size: number): DeckState {
     deal: 0,
     spread: false,
     riffling: false,
+    cutting: 0,
+    cuts: 0,
+    cutMark: "",
   };
 }
 
@@ -71,7 +81,37 @@ export function shuffleDeck(s: DeckState, random: () => number = Math.random): D
     const j = Math.floor(random() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
-  return { order, drawn: 0, deal: s.deal + 1, spread: false, riffling: true };
+  return { ...s, order, drawn: 0, deal: s.deal + 1, spread: false, riffling: true, cutting: 0 };
+}
+
+/**
+ * The cut: the top `k` of the cards still in the deck go to the bottom, as a
+ * dealer cuts. The drawn cards stay where they are. A cut that would leave
+ * either packet empty, or one made while riffling, changes nothing (beyond
+ * ending a cut on its way).
+ */
+export function cutDeck(s: DeckState, k: number): DeckState {
+  const left = s.order.length - s.drawn;
+  if (s.riffling || k < 1 || k >= left) return s.cutting ? { ...s, cutting: 0 } : s;
+  const rest = s.order.slice(s.drawn);
+  return {
+    ...s,
+    order: [...s.order.slice(0, s.drawn), ...rest.slice(k), ...rest.slice(0, k)],
+    spread: false,
+    cutting: 0,
+    cuts: s.cuts + 1,
+    cutMark: `${s.deal}:${s.drawn}`,
+  };
+}
+
+/**
+ * Where a cut by key lands: near the middle, give or take a couple of
+ * cards, as a hand's does. 0 when there is nothing to cut.
+ */
+export function cutDepth(remaining: number, random: () => number = Math.random): number {
+  if (remaining < 2) return 0;
+  const k = Math.round(remaining / 2 + (random() - 0.5) * Math.min(4, remaining - 2));
+  return Math.max(1, Math.min(remaining - 1, k));
 }
 
 /** The face-up card and the ones under it, most recent first, as indices into the projects. */
@@ -101,6 +141,10 @@ export interface Deck extends DeckState {
   pull(index: number): void;
   shuffle(): void;
   setSpread(spread: boolean): void;
+  /** Cut near the middle: the top packet is lifted aside, then goes under (CUT_MS). */
+  cut(): void;
+  /** Cut `k` cards down, at once: a cut made by hand, whose packet is already aside. */
+  cutAt(k: number): void;
 }
 
 /**
@@ -110,10 +154,12 @@ export interface Deck extends DeckState {
 export function useDeck(size: number, instant: boolean): Deck {
   const [state, setState] = useState(() => initialDeck(size));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
+      if (cutTimer.current) clearTimeout(cutTimer.current);
     },
     [],
   );
@@ -140,6 +186,21 @@ export function useDeck(size: number, instant: boolean): Deck {
     );
   }, [instant]);
 
+  const left = state.order.length - state.drawn;
+  const busy = state.riffling || state.cutting > 0;
+  const cutAt = useCallback((k: number) => setState((s) => cutDeck(s, k)), []);
+  const cut = useCallback(() => {
+    const k = cutDepth(left);
+    if (busy || k < 1) return;
+    if (instant) {
+      cutAt(k);
+      return;
+    }
+    setState((s) => (s.riffling || s.cutting ? s : { ...s, cutting: k, spread: false }));
+    if (cutTimer.current) clearTimeout(cutTimer.current);
+    cutTimer.current = setTimeout(() => setState((s) => cutDeck(s, s.cutting)), CUT_MS);
+  }, [busy, cutAt, instant, left]);
+
   return {
     ...state,
     size,
@@ -149,5 +210,7 @@ export function useDeck(size: number, instant: boolean): Deck {
     pull,
     shuffle,
     setSpread,
+    cut,
+    cutAt,
   };
 }

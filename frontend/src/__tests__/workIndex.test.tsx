@@ -2,10 +2,23 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { WorkIndex, deckKey } from "../components/WorkIndex";
-import { RIFFLE_MS, deckCards, drawCard, initialDeck, pullCard, shuffleDeck, tableCards, thrown } from "../components/deck/useDeck";
+import {
+  CUT_MS,
+  RIFFLE_MS,
+  cutDeck,
+  cutDepth,
+  deckCards,
+  drawCard,
+  initialDeck,
+  pullCard,
+  shuffleDeck,
+  tableCards,
+  thrown,
+} from "../components/deck/useDeck";
 import { requestDeal, takeDeal } from "../lib/dealRequest";
 import type { DeckState } from "../components/deck/useDeck";
-import { pilePose, ribbonPose, ribbonTimeline, spreadCentre, spreadPose } from "../components/deck/DeckTable";
+import { cutAt, pilePose, ribbonPose, ribbonTimeline, spreadCentre, spreadPose } from "../components/deck/DeckTable";
+import { gone, stepFlier } from "../lib/winCascade";
 import { STATS, projectNumber } from "../stats";
 import { projectSummaries } from "../../../content/projects";
 import type { ProjectSummary } from "../types";
@@ -192,6 +205,7 @@ describe("deck keys and the hand", () => {
     const base = { key: "d", altKey: false, ctrlKey: false, metaKey: false, repeat: false, target: document.createElement("div") };
     expect(deckKey(base)).toBe("draw");
     expect(deckKey({ ...base, key: "r" })).toBe("shuffle");
+    expect(deckKey({ ...base, key: "C" })).toBe("cut");
     expect(deckKey({ ...base, ctrlKey: true })).toBeNull();
     expect(deckKey({ ...base, repeat: true })).toBeNull();
     expect(deckKey({ ...base, key: "x" })).toBeNull();
@@ -225,10 +239,28 @@ describe("deck keys and the hand", () => {
 });
 
 describe("deck logic", () => {
-  const state = (order: number[], drawn: number): DeckState => ({ order, drawn, deal: 0, spread: false, riffling: false });
+  const state = (order: number[], drawn: number): DeckState => ({
+    order,
+    drawn,
+    deal: 0,
+    spread: false,
+    riffling: false,
+    cutting: 0,
+    cuts: 0,
+    cutMark: "",
+  });
 
   it("starts with the first card turned over, gathered", () => {
-    expect(initialDeck(3)).toEqual({ order: [0, 1, 2], drawn: 1, deal: 0, spread: false, riffling: false });
+    expect(initialDeck(3)).toEqual({
+      order: [0, 1, 2],
+      drawn: 1,
+      deal: 0,
+      spread: false,
+      riffling: false,
+      cutting: 0,
+      cuts: 0,
+      cutMark: "",
+    });
     expect(initialDeck(0).drawn).toBe(0);
   });
 
@@ -320,5 +352,132 @@ describe("deck geometry", () => {
     expect(right.y).toBeGreaterThan(0);
     const left = spreadCentre({ x: 0, y: 0, rotate: -20 }, 400);
     expect(left.x).toBeCloseTo(-right.x, 5);
+  });
+});
+
+describe("the cut", () => {
+  const state = (order: number[], drawn: number): DeckState => ({ ...initialDeck(order.length), order, drawn });
+
+  it("puts the top packet under the rest, leaving the drawn cards alone", () => {
+    const s = cutDeck(state([0, 1, 2, 3, 4, 5], 2), 3);
+    expect(s.order).toEqual([0, 1, 5, 2, 3, 4]);
+    expect(s.drawn).toBe(2);
+    expect(s.cuts).toBe(1);
+    expect(s.cutMark).toBe("0:2");
+  });
+
+  it("refuses a cut that would leave a packet empty, and one made while riffling", () => {
+    const s = state([0, 1, 2, 3], 1);
+    expect(cutDeck(s, 0)).toBe(s);
+    expect(cutDeck(s, 3)).toBe(s);
+    const riffling = { ...s, riffling: true };
+    expect(cutDeck(riffling, 1)).toBe(riffling);
+    // A cut on its way that cannot be made simply ends.
+    expect(cutDeck({ ...s, cutting: 5 }, 5)).toMatchObject({ order: [0, 1, 2, 3], cutting: 0 });
+  });
+
+  it("cuts near the middle from the keyboard, never at either end", () => {
+    expect(cutDepth(1)).toBe(0);
+    expect(cutDepth(2)).toBe(1);
+    for (const r of [0, 0.5, 0.999]) {
+      const k = cutDepth(12, () => r);
+      expect(k).toBeGreaterThanOrEqual(4);
+      expect(k).toBeLessThanOrEqual(8);
+    }
+  });
+
+  it("takes one card at the top of the edge and all but one at the bottom", () => {
+    expect(cutAt(0, 12)).toBe(1);
+    expect(cutAt(1, 12)).toBe(11);
+    expect(cutAt(0.5, 12)).toBe(6);
+    expect(cutAt(-2, 12)).toBe(1);
+    expect(cutAt(0.5, 1)).toBe(0);
+  });
+
+  it("cuts on C, lifting the top packet aside before it goes under, and says so", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = renderIndex();
+      const section = container.querySelector("section#work-index") as HTMLElement;
+      act(() => {
+        fireEvent.keyDown(section, { key: "c" });
+      });
+      // The packet is out: the deck has not changed order yet.
+      expect(container.querySelector("[aria-live='polite']")?.textContent).toBe("");
+      act(() => {
+        vi.advanceTimersByTime(CUT_MS + 10);
+      });
+      expect(container.querySelector("[aria-live='polite']")?.textContent).toMatch(/^Cut the deck\./);
+      act(() => {
+        fireEvent.keyDown(section, { key: "d" });
+      });
+      // The card that would have come next did not.
+      expect(faceUp(container)).not.toBe(projects[1].title);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("the squeeze", () => {
+  it("lifts the top card's corner while it is held, and does not draw it", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = renderIndex();
+      const top = container.querySelector(".deck-pile .pcard.is-top") as HTMLElement;
+      // The corner shows the next card's own index.
+      expect(top.querySelector(".pcard-peel .pcard-rank")?.textContent).toBe(projectNumber(projects[1].slug));
+      act(() => {
+        fireEvent.pointerDown(top, { button: 0, clientX: 10, clientY: 10 });
+      });
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(top).toHaveClass("is-squeezed");
+      act(() => {
+        fireEvent.pointerUp(window);
+        fireEvent.click(top);
+      });
+      expect(top).not.toHaveClass("is-squeezed");
+      expect(faceUp(container)).toBe(projects[0].title);
+      // A quick press still draws.
+      act(() => {
+        fireEvent.pointerDown(top, { button: 0, clientX: 10, clientY: 10 });
+        fireEvent.pointerUp(window);
+        fireEvent.click(top);
+      });
+      expect(faceUp(container)).toBe(projects[1].title);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("the win", () => {
+  it("bounces each card lower than the last time, and lets it leave either side", () => {
+    let f = { x: 0, y: 0, vx: 300, vy: 0 };
+    const floor = 500;
+    const peaks: number[] = [];
+    let rising = false;
+    let top = Infinity;
+    for (let i = 0; i < 600; i++) {
+      const next = stepFlier(f, 1 / 120, floor);
+      expect(next.y).toBeLessThanOrEqual(floor);
+      if (next.vy < 0) {
+        rising = true;
+        top = Math.min(top, next.y);
+      } else if (rising) {
+        peaks.push(top);
+        rising = false;
+        top = Infinity;
+      }
+      f = next;
+    }
+    // The first few bounces, while they are still bounces worth the name.
+    expect(peaks.length).toBeGreaterThan(3);
+    for (let i = 1; i < 4; i++) expect(peaks[i]).toBeGreaterThan(peaks[i - 1]);
+    expect(gone({ x: 1500, y: 0, vx: 1, vy: 0 }, 200, 1440)).toBe(true);
+    expect(gone({ x: -201, y: 0, vx: -1, vy: 0 }, 200, 1440)).toBe(true);
+    expect(gone({ x: 100, y: 0, vx: 1, vy: 0 }, 200, 1440)).toBe(false);
   });
 });
