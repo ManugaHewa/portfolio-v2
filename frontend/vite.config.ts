@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { defineConfig, transformWithOxc, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
-import { repoFacts } from "./build/repoFacts";
+import { repoFacts } from "./build/repoFacts.ts";
+import { previewApi } from "./build/previewApi.ts";
 
 const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -40,16 +41,26 @@ function projectIndex(): Plugin {
     async load(id) {
       if (id !== resolved) return undefined;
       this.addWatchFile(PROJECTS_FILE);
-      const source = await readFile(PROJECTS_FILE, "utf8");
-      const { code } = await transformWithOxc(source, PROJECTS_FILE);
-      const content: { PROJECTS: Record<string, unknown>[] } = await import(
-        `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`
-      );
+      const content = await loadContent();
       const rows = content.PROJECTS.map((p) =>
         Object.fromEntries(INDEX_FIELDS.map((field) => [field, p[field]])),
       );
       return `export const PROJECTS = ${JSON.stringify(rows)};\n`;
     },
+  };
+}
+
+/**
+ * content/projects.ts, read, stripped of its types and evaluated (see
+ * projectIndex for why it is not imported). Read afresh each time, so an
+ * edit during `vite dev` is picked up.
+ */
+async function loadContent() {
+  const source = await readFile(PROJECTS_FILE, "utf8");
+  const { code } = await transformWithOxc(source, PROJECTS_FILE);
+  return (await import(`data:text/javascript;base64,${Buffer.from(code).toString("base64")}`)) as {
+    PROJECTS: Array<Record<string, unknown> & { slug: string }>;
+    projectSummaries(): unknown[];
   };
 }
 
@@ -81,7 +92,7 @@ export function buildStamp(): { commit: string; date: string } | null {
 }
 
 export default defineConfig(({ isSsrBuild }) => ({
-  plugins: [react(), projectIndex(), ...repoFacts()],
+  plugins: [react(), projectIndex(), ...repoFacts(), previewApi(loadContent)],
   define: {
     __BUILD__: JSON.stringify(buildStamp()),
   },
