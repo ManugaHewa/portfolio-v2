@@ -365,12 +365,12 @@
 /* --------------------------------------------------------- index rail */
 
 /*
- * Wide screens only, set in from the window's edge so it reads as a scale
- * on the page, not a scrollbar. motion/IndexRail.tsx sets --pos (0 to 1) on
- * each item; the server's even spacing is the no-JavaScript layout. The
- * marker, when rendered, is placed by the component along the track, and
- * the component fades the whole rail out while the hero is pinned, where
- * it would crowd the wheel.
+ * Wide screens only, set in from the window's edge so it reads as a ball
+ * track on the page, not a scrollbar. motion/IndexRail.tsx sets --pos (0 to
+ * 1) on each item; the server's even spacing is the no-JavaScript layout.
+ * The ball, when rendered, is placed by the component along the track and
+ * into the pockets, and the component fades the whole rail out while the
+ * hero is pinned, where it would crowd the wheel.
  */
 .index-rail {
   display: none;
@@ -421,8 +421,9 @@
   transform: translateY(-50%);
 }
 
-/* A 24px target around a 12px calibration tick; the current section's is
-   20px and ember, with its label shown beside it. */
+/* A 24px target around a pocket: a cup off the track's left side, open to
+   the track, that the ball drops into. The current section's is ember,
+   with its label shown beside it. */
 .index-rail-tick {
   position: relative;
   display: flex;
@@ -436,22 +437,21 @@
 
 .index-rail-tick::after {
   content: "";
-  width: 12px;
-  height: 1px;
-  background: var(--line-strong);
-  transition: width var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+  width: 8px;
+  height: 12px;
+  border: 1px solid var(--line-strong);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  transition: border-color var(--dur-1) var(--ease-out);
 }
 
 .index-rail-tick:hover::after,
 .index-rail-tick:focus-visible::after {
-  width: 16px;
-  background: var(--text-2);
+  border-color: var(--text-2);
 }
 
 .index-rail-tick[aria-current="location"]::after {
-  width: 20px;
-  height: 2px;
-  background: var(--ember);
+  border-color: var(--ember);
 }
 
 /* The tick's accessible name, shown on hover and focus. On the page's own
@@ -491,7 +491,9 @@
   color: var(--text);
 }
 
-/* The live marker: an 8px ember ring riding the hairline. */
+/* The ball: the wheel's, in ivory, centred on the hairline (and moved off
+   it into the pockets by the component). The fleck on it turns as it
+   rolls. */
 .index-rail-marker {
   position: absolute;
   top: 0;
@@ -499,10 +501,20 @@
   width: 8px;
   height: 8px;
   margin-top: -4px;
-  border: 1.5px solid var(--ember);
   border-radius: 50%;
-  background: var(--bg);
+  background: #f6f3ec;
   pointer-events: none;
+}
+
+.index-rail-marker::after {
+  content: "";
+  position: absolute;
+  top: 1.25px;
+  left: 3px;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #8f949a;
 }
 
 /* -------------------------------------------------------------- footer */

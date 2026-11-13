@@ -26,24 +26,66 @@ const SCROLL_MARGIN = 80;
 // The share of the pin, at its end, over which the rail fades in.
 const FADE_IN_SHARE = 0.25;
 
+// The ball: its radius, how far it drops sideways off the track into a
+// pocket (px), and how long it sits in each pocket as the page goes by, as
+// a share of the way to the next pocket on either side.
+const BALL_R = 4;
+const SEAT_DEPTH = 4.5;
+const SEAT = 0.2;
+
+const smoother = (u: number) => u * u * u * (u * (u * 6 - 15) + 10);
+const smoothstep = (a: number, b: number, v: number) => {
+  const u = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return u * u * (3 - 2 * u);
+};
+
+/**
+ * Where the rail's ball is at scroll progress `p` (0 to 1), given the
+ * pockets' places along the rail, in order: `at`, its place along the rail
+ * (0 to 1), and `seat`, how far it has dropped into a pocket (0 on the
+ * track, 1 in it). Near a pocket it sits in it while the page scrolls on a
+ * little; between two it rolls out of one and on into the next, quickest
+ * halfway. A function of the scroll alone, so it is a readout of the
+ * visitor's own scrolling, not an animation of its own.
+ */
+export function railBall(p: number, pockets: number[]): { at: number; seat: number } {
+  const n = pockets.length;
+  if (n === 0) return { at: p, seat: 0 };
+  const first = pockets[0];
+  const last = pockets[n - 1];
+  // Before the first pocket and after the last, it simply rolls with the
+  // page, dropping in as it arrives and climbing out as it leaves.
+  if (p <= first) return { at: p, seat: smoothstep(first - 0.03, first, p) };
+  if (p >= last) return { at: p, seat: 1 - smoothstep(last, last + 0.03, p) };
+  let i = 0;
+  while (i < n - 2 && p >= pockets[i + 1]) i++;
+  const a = pockets[i];
+  const b = pockets[i + 1];
+  const t = b > a ? (p - a) / (b - a) : 0;
+  const e = t <= SEAT ? 0 : t >= 1 - SEAT ? 1 : smoother((t - SEAT) / (1 - 2 * SEAT));
+  return { at: a + (b - a) * e, seat: 1 - smoothstep(0, 0.12, Math.min(e, 1 - e)) };
+}
+
 const sameList = (a: number[] | null, b: number[]) =>
   a !== null && a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 0.001);
 
 /**
- * The section index down the right edge on wide screens, drawn like a gimbal
- * scale: one hairline, one calibration tick per section. Each tick is a link
- * whose mono label shows on hover and focus and is its accessible name; the
- * current section's tick has aria-current="location" (from the same
+ * The section index down the right edge on wide screens, drawn as a ball
+ * track: one hairline, one pocket per section beside it. Each pocket is a
+ * link whose mono label shows on hover and focus and is its accessible
+ * name; the current section's has aria-current="location" (from the same
  * scroll-spy as the header nav).
  *
- * --pos (0 to 1) places a tick along the rail. The server renders them evenly
- * spaced, which is also the no-JavaScript layout. After hydration each tick
- * moves to its section's measured place in the page's scroll range,
- * re-measured whenever the page's size changes (fonts arriving, the project
- * list loading, a resize), and an 8px ember ring rides the hairline with the
- * scroll position. The ring follows the scroll directly, with no spring, so
- * it is a readout of the visitor's own scrolling rather than an animation,
- * and is the same under reduced motion.
+ * --pos (0 to 1) places a pocket along the rail. The server renders them
+ * evenly spaced, which is also the no-JavaScript layout. After hydration
+ * each pocket moves to its section's measured place in the page's scroll
+ * range, re-measured whenever the page's size changes (fonts arriving, the
+ * project list loading, a resize), and an ivory ball, the wheel's, runs the
+ * track with the scroll position: it drops into each section's pocket and
+ * sits there while the page passes, then rolls out and on to the next,
+ * turning as it rolls (railBall). It follows the scroll directly, with no
+ * spring, so it is a readout of the visitor's own scrolling rather than an
+ * animation, and is the same under reduced motion.
  *
  * With hideWhilePinned, and only while the page pins (PIN_QUERY), the whole
  * rail is faded out at the top of the page and fades in as the pinned stage
@@ -58,7 +100,20 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
   const [positions, setPositions] = useState<number[] | null>(null);
   const trackHeight = useMotionValue(0);
   const { scrollY, scrollYProgress } = useScroll();
-  const markerY = useTransform([scrollYProgress, trackHeight], ([p, h]) => (p as number) * (h as number));
+  const last = Math.max(sections.length - 1, 1);
+  const pockets = positions ?? sections.map((_, i) => i / last);
+  // Moved pockets move the ball too, without waiting for a scroll.
+  const refresh = useMotionValue(0);
+  useEffect(() => {
+    refresh.set(refresh.get() + 1);
+  }, [positions, refresh]);
+  const markerY = useTransform(
+    [scrollYProgress, trackHeight, refresh],
+    ([p, h]) => railBall(p as number, pockets).at * (h as number),
+  );
+  const markerX = useTransform([scrollYProgress, refresh], ([p]) => -SEAT_DEPTH * railBall(p as number, pockets).seat);
+  // Rolling: a turn for every 2πr of track.
+  const markerTurn = useTransform(markerY, (y) => (y / BALL_R) * (180 / Math.PI));
   // The scroll positions where the pin ends and where the fade-in starts.
   const pinEnd = useMotionValue(0);
   const fadeFrom = useMotionValue(0);
@@ -67,7 +122,6 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
     if (b <= a) return 1;
     return Math.min(1, Math.max(0, (at - a) / (b - a)));
   });
-  const last = Math.max(sections.length - 1, 1);
   const key = sections.map((s) => s.id).join("|");
 
   useEffect(() => {
@@ -144,7 +198,9 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
           </li>
         ))}
       </ol>
-      {hydrated && <m.span className="index-rail-marker" aria-hidden="true" style={{ y: markerY }} />}
+      {hydrated && (
+        <m.span className="index-rail-marker" aria-hidden="true" style={{ y: markerY, x: markerX, rotate: markerTurn }} />
+      )}
     </m.nav>
   );
 }
