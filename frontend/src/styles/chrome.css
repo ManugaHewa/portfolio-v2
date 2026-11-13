@@ -92,50 +92,42 @@
 }
 
 .gyro-mark ellipse,
-.gyro-mark-core {
+.gyro-mark circle,
+.gyro-mark path {
   vector-effect: non-scaling-stroke;
 }
 
-.gyro-mark-core {
-  fill: var(--surface-2);
+.gyro-mark-stand,
+.gyro-mark-outer {
   stroke: var(--line-strong);
 }
 
-.gyro-mark-ring.is-outer ellipse,
-.gyro-mark-ring.is-inner ellipse {
+.gyro-mark-inner {
   stroke: var(--sky);
 }
 
-.gyro-mark-ring.is-inner ellipse {
-  opacity: 0.7;
-}
-
-.gyro-mark-ring.is-middle ellipse {
+.gyro-mark-rotor {
   stroke: var(--ember);
 }
 
-.gyro-mark-electron {
+.gyro-mark-rotor path {
+  stroke-width: 1px;
+  opacity: 0.8;
+}
+
+.gyro-mark-hub {
   fill: var(--ember);
   stroke: none;
 }
 
-/* Each ring turns about the mark's centre (the viewBox origin) at its own
-   rate, the middle one the other way. */
+/* The flywheel turns; the gimbals hold still, as a running gyroscope's
+   seem to. */
 @media (prefers-reduced-motion: no-preference) {
-  .gyro-mark-ring {
-    animation: gyro-turn 9s linear infinite;
+  .gyro-mark-rotor {
+    animation: gyro-turn 2.4s linear infinite;
   }
 
-  .gyro-mark-ring.is-middle {
-    animation-duration: 6.5s;
-    animation-direction: reverse;
-  }
-
-  .gyro-mark-ring.is-inner {
-    animation-duration: 4.8s;
-  }
-
-  .gyro-mark.is-paused .gyro-mark-ring {
+  .gyro-mark.is-paused .gyro-mark-rotor {
     animation-play-state: paused;
   }
 }

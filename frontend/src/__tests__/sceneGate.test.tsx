@@ -239,10 +239,14 @@ describe("the render budget", () => {
   it("spends less geometry on a phone than on a desktop", () => {
     stubMatchMedia(phone);
     const small = sceneBudget();
+    const smallLines = sceneBudget("field");
     stubMatchMedia(desktop);
     const large = sceneBudget();
     expect(small.detail).toBeLessThan(large.detail);
-    expect(small.antialias).toBe(false);
+    // The hero gyroscope's solid tubes keep antialiasing on a phone; the
+    // line scenes drop it.
+    expect(small.antialias).toBe(true);
+    expect(smallLines.antialias).toBe(false);
     expect(large.antialias).toBe(true);
   });
 

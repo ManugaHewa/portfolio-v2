@@ -89,7 +89,9 @@ export function sceneBudget(variant: SceneVariant = "core"): SceneBudget {
   // Geometry counts are the second lever after pixel ratio, sized to the
   // screen: a phone shows a scene a third the width of a desktop's.
   if (!hasWindow || window.matchMedia(PHONE).matches) {
-    return { pixelRatio, detail: 0.45, antialias: false, maxFps };
+    // The hero gyroscope is thin solid tubes: without antialiasing its
+    // edges stair-step, so it keeps it; the line scenes can do without.
+    return { pixelRatio, detail: 0.45, antialias: variant === "core", maxFps };
   }
   if (window.matchMedia(NARROW).matches) {
     return { pixelRatio, detail: 0.7, antialias: true, maxFps };

@@ -1,7 +1,14 @@
 import { useEffect, useRef } from "react";
 import {
   AdditiveBlending,
-  BackSide,
+  AmbientLight,
+  CircleGeometry,
+  CylinderGeometry,
+  DirectionalLight,
+  Fog,
+  MeshLambertMaterial,
+  TorusGeometry,
+  Vector3,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
@@ -13,7 +20,6 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
-  PlaneGeometry,
   Points,
   PointsMaterial,
   ShaderMaterial,
@@ -115,271 +121,154 @@ function makeTracker() {
 
 const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   /* ---------------------------------------------------------------
-     Hero: a gyroscope core. Three nested rings on orthogonal axes,
-     each turning at its own rate, with a shell of particles orbiting
-     outside them. Reads as a precision instrument rather than a radar,
-     and the differing rates mean the silhouette never repeats.
+     Hero: a gyroscope, drawn as an instrument. A flywheel (an ember rim,
+     six spokes and a hub) spins on its axle; the axle is held by the
+     inner gimbal (sky), which nods slowly on the two pins that hold it in
+     the outer gimbal (steel), which turns slowly on its stand. Every part
+     is a solid, lit tube in one of three inks, and the far side of the
+     instrument falls into the page's own black (fog), so it reads as one
+     clean object from any angle: no point sprites, no lettering, nothing
+     that flickers the longer it is watched.
 
-     It boots when it first appears: the rings fly in from beyond the edge
-     of the frame, spinning, and settle into their gimbals one after the
-     other; the core flares as the last one locks, and the electrons spread
-     out from the centre onto their rings. About 1.4 seconds, run once per
-     mount on the scene's own clock, and never under reduced motion (no
-     scene runs then).
+     Scrolling spins the flywheel up (lib/scrollVelocity.ts): at speed its
+     spokes blur into a disc, as a real rotor's do, and come back as it
+     winds down. A mouse in the hero tilts the instrument a few degrees
+     toward it. When it first appears it boots: the gimbals open out from
+     the centre one after the other and the flywheel spins up. Never under
+     reduced motion (no scene runs then).
   --------------------------------------------------------------- */
   core: (detail) => {
     const t = makeTracker();
-    const R_CORE = 0.88;
-    // The sphere is opaque and read against its own wireframe, so it can
-    // lose a lot of segments before the silhouette starts to show facets.
-    const SEG_W = scaled(48, detail, 24);
-    const SEG_H = scaled(32, detail, 16);
+    const R_OUTER = 1.56;
+    const R_INNER = 1.28;
+    const R_ROTOR = 0.84;
+    // Round each tube, and round each ring: enough that no facet shows.
+    const SIDES = scaled(14, detail, 8);
+    const ARC = scaled(220, detail, 96);
     return {
-      fov: 42,
+      fov: 40,
       dispose: t.disposeAll,
       setup: ({ scene, camera, renderer }) => {
-        camera.position.set(0, 0.5, 4.95);
-        camera.lookAt(0, 0, 0);
+        camera.position.set(0, 0.5, 5.7);
+        camera.lookAt(0, -0.08, 0);
+        // The far side falls away into the page's black: depth, without a
+        // single transparent line.
+        scene.fog = new Fog(new Color("#08090b"), 4.3, 8.8);
 
-        /**
-         * The core is a real sphere in the scene rather than an HTML disc
-         * layered over the canvas. That is the whole point: an HTML element
-         * always paints on top, so the rings could only ever pass *behind*
-         * it and the middle read as a flat circle. An opaque, depth-writing
-         * mesh lets the depth buffer decide - the half of each ring nearer
-         * the camera draws over the sphere, the far half is occluded - and
-         * that occlusion is what makes it read as a ball with depth.
-         */
-        const core = new Group();
-        scene.add(core);
+        // A cool key light from the upper left, a warm fill from below, so
+        // each tube reads round.
+        scene.add(new AmbientLight(0xffffff, 0.6));
+        const key = new DirectionalLight(0xe4f2ff, 1.35);
+        key.position.set(-2.6, 3.2, 4);
+        scene.add(key);
+        const fill = new DirectionalLight(0xffd7b5, 0.4);
+        fill.position.set(2.2, -2.6, 1.4);
+        scene.add(fill);
 
-        const body = new Mesh(
-          t.track(new SphereGeometry(R_CORE, SEG_W, SEG_H)),
-          t.track(new MeshBasicMaterial({ color: new Color("#0e1013") }))
-        );
-        core.add(body);
-
-        // Latitude and longitude on the surface itself. Lines that converge
-        // at the poles and crowd toward the silhouette are the cheapest
-        // unambiguous cue that a disc is actually a sphere; the far side is
-        // hidden by the body above, so only the near half is ever drawn.
-        const grid = new LineSegments(
-          t.track(sphereGridGeometry(R_CORE * 1.004, 7, 12)),
+        const ink = (hex: string, glow: number) =>
           t.track(
-            new LineBasicMaterial({
-              color: new Color(SKY),
-              transparent: true,
-              opacity: 0.16,
-              depthWrite: false,
-            })
-          )
-        );
-        core.add(grid);
-
-        // Limb glow: a slightly larger sphere drawn from the inside, so only
-        // the rim survives. Gives the silhouette a lit edge instead of a
-        // hard cut against the card.
-        const limb = new Mesh(
-          t.track(new SphereGeometry(R_CORE * 1.022, SEG_W, SEG_H)),
-          t.track(
-            new MeshBasicMaterial({
-              color: new Color(EMBER),
-              transparent: true,
-              opacity: 0.22,
-              side: BackSide,
-              blending: AdditiveBlending,
-              depthWrite: false,
-            })
-          )
-        );
-        core.add(limb);
-        const limbMat = limb.material as MeshBasicMaterial;
-
-        // "MH" painted into a texture and hung on the front of the sphere,
-        // square to the camera. It sits just proud of the surface, so the
-        // body never z-fights it and the front arcs of the rings still pass
-        // over it the way they pass over the rest of the ball.
-        const label = document.createElement("canvas");
-        label.width = 512;
-        label.height = 512;
-        const lx = label.getContext("2d");
-        if (lx) {
-          lx.clearRect(0, 0, 512, 512);
-          lx.fillStyle = EMBER;
-          lx.textAlign = "center";
-          lx.textBaseline = "middle";
-          lx.font = "800 132px system-ui, -apple-system, Segoe UI, sans-serif";
-          lx.fillText("M", 196, 260);
-          lx.fillText("H", 316, 260);
-        }
-        const tex = t.track(new CanvasTexture(label));
-        // Without this the canvas is read as linear and the ember washes out
-        // to cream on the way through the sRGB output transform.
-        tex.colorSpace = SRGBColorSpace;
-        const plate = new Mesh(
-          t.track(new PlaneGeometry(1.18, 1.18)),
-          t.track(new MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }))
-        );
-        // On the camera-facing point of the sphere, turned to square up with
-        // the slight elevation the camera sits at.
-        plate.position.set(0, 0.091, 0.9);
-        plate.rotation.x = -0.101;
-        scene.add(plate);
-
-        const world = new Group();
-        scene.add(world);
-        // A fixed viewing tilt. Three orthogonal gimbals cannot all be
-        // edge-on at once, but seen dead-on the assembly still passes
-        // through poses where two of them collapse to near-flat lines. A
-        // standing tilt means there is always at least one open ellipse.
-        world.rotation.x = -0.34;
-        world.rotation.y = 0.22;
-
-        // A real gyroscope is nested, not three siblings spinning side by
-        // side: each gimbal is a child of the one outside it, so the inner
-        // rings inherit every rotation above them and the assembly tumbles
-        // the way a gimballed instrument actually does.
-        const outer = new Group(); // lateral, spins on Y
-        const middle = new Group(); // longitudinal, spins on X
-        const inner = new Group(); // third axis, spins on Z
-        outer.add(middle);
-        middle.add(inner);
-        world.add(outer);
-
-        const ring = (
-          radius: number,
-          host: Group,
-          colour: string,
-          opacity: number,
-          tilt: [number, number, number]
-        ) => {
-          const mat = t.track(
-            new LineBasicMaterial({
-              color: new Color(colour),
-              transparent: true,
-              opacity,
-              // Depth *test* stays on so the sphere occludes the far arc;
-              // depth *write* goes off so the rings do not clip each other.
-              depthWrite: false,
-            })
+            new MeshLambertMaterial({ color: new Color(hex), emissive: new Color(hex).multiplyScalar(glow) }),
           );
-          const seg = new LineSegments(t.track(ringsGeometry([radius], 132)), mat);
-          seg.rotation.set(tilt[0], tilt[1], tilt[2]);
-          host.add(seg);
-          return seg;
+        const steel = ink("#8f949a", 0.05);
+        const pin = ink("#d4d8dc", 0.12);
+        const sky = ink("#6ab9e7", 0.16);
+        const ember = ink("#e98e49", 0.26);
+        // The spokes fade as the flywheel spins up, so they get their own.
+        const spokeInk = t.track(
+          new MeshLambertMaterial({
+            color: new Color("#e98e49"),
+            emissive: new Color("#e98e49").multiplyScalar(0.18),
+            transparent: true,
+          }),
+        );
+
+        const ring = (radius: number, tube: number, material: MeshLambertMaterial) =>
+          new Mesh(t.track(new TorusGeometry(radius, tube, SIDES, ARC)), material);
+        const Y = new Vector3(0, 1, 0);
+        const rod = (from: Vector3, to: Vector3, radius: number, material: MeshLambertMaterial) => {
+          const along = to.clone().sub(from);
+          const mesh = new Mesh(t.track(new CylinderGeometry(radius, radius, along.length(), SIDES)), material);
+          mesh.position.copy(from).addScaledVector(along, 0.5);
+          mesh.quaternion.setFromUnitVectors(Y, along.normalize());
+          return mesh;
+        };
+        const bead = (at: Vector3, radius: number, material: MeshLambertMaterial) => {
+          const mesh = new Mesh(t.track(new SphereGeometry(radius, SIDES, SIDES)), material);
+          mesh.position.copy(at);
+          return mesh;
         };
 
-        // Lateral (equatorial) and longitudinal (meridian) rings, kept with
-        // their resting opacity and tilt for the boot.
-        const RING_OPACITY = [0.62, 0.78, 0.58];
-        const ringSegs = [
-          ring(1.62, outer, SKY, RING_OPACITY[0], [0, 0, 0]),
-          ring(1.34, middle, EMBER, RING_OPACITY[1], [Math.PI / 2, 0, 0]),
-          ring(1.12, inner, SKY, RING_OPACITY[2], [0, 0, Math.PI / 2]),
-        ];
-        const ringTiltY = ringSegs.map((seg) => seg.rotation.y);
+        // The whole instrument, raised a little so its stand fits below.
+        const instrument = new Group();
+        instrument.position.y = 0.16;
+        scene.add(instrument);
 
-        /**
-         * Electrons. Each rides its own ring, parented to the gimbal that
-         * ring belongs to, so it inherits every rotation above it - that
-         * inheritance is what makes the motion read as one instrument
-         * rather than loose dots on independent paths. Each carries a short
-         * tail of fading dots along the ring behind it, which is what gives
-         * the movement a direction you can actually see.
-         */
-        const electrons: Array<{ g: Group; rate: number; phase: number }> = [];
-        const TAIL = 7;
-        const addElectrons = (
-          host: Group,
-          r: number,
-          rate: number,
-          colour: string,
-          count: number,
-          size: number,
-          orient: (g: Group) => void
-        ) => {
-          const col = new Color(colour);
-          // A point at local angle a lands at a + rotation.y once the gimbal
-          // turns, so the tail belongs at *negative* a for a rising angle -
-          // and on the other side when the ring runs backwards.
-          const dir = rate >= 0 ? 1 : -1;
-          for (let k = 0; k < count; k++) {
-            const spin = new Group();
+        // The stand: a post below the outer gimbal's lower pivot, a short
+        // pin above its upper one, and a foot ring. It does not turn.
+        const bottom = -R_OUTER;
+        instrument.add(rod(new Vector3(0, bottom - 0.02, 0), new Vector3(0, bottom - 0.5, 0), 0.016, steel));
+        instrument.add(rod(new Vector3(0, R_OUTER + 0.02, 0), new Vector3(0, R_OUTER + 0.16, 0), 0.012, pin));
+        const foot = ring(0.36, 0.014, steel);
+        foot.rotation.x = Math.PI / 2;
+        foot.position.y = bottom - 0.5;
+        instrument.add(foot);
+        instrument.add(bead(new Vector3(0, bottom - 0.5, 0), 0.04, pin));
 
-            const headGeo = t.track(new BufferGeometry());
-            headGeo.setAttribute("position", new Float32BufferAttribute([r, 0, 0], 3));
-            spin.add(
-              new Points(
-                headGeo,
-                t.track(
-                  new PointsMaterial({
-                    color: col,
-                    size,
-                    transparent: true,
-                    opacity: 1,
-                    blending: AdditiveBlending,
-                    depthWrite: false,
-                  })
-                )
-              )
-            );
+        // The outer gimbal: a hoop that turns about the vertical, on the
+        // stand's two pivots.
+        const outer = new Group();
+        instrument.add(outer);
+        outer.add(ring(R_OUTER, 0.018, steel));
+        for (const s of [-1, 1]) outer.add(bead(new Vector3(0, s * R_OUTER, 0), 0.036, pin));
 
-            const tailPos: number[] = [];
-            const tailCol: number[] = [];
-            for (let j = 1; j <= TAIL; j++) {
-              const a = j * 0.062;
-              tailPos.push(r * Math.cos(a), 0, dir * r * Math.sin(a));
-              const f = (1 - j / (TAIL + 1)) ** 1.7;
-              tailCol.push(col.r * f, col.g * f, col.b * f);
-            }
-            const tailGeo = t.track(new BufferGeometry());
-            tailGeo.setAttribute("position", new Float32BufferAttribute(tailPos, 3));
-            tailGeo.setAttribute("color", new Float32BufferAttribute(tailCol, 3));
-            spin.add(
-              new Points(
-                tailGeo,
-                t.track(
-                  new PointsMaterial({
-                    size: size * 0.62,
-                    vertexColors: true,
-                    transparent: true,
-                    opacity: 0.9,
-                    blending: AdditiveBlending,
-                    depthWrite: false,
-                  })
-                )
-              )
-            );
+        // The inner gimbal: a ring that nods about the horizontal, on two
+        // pins through the outer one.
+        const inner = new Group();
+        outer.add(inner);
+        const innerRing = ring(R_INNER, 0.015, sky);
+        innerRing.rotation.x = Math.PI / 2;
+        inner.add(innerRing);
+        for (const s of [-1, 1]) {
+          outer.add(rod(new Vector3(s * R_INNER, 0, 0), new Vector3(s * (R_OUTER - 0.01), 0, 0), 0.012, pin));
+          outer.add(bead(new Vector3(s * R_OUTER, 0, 0), 0.034, pin));
+        }
 
-            // The spinning group only ever turns on its own Y. Tilting it
-            // into the ring plane has to happen on a parent, or the tilt
-            // would be overwritten by the animation every frame.
-            const plane = new Group();
-            plane.add(spin);
-            orient(plane);
-            host.add(plane);
-            electrons.push({ g: spin, rate, phase: (k / count) * Math.PI * 2 });
-          }
-        };
+        // The axle, across the inner gimbal, and the flywheel on it.
+        inner.add(rod(new Vector3(0, 0, -R_INNER), new Vector3(0, 0, R_INNER), 0.012, pin));
+        for (const s of [-1, 1]) inner.add(bead(new Vector3(0, 0, s * R_INNER), 0.032, pin));
 
-        const flat = () => {};
-        addElectrons(outer, 1.62, 0.62, EMBER, 3, 0.17, flat);
-        addElectrons(middle, 1.34, -0.85, SKY, 3, 0.15, (g) => {
-          g.rotation.x = Math.PI / 2;
-        });
-        addElectrons(inner, 1.12, 1.15, EMBER, 2, 0.13, (g) => {
-          g.rotation.z = Math.PI / 2;
-        });
+        const rotor = new Group();
+        inner.add(rotor);
+        rotor.add(ring(R_ROTOR, 0.026, ember));
+        rotor.add(ring(0.16, 0.014, ember));
+        const hub = bead(new Vector3(0, 0, 0), 0.075, ember);
+        rotor.add(hub);
+        const SPOKES = 6;
+        for (let k = 0; k < SPOKES; k++) {
+          const a = (k / SPOKES) * Math.PI * 2;
+          const dir = new Vector3(Math.cos(a), Math.sin(a), 0);
+          rotor.add(rod(dir.clone().multiplyScalar(0.17), dir.clone().multiplyScalar(R_ROTOR - 0.02), 0.009, spokeInk));
+        }
+        // The blur a fast rotor leaves: a faint disc that shows only at speed.
+        const blurInk = t.track(
+          new MeshBasicMaterial({
+            color: new Color("#e98e49"),
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            side: DoubleSide,
+          }),
+        );
+        rotor.add(new Mesh(t.track(new CircleGeometry(R_ROTOR, scaled(96, detail, 48))), blurInk));
 
-        // The assembly leans a few degrees toward a mouse anywhere in the
-        // hero, and spins up while the page scrolls (lib/scrollVelocity.ts).
+        // The instrument leans a few degrees toward a mouse anywhere in the
+        // hero, and its flywheel spins up while the page scrolls.
         const lean = { x: 0, y: 0, tx: 0, ty: 0 };
-        const area = renderer.domElement.closest("section");
+        const area = renderer.domElement.closest("section, .hero");
         const mouse = window.matchMedia?.("(pointer: fine) and (hover: hover)").matches ?? false;
         const onMove = (e: PointerEvent) => {
           if (e.pointerType !== "mouse" || !area) return;
           const r = area.getBoundingClientRect();
-          // -1..1 across the hero, from its own centre.
           lean.ty = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
           lean.tx = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));
         };
@@ -388,99 +277,53 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           lean.ty = 0;
         };
         if (area && mouse) {
-          area.addEventListener("pointermove", onMove);
+          area.addEventListener("pointermove", onMove as EventListener);
           area.addEventListener("pointerleave", onLeave);
           t.track({
             dispose: () => {
-              area.removeEventListener("pointermove", onMove);
+              area.removeEventListener("pointermove", onMove as EventListener);
               area.removeEventListener("pointerleave", onLeave);
             },
           });
         }
         t.track({ dispose: watchScrollVelocity() });
-        // Spin time: runs at 1x at rest and up to 3.5x at a fast scroll.
-        let spin = 0;
-        let boost = 0;
 
-        // A faint atmosphere so the core sits in something.
-        const haloPts: number[] = [];
-        const N = scaled(90, detail, 40);
-        for (let i = 0; i < N; i++) {
-          const phi = Math.acos(1 - (2 * (i + 0.5)) / N);
-          const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
-          const r = 1.9 + ((i % 4) / 4) * 0.18;
-          haloPts.push(
-            Math.sin(phi) * Math.cos(theta) * r,
-            Math.cos(phi) * r * 0.8,
-            Math.sin(phi) * Math.sin(theta) * r
-          );
-        }
-        const haloGeo = t.track(new BufferGeometry());
-        haloGeo.setAttribute("position", new Float32BufferAttribute(haloPts, 3));
-        const halo = new Points(
-          haloGeo,
-          t.track(
-            new PointsMaterial({
-              color: new Color(SKY),
-              size: 0.045,
-              transparent: true,
-              opacity: 0.55,
-              blending: AdditiveBlending,
-              depthWrite: false,
-            })
-          )
-        );
-        world.add(halo);
-        const haloMat = halo.material as PointsMaterial;
+        let boost = 0;
+        // Each part's share of the boot, 0 to 1, from `start` over `length` seconds.
+        const boot = (time: number, start: number, length: number) =>
+          Math.min(1, Math.max(0, (time - start) / length));
 
         return (time, dt) => {
-          const target = Math.min(1, Math.abs(readScrollVelocity()) / 2600);
-          boost += (target - boost) * (1 - Math.exp(-dt * 5));
-          spin += dt * (1 + 2.5 * boost);
-          // Spring-smoothed toward the cursor.
+          // Spins up fast, winds down slowly, as a heavy flywheel does.
+          const target = Math.min(1, Math.abs(readScrollVelocity()) / 2400);
+          boost += (target - boost) * (1 - Math.exp(-dt * (target > boost ? 6 : 1.4)));
+
+          // The boot: the outer gimbal opens out from the centre, then the
+          // inner, then the flywheel, each settling with a slight overshoot.
+          if (time < 2) {
+            outer.scale.setScalar(Math.max(0.001, easeOutBack(boot(time, 0, 0.8))));
+            inner.scale.setScalar(Math.max(0.001, easeOutBack(boot(time, 0.18, 0.8))));
+            rotor.scale.setScalar(Math.max(0.001, easeOutBack(boot(time, 0.36, 0.8))));
+          }
+          const spinUp = easeOutCubic(boot(time, 0.36, 1.4));
+
+          // About three-quarters of a turn a second at rest, five and more
+          // at full boost.
+          rotor.rotation.z += (4.8 + 30 * boost) * spinUp * dt;
+          spokeInk.opacity = 1 - 0.85 * boost;
+          blurInk.opacity = 0.17 * boost;
+
+          // The gimbals: a slow turn on the stand, a slow nod on the pins.
+          outer.rotation.y = 0.5 + time * 0.2;
+          inner.rotation.x = 0.55 + 0.3 * Math.sin(time * 0.38);
+
+          // Spring-smoothed toward the cursor, on top of a standing
+          // three-quarter view.
           const k = 1 - Math.exp(-dt * 4);
           lean.x += (lean.tx - lean.x) * k;
           lean.y += (lean.ty - lean.y) * k;
-
-          // Each gimbal turns on its own axis; because they are nested the
-          // inner ones are carried by the outer ones as well.
-          outer.rotation.y = spin * 0.5;
-          middle.rotation.x = spin * 0.7;
-          inner.rotation.z = spin * 0.95;
-
-          // Electrons sweep their own ring on top of the inherited motion.
-          electrons.forEach((e) => {
-            e.g.rotation.y = spin * e.rate + e.phase;
-          });
-
-          // The boot. Each ring's flight starts 0.16s after the one outside
-          // it and takes 0.9s, overshooting its gimbal slightly as it locks.
-          if (time < 2.2) {
-            ringSegs.forEach((seg, i) => {
-              const k = Math.min(1, Math.max(0, (time - i * 0.16) / 0.9));
-              const e = easeOutBack(k);
-              seg.scale.setScalar(2.9 - 1.9 * e);
-              seg.rotation.y = ringTiltY[i] + (1 - e) * 2.4;
-              (seg.material as LineBasicMaterial).opacity = RING_OPACITY[i] * Math.min(1, k * 3);
-            });
-            const spread = easeOutCubic(Math.min(1, Math.max(0, (time - 0.95) / 0.55)));
-            electrons.forEach((e) => e.g.scale.setScalar(Math.max(0.001, spread)));
-            // The lock: a short flare on the core's rim.
-            limbMat.opacity = 0.22 + 0.6 * Math.exp(-(((time - 1.22) / 0.13) ** 2));
-            haloMat.opacity = 0.55 * Math.min(1, time / 1.3);
-          }
-
-          // The core turns on its own, slowly, so the surface grid reads as
-          // a rotating body and not a static decal.
-          grid.rotation.y = time * 0.11;
-          body.rotation.y = time * 0.11;
-
-          halo.rotation.y = -time * 0.05;
-          // Kept on top of the standing tilt, not replacing it.
-          world.rotation.z = Math.sin(time * 0.15) * 0.08;
-          // About 8 degrees of lean at the hero's edges.
-          world.rotation.x = -0.34 + Math.sin(time * 0.11) * 0.09 + lean.x * 0.14;
-          world.rotation.y = 0.22 + lean.y * 0.2;
+          instrument.rotation.x = 0.12 + lean.x * 0.12;
+          instrument.rotation.y = -0.32 + lean.y * 0.22;
         };
       },
     };
@@ -1426,44 +1269,6 @@ function wireframeFrom(geo: SphereGeometry): BufferGeometry {
       out.push(pos.getX(p), pos.getY(p), pos.getZ(p), pos.getX(q), pos.getY(q), pos.getZ(q));
     }
   }
-  g.setAttribute("position", new Float32BufferAttribute(out, 3));
-  return g;
-}
-
-/**
- * Latitude rings and longitude meridians on a sphere.
- *
- * Not the triangle wireframe: that is the edges of a triangulated shell,
- * and at a low segment count the diagonals read as a field of asterisks
- * rather than as a globe. Lat/long lines curve with the surface and crowd
- * toward the silhouette, which is the cue that says "sphere".
- */
-function sphereGridGeometry(r: number, lats: number, lons: number, seg = 72): BufferGeometry {
-  const out: number[] = [];
-  const push = (
-    p0: [number, number, number],
-    p1: [number, number, number]
-  ) => out.push(p0[0], p0[1], p0[2], p1[0], p1[1], p1[2]);
-
-  const at = (phi: number, theta: number): [number, number, number] => [
-    Math.sin(phi) * Math.cos(theta) * r,
-    Math.cos(phi) * r,
-    Math.sin(phi) * Math.sin(theta) * r,
-  ];
-
-  for (let i = 1; i <= lats; i++) {
-    const phi = (i / (lats + 1)) * Math.PI;
-    for (let j = 0; j < seg; j++) {
-      push(at(phi, (j / seg) * Math.PI * 2), at(phi, ((j + 1) / seg) * Math.PI * 2));
-    }
-  }
-  for (let i = 0; i < lons; i++) {
-    const theta = (i / lons) * Math.PI * 2;
-    for (let j = 0; j < seg; j++) {
-      push(at((j / seg) * Math.PI, theta), at(((j + 1) / seg) * Math.PI, theta));
-    }
-  }
-  const g = new BufferGeometry();
   g.setAttribute("position", new Float32BufferAttribute(out, 3));
   return g;
 }
