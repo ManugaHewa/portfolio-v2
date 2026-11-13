@@ -20,7 +20,7 @@
 /* ---------------------------------------------------------------- back */
 
 /* Engraved: a fine two-way hatch in the two accents at a whisper, the
-   gyroscope's rings round the monogram, a printed double frame. */
+   wheel's rosette round the monogram, a printed double frame. */
 .pcard-back {
   background:
     repeating-linear-gradient(45deg, rgba(106, 185, 231, 0.06) 0 1px, transparent 1px 7px),
@@ -45,24 +45,33 @@
   stroke: var(--ember-line);
 }
 
-.pcard-back-rings ellipse {
+.pcard-back-wheel circle {
   fill: none;
   stroke: var(--sky);
   stroke-width: 0.7;
   opacity: 0.75;
 }
 
-.pcard-back-rings ellipse.is-ember {
+.pcard-back-wheel line {
   stroke: var(--ember);
+  stroke-width: 0.5;
+  opacity: 0.7;
 }
 
-.pcard-back-core {
+.pcard-back-zero {
+  fill: var(--sky);
+  opacity: 0.35;
+}
+
+/* Over the rosette's own circle rule. */
+.pcard-back-wheel .pcard-back-core {
   fill: var(--surface-2);
   stroke: var(--line-strong);
   stroke-width: 0.6;
+  opacity: 1;
 }
 
-/* The monogram, on the core at the middle of the rings. */
+/* The monogram, on the core at the middle of the rosette. */
 .pcard-back::after {
   content: "MH";
   position: absolute;

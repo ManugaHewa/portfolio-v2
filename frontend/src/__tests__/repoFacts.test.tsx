@@ -36,7 +36,7 @@ describe("commitGrid", () => {
 describe("dockFrame", () => {
   const from = { x: 1000, y: 400, size: 360 };
   const to = { x: 80, y: 32, size: 26 };
-  it("starts on the hero's gyroscope and ends on the header's mark", () => {
+  it("starts on the hero's wheel and ends on the header's mark", () => {
     expect(dockFrame(0, from, to)).toEqual(from);
     const end = dockFrame(1, from, to);
     expect(end.x).toBeCloseTo(to.x, 6);

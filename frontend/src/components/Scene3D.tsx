@@ -1,14 +1,6 @@
 import { useEffect, useRef } from "react";
 import {
   AdditiveBlending,
-  AmbientLight,
-  CircleGeometry,
-  CylinderGeometry,
-  DirectionalLight,
-  Fog,
-  MeshLambertMaterial,
-  TorusGeometry,
-  Vector3,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
@@ -19,7 +11,6 @@ import {
   LineBasicMaterial,
   LineSegments,
   Mesh,
-  MeshBasicMaterial,
   Points,
   PointsMaterial,
   ShaderMaterial,
@@ -27,10 +18,10 @@ import {
   SRGBColorSpace,
   Vector2,
 } from "three";
-import { mountScene } from "../lib/threeScene";
+import { makeTracker, mountScene } from "../lib/threeScene";
+import { rouletteScene } from "./rouletteScene";
 import type { SceneController, SceneDef } from "../lib/threeScene";
 import { sceneBudget, scaled } from "../lib/sceneQuality";
-import { readScrollVelocity, watchScrollVelocity } from "../lib/scrollVelocity";
 import { hashKey, readConstellation } from "../lib/constellation";
 import { readSend } from "../lib/sendSignal";
 import type { SceneVariant } from "../lib/sceneQuality";
@@ -103,231 +94,10 @@ export default function Scene3D({ variant, paused = false, onLive }: Scene3DProp
   return <div className="scene-mount" ref={ref} />;
 }
 
-/** Collects anything holding GPU memory so teardown is not hand-maintained. */
-function makeTracker() {
-  const bag: Array<{ dispose: () => void }> = [];
-  return {
-    bag,
-    track<T extends { dispose: () => void }>(x: T): T {
-      bag.push(x);
-      return x;
-    },
-    disposeAll() {
-      bag.forEach((d) => d.dispose());
-      bag.length = 0;
-    },
-  };
-}
 
 const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
-  /* ---------------------------------------------------------------
-     Hero: a gyroscope, drawn as an instrument. A flywheel (an ember rim,
-     six spokes and a hub) spins on its axle; the axle is held by the
-     inner gimbal (sky), which nods slowly on the two pins that hold it in
-     the outer gimbal (steel), which turns slowly on its stand. Every part
-     is a solid, lit tube in one of three inks, and the far side of the
-     instrument falls into the page's own black (fog), so it reads as one
-     clean object from any angle: no point sprites, no lettering, nothing
-     that flickers the longer it is watched.
-
-     Scrolling spins the flywheel up (lib/scrollVelocity.ts): at speed its
-     spokes blur into a disc, as a real rotor's do, and come back as it
-     winds down. A mouse in the hero tilts the instrument a few degrees
-     toward it. When it first appears it boots: the gimbals open out from
-     the centre one after the other and the flywheel spins up. Never under
-     reduced motion (no scene runs then).
-  --------------------------------------------------------------- */
-  core: (detail) => {
-    const t = makeTracker();
-    const R_OUTER = 1.56;
-    const R_INNER = 1.28;
-    const R_ROTOR = 0.84;
-    // Round each tube, and round each ring: enough that no facet shows.
-    const SIDES = scaled(14, detail, 8);
-    const ARC = scaled(220, detail, 96);
-    return {
-      fov: 40,
-      dispose: t.disposeAll,
-      setup: ({ scene, camera, renderer }) => {
-        camera.position.set(0, 0.5, 5.7);
-        camera.lookAt(0, -0.08, 0);
-        // The far side falls away into the page's black: depth, without a
-        // single transparent line.
-        scene.fog = new Fog(new Color("#08090b"), 4.3, 8.8);
-
-        // A cool key light from the upper left, a warm fill from below, so
-        // each tube reads round.
-        scene.add(new AmbientLight(0xffffff, 0.6));
-        const key = new DirectionalLight(0xe4f2ff, 1.35);
-        key.position.set(-2.6, 3.2, 4);
-        scene.add(key);
-        const fill = new DirectionalLight(0xffd7b5, 0.4);
-        fill.position.set(2.2, -2.6, 1.4);
-        scene.add(fill);
-
-        const ink = (hex: string, glow: number) =>
-          t.track(
-            new MeshLambertMaterial({ color: new Color(hex), emissive: new Color(hex).multiplyScalar(glow) }),
-          );
-        const steel = ink("#8f949a", 0.05);
-        const pin = ink("#d4d8dc", 0.12);
-        const sky = ink("#6ab9e7", 0.16);
-        const ember = ink("#e98e49", 0.26);
-        // The spokes fade as the flywheel spins up, so they get their own.
-        const spokeInk = t.track(
-          new MeshLambertMaterial({
-            color: new Color("#e98e49"),
-            emissive: new Color("#e98e49").multiplyScalar(0.18),
-            transparent: true,
-          }),
-        );
-
-        const ring = (radius: number, tube: number, material: MeshLambertMaterial) =>
-          new Mesh(t.track(new TorusGeometry(radius, tube, SIDES, ARC)), material);
-        const Y = new Vector3(0, 1, 0);
-        const rod = (from: Vector3, to: Vector3, radius: number, material: MeshLambertMaterial) => {
-          const along = to.clone().sub(from);
-          const mesh = new Mesh(t.track(new CylinderGeometry(radius, radius, along.length(), SIDES)), material);
-          mesh.position.copy(from).addScaledVector(along, 0.5);
-          mesh.quaternion.setFromUnitVectors(Y, along.normalize());
-          return mesh;
-        };
-        const bead = (at: Vector3, radius: number, material: MeshLambertMaterial) => {
-          const mesh = new Mesh(t.track(new SphereGeometry(radius, SIDES, SIDES)), material);
-          mesh.position.copy(at);
-          return mesh;
-        };
-
-        // The whole instrument, raised a little so its stand fits below.
-        const instrument = new Group();
-        instrument.position.y = 0.16;
-        scene.add(instrument);
-
-        // The stand: a post below the outer gimbal's lower pivot, a short
-        // pin above its upper one, and a foot ring. It does not turn.
-        const bottom = -R_OUTER;
-        instrument.add(rod(new Vector3(0, bottom - 0.02, 0), new Vector3(0, bottom - 0.5, 0), 0.016, steel));
-        instrument.add(rod(new Vector3(0, R_OUTER + 0.02, 0), new Vector3(0, R_OUTER + 0.16, 0), 0.012, pin));
-        const foot = ring(0.36, 0.014, steel);
-        foot.rotation.x = Math.PI / 2;
-        foot.position.y = bottom - 0.5;
-        instrument.add(foot);
-        instrument.add(bead(new Vector3(0, bottom - 0.5, 0), 0.04, pin));
-
-        // The outer gimbal: a hoop that turns about the vertical, on the
-        // stand's two pivots.
-        const outer = new Group();
-        instrument.add(outer);
-        outer.add(ring(R_OUTER, 0.018, steel));
-        for (const s of [-1, 1]) outer.add(bead(new Vector3(0, s * R_OUTER, 0), 0.036, pin));
-
-        // The inner gimbal: a ring that nods about the horizontal, on two
-        // pins through the outer one.
-        const inner = new Group();
-        outer.add(inner);
-        const innerRing = ring(R_INNER, 0.015, sky);
-        innerRing.rotation.x = Math.PI / 2;
-        inner.add(innerRing);
-        for (const s of [-1, 1]) {
-          outer.add(rod(new Vector3(s * R_INNER, 0, 0), new Vector3(s * (R_OUTER - 0.01), 0, 0), 0.012, pin));
-          outer.add(bead(new Vector3(s * R_OUTER, 0, 0), 0.034, pin));
-        }
-
-        // The axle, across the inner gimbal, and the flywheel on it.
-        inner.add(rod(new Vector3(0, 0, -R_INNER), new Vector3(0, 0, R_INNER), 0.012, pin));
-        for (const s of [-1, 1]) inner.add(bead(new Vector3(0, 0, s * R_INNER), 0.032, pin));
-
-        const rotor = new Group();
-        inner.add(rotor);
-        rotor.add(ring(R_ROTOR, 0.026, ember));
-        rotor.add(ring(0.16, 0.014, ember));
-        const hub = bead(new Vector3(0, 0, 0), 0.075, ember);
-        rotor.add(hub);
-        const SPOKES = 6;
-        for (let k = 0; k < SPOKES; k++) {
-          const a = (k / SPOKES) * Math.PI * 2;
-          const dir = new Vector3(Math.cos(a), Math.sin(a), 0);
-          rotor.add(rod(dir.clone().multiplyScalar(0.17), dir.clone().multiplyScalar(R_ROTOR - 0.02), 0.009, spokeInk));
-        }
-        // The blur a fast rotor leaves: a faint disc that shows only at speed.
-        const blurInk = t.track(
-          new MeshBasicMaterial({
-            color: new Color("#e98e49"),
-            transparent: true,
-            opacity: 0,
-            depthWrite: false,
-            side: DoubleSide,
-          }),
-        );
-        rotor.add(new Mesh(t.track(new CircleGeometry(R_ROTOR, scaled(96, detail, 48))), blurInk));
-
-        // The instrument leans a few degrees toward a mouse anywhere in the
-        // hero, and its flywheel spins up while the page scrolls.
-        const lean = { x: 0, y: 0, tx: 0, ty: 0 };
-        const area = renderer.domElement.closest("section, .hero");
-        const mouse = window.matchMedia?.("(pointer: fine) and (hover: hover)").matches ?? false;
-        const onMove = (e: PointerEvent) => {
-          if (e.pointerType !== "mouse" || !area) return;
-          const r = area.getBoundingClientRect();
-          lean.ty = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1));
-          lean.tx = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height) * 2 - 1));
-        };
-        const onLeave = () => {
-          lean.tx = 0;
-          lean.ty = 0;
-        };
-        if (area && mouse) {
-          area.addEventListener("pointermove", onMove as EventListener);
-          area.addEventListener("pointerleave", onLeave);
-          t.track({
-            dispose: () => {
-              area.removeEventListener("pointermove", onMove as EventListener);
-              area.removeEventListener("pointerleave", onLeave);
-            },
-          });
-        }
-        t.track({ dispose: watchScrollVelocity() });
-
-        let boost = 0;
-        // Each part's share of the boot, 0 to 1, from `start` over `length` seconds.
-        const boot = (time: number, start: number, length: number) =>
-          Math.min(1, Math.max(0, (time - start) / length));
-
-        return (time, dt) => {
-          // Spins up fast, winds down slowly, as a heavy flywheel does.
-          const target = Math.min(1, Math.abs(readScrollVelocity()) / 2400);
-          boost += (target - boost) * (1 - Math.exp(-dt * (target > boost ? 6 : 1.4)));
-
-          // The boot: the outer gimbal opens out from the centre, then the
-          // inner, then the flywheel, each settling with a slight overshoot.
-          if (time < 2) {
-            outer.scale.setScalar(Math.max(0.001, easeOutBack(boot(time, 0, 0.8))));
-            inner.scale.setScalar(Math.max(0.001, easeOutBack(boot(time, 0.18, 0.8))));
-            rotor.scale.setScalar(Math.max(0.001, easeOutBack(boot(time, 0.36, 0.8))));
-          }
-          const spinUp = easeOutCubic(boot(time, 0.36, 1.4));
-
-          // About three-quarters of a turn a second at rest, five and more
-          // at full boost.
-          rotor.rotation.z += (4.8 + 30 * boost) * spinUp * dt;
-          spokeInk.opacity = 1 - 0.85 * boost;
-          blurInk.opacity = 0.17 * boost;
-
-          // The gimbals: a slow turn on the stand, a slow nod on the pins.
-          outer.rotation.y = 0.5 + time * 0.2;
-          inner.rotation.x = 0.55 + 0.3 * Math.sin(time * 0.38);
-
-          // Spring-smoothed toward the cursor, on top of a standing
-          // three-quarter view.
-          const k = 1 - Math.exp(-dt * 4);
-          lean.x += (lean.tx - lean.x) * k;
-          lean.y += (lean.ty - lean.y) * k;
-          instrument.rotation.x = 0.12 + lean.x * 0.12;
-          instrument.rotation.y = -0.32 + lean.y * 0.22;
-        };
-      },
-    };
-  },
+  // Hero: a roulette wheel (rouletteScene.ts).
+  core: (detail) => rouletteScene(detail),
 
   /* ---------------------------------------------------------------
      Contact: a signal going out. Rings leave the origin and travel
@@ -1058,11 +828,6 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
 const easeOutCubic = (k: number) => 1 - (1 - k) ** 3;
 const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
-/** Past the target and back: a part settling into place. */
-const easeOutBack = (k: number) => {
-  const c = 1.4;
-  return 1 + (c + 1) * (k - 1) ** 3 + c * (k - 1) ** 2;
-};
 
 interface Meteor {
   group: Group;

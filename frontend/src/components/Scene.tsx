@@ -55,7 +55,7 @@ export interface SceneProps {
  * watched: a section scene is only built once its host comes within half a
  * viewport of the screen, and is torn down again when it leaves that zone.
  * That also keeps the Three chunk off the wire until the first scene is
- * actually wanted. The hero's gyroscope and the starfield are on screen from
+ * actually wanted. The hero's wheel and the starfield are on screen from
  * the start and mount straight away.
  *
  * The header's "Pause motion" toggle reaches the scene as a prop, which stops

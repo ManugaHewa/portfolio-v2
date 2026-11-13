@@ -4,15 +4,15 @@
  *
  * Every layout decision here is CSS, under media queries alone, so the
  * prerendered HTML is laid out right for every visitor before a script runs:
- * - below 1100px: one stack (copy, the gyroscope, the work index);
+ * - below 1100px: one stack (copy, the wheel, the work index);
  * - from 1100px: the stage in two columns, copy on the left (columns 1-7)
- *   and the gyroscope on the right (8-12);
+ *   and the wheel on the right (8-12);
  * - under the pin query (the same string as PIN_QUERY in motion/hooks.ts):
  *   the stage sticks under the header and the work index, in the same
- *   twelve columns, rises over the copy while the gyroscope stays beside it.
+ *   twelve columns, rises over the copy while the wheel stays beside it.
  *   The pin lasts exactly as long as the work index is tall.
  * Hero.tsx only adds the scroll-linked hand-off (the copy's drift and fade,
- * the gyroscope's scale, the ring's turn) on top of the pinned layout.
+ * the wheel's scale, its flight to the header) on top of the pinned layout.
  */
 
 /* ------------------------------------------------------------ the hero */
@@ -132,49 +132,22 @@
   font-size: var(--fs-small);
 }
 
-/* ------------------------------------------------------- the gyroscope */
+/* ----------------------------------------------------------- the wheel */
 
-.hero-gyro {
+.hero-wheel {
   grid-column: 1 / -1;
   display: grid;
   place-items: center;
   min-width: 0;
 }
 
-/* A square with no frame and no border: the instrument stands on the page
+/* A square with no frame and no border: the wheel stands on the page
    itself. The scene host inside it is absolute, inset 0 (scenes.css). */
-.hero-gyro-stage {
+.hero-wheel-stage {
   position: relative;
   width: min(100%, 420px);
   aspect-ratio: 1;
   transform-origin: 50% 50%;
-}
-
-/* The calibration scale behind the gyroscope: hairlines in text-3 at 40%,
-   sized a little past the instrument so its outer ring sits inside it. */
-.hero-ring {
-  position: absolute;
-  inset: -5%;
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-.hero-ring-svg {
-  width: 100%;
-  height: 100%;
-  fill: none;
-  stroke: var(--text-3);
-  stroke-width: 1;
-  overflow: visible;
-}
-
-.hero-ring-svg circle,
-.hero-ring-svg line {
-  vector-effect: non-scaling-stroke;
-}
-
-.hero-ring-svg line.is-major {
-  stroke: var(--text-2);
 }
 
 /* The still: what the hero shows under reduced motion, on weak devices,
@@ -182,17 +155,19 @@
 .hero-still {
   position: absolute;
   inset: 0;
-  background: url("/gyroscope.webp") center / contain no-repeat;
+  background: url("/roulette.webp") center / contain no-repeat;
   transition: opacity var(--dur-3) var(--ease-out);
 }
 
-.hero-gyro-stage.is-live .hero-still {
+.hero-wheel-stage.is-live .hero-still {
   opacity: 0;
 }
 
-/* The gyroscope in flight to the header (Hero.tsx): fixed, above the work
-   index and the header, placed and sized from script on each scroll change. */
-.gyro-flight {
+/* The wheel in flight to the header (Hero.tsx): fixed, above the work index
+   and the header, placed and sized from script on each scroll change. It
+   leaves seen at the live wheel's angle (--tilt, its height over its width)
+   and turns to face the page on the way. */
+.wheel-flight {
   position: fixed;
   top: 0;
   left: 0;
@@ -202,10 +177,11 @@
   will-change: transform;
 }
 
-.gyro-flight .gyro-mark {
+.wheel-flight .wheel-mark {
   display: block;
   width: 100%;
   height: 100%;
+  transform: scaleY(var(--tilt, 1));
 }
 
 /* -------------------------------------------------------- the work index */
@@ -292,13 +268,13 @@
     grid-column: 1 / span 7;
   }
 
-  .hero-gyro {
+  .hero-wheel {
     grid-column: 8 / span 5;
   }
 
   /* As large as the column allows, up to 560px, and never taller than the
      stage leaves room for. */
-  .hero-gyro-stage {
+  .hero-wheel-stage {
     width: min(100%, 560px, calc(100svh - var(--header-h) - 2 * var(--s8)));
   }
 
@@ -330,7 +306,7 @@
    * left to the window's edge (the hero clips it), so it reads as a sheet
    * sliding up the page rather than a box. The hairline on its top edge
    * stays in the grid, from the first column to the seventh, with a short
-   * tick where the sheet ends beside the gyroscope.
+   * tick where the sheet ends beside the wheel.
    */
   .work-index-sheet {
     position: relative;

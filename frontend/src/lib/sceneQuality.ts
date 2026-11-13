@@ -14,7 +14,7 @@ export type SceneVariant = "core" | "corridor" | "globe" | "field" | "starfield"
  * memory pressure, and a dropped context is a backdrop that silently
  * disappears, which is worse than one that costs a moment to build.
  *
- * The other two, the hero's gyroscope and the page-wide starfield, are on
+ * The other two, the hero's wheel and the page-wide starfield, are on
  * screen from the first paint (or always, for the starfield), so they mount
  * once and stay.
  */
@@ -33,7 +33,7 @@ export const SECTION_SCENES: ReadonlySet<SceneVariant> = new Set<SceneVariant>([
 export const APPROACH_MARGIN = "50% 0px";
 
 /**
- * A touch screen or a phone-sized window. There, only the gyroscope and the
+ * A touch screen or a phone-sized window. There, only the wheel and the
  * starfield run: the section backdrops are the most expendable GPU work on
  * the page, and the screen they would sit behind is mostly text anyway.
  */
@@ -89,8 +89,9 @@ export function sceneBudget(variant: SceneVariant = "core"): SceneBudget {
   // Geometry counts are the second lever after pixel ratio, sized to the
   // screen: a phone shows a scene a third the width of a desktop's.
   if (!hasWindow || window.matchMedia(PHONE).matches) {
-    // The hero gyroscope is thin solid tubes: without antialiasing its
-    // edges stair-step, so it keeps it; the line scenes can do without.
+    // The hero wheel is solid, fine-edged metalwork and printed numbers:
+    // without antialiasing its edges stair-step, so it keeps it; the line
+    // scenes can do without.
     return { pixelRatio, detail: 0.45, antialias: variant === "core", maxFps };
   }
   if (window.matchMedia(NARROW).matches) {

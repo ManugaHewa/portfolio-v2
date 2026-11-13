@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PauseMotionToggle, useActiveSection } from "../motion";
 import { SITE } from "../site";
 import { cx } from "../lib/cx";
-import { GyroMark } from "./GyroMark";
+import { WheelMark } from "./WheelMark";
 
 /**
  * The page's four destinations, in page order. The header nav and the index
@@ -59,9 +59,9 @@ export function Nav() {
         {/* Named by its visible text, so a voice-control user can say the
             name they see. */}
         <a className="brand" href="#top">
-          {/* Where the hero's gyroscope docks (Hero.tsx); hidden while it
+          {/* Where the hero's wheel docks (Hero.tsx); hidden while it
               is still in the hero, through --dock-mark. */}
-          <GyroMark className="brand-mark" />
+          <WheelMark className="brand-mark" />
           {SITE.name}
         </a>
 

@@ -4,7 +4,7 @@ import type { SceneVariant } from "./sceneQuality";
 
 /**
  * Whether a WebGL scene should exist at all on this device. When the hero's
- * does not, the still image of the gyroscope stays in its place; the section
+ * does not, the still image of the wheel stays in its place; the section
  * scenes simply leave their section's own background.
  *
  * - Someone asking their system for less motion: a slowly turning instrument
@@ -13,7 +13,7 @@ import type { SceneVariant } from "./sceneQuality";
  * - A weak device: two gigabytes of memory or less, or two CPU cores or
  *   fewer. Browsers that do not report these are given the benefit of the
  *   doubt; sceneQuality.ts still sizes the work to the screen.
- * - A touch screen or a window under 720px: only the gyroscope and the
+ * - A touch screen or a window under 720px: only the wheel and the
  *   starfield run there (sceneQuality.ts says why).
  *
  * mountScene checks the motion preference again before it touches WebGL, so

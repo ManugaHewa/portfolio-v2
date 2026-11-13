@@ -4,7 +4,7 @@ import { HeroName, Magnetic, PIN_QUERY, Scramble, TextLoop, useMediaQuery } from
 import { m, useScroll, useTransform } from "../motion/m";
 import { cx } from "../lib/cx";
 import { Scene } from "./Scene";
-import { GyroMark } from "./GyroMark";
+import { WheelMark } from "./WheelMark";
 import { RollLabel } from "./RollLabel";
 import { WorkIndex } from "./WorkIndex";
 import { SITE } from "../site";
@@ -33,14 +33,20 @@ const HEADER_PX = 64;
 // index, so focus landing in it scrolls the hero back to its start.
 const FOCUS_RETURN_AT = 0.05;
 
-// The stretch of the pin over which the gyroscope flies into the header:
+// The stretch of the pin over which the wheel flies into the header:
 // it leaves once the work index has covered the copy, and has docked before
 // the stage lets go.
 const DOCK_FROM = 0.5;
 const DOCK_TO = 0.9;
 
+// The live wheel's width as a share of its stage (rouletteScene.ts frames it
+// so), and its height as a share of its width: it is seen from above at an
+// angle, and the mark it hands over to is drawn face on.
+const WHEEL_SPAN = 0.95;
+const WHEEL_TILT = 0.9;
+
 /**
- * Where the flying gyroscope is at `k` (0 at the hero, 1 docked): its centre
+ * Where the flying wheel is at `k` (0 at the hero, 1 docked): its centre
  * and size, eased, on an arc that bows up and out rather than a straight
  * diagonal.
  */
@@ -79,7 +85,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
   const pinned = useMediaQuery(PIN_QUERY);
   const [live, setLive] = useState(false);
   const [keyboardInCopy, setKeyboardInCopy] = useState(false);
-  const gyroStageRef = useRef<HTMLDivElement>(null);
+  const wheelStageRef = useRef<HTMLDivElement>(null);
   const flightRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
@@ -98,29 +104,27 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
   // against the index itself rather than the pin, so what is left of the
   // copy stays until the sheet is about to cover it and no empty band opens
   // between them. The fade starts once the sheet has passed the copy's
-  // lower half. The gyroscope settles back a little and its calibration
-  // ring turns across the whole pin, so the instrument keeps reacting until
-  // the page moves on.
+  // lower half. The wheel settles back a little across the whole pin, so it
+  // keeps reacting until the page moves on.
   const copyY = useTransform(indexRise, [0, 1], [0, -60]);
   const copyOpacity = useTransform(indexRise, [0.45, 1], [1, 0]);
-  const gyroScale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
-  const ringRotate = useTransform(scrollYProgress, [0, 1], [0, 40]);
-  // The card table comes in as the gyroscope leaves for the header (the
+  const wheelScale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
+  // The card table comes in as the wheel leaves for the header (the
   // dock below), into the columns it vacates.
   const deckReveal = useTransform(scrollYProgress, [DOCK_FROM + 0.06, DOCK_FROM + 0.32], [0, 1]);
 
   /*
-   * The dock. Over the second half of the pin the gyroscope leaves the hero
-   * for the mark beside the name in the header (Nav.tsx): the live scene
-   * hands over to a fixed SVG copy of itself (GyroMark) where it stands,
-   * and the copy flies on an arc and shrinks onto the mark, which then
-   * takes over. Scrolling back reverses it. Written straight to the nodes
+   * The dock. Over the second half of the pin the wheel leaves the hero for
+   * the mark beside the name in the header (Nav.tsx): the live scene hands
+   * over to a fixed SVG copy of itself (WheelMark) where it stands, and the
+   * copy flies on an arc and shrinks onto the mark, tilting up to face the
+   * page on the way, and the mark then takes over. Scrolling back reverses it. Written straight to the nodes
    * on each scroll change; --dock-mark on <html> tells the header's mark
    * when to show. Only with the pinned layout (so never under reduced
    * motion); everywhere else the header's mark simply shows.
    */
   useEffect(() => {
-    const stage = gyroStageRef.current;
+    const stage = wheelStageRef.current;
     const flight = flightRef.current;
     const root = document.documentElement;
     if (!pinned || !stage || !flight) return;
@@ -129,8 +133,8 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
       const k = Math.min(1, Math.max(0, (p - DOCK_FROM) / (DOCK_TO - DOCK_FROM)));
       const mark = document.querySelector(".brand-mark");
       root.style.setProperty("--dock-mark", k >= 1 ? "1" : "0");
-      // The instrument fades out over the first tenth of the flight as its
-      // copy fades in on top of it.
+      // The wheel fades out over the first tenth of the flight as its copy
+      // fades in on top of it.
       stage.style.opacity = String(1 - Math.min(1, k / 0.1));
       if (k <= 0 || k >= 1 || !mark) {
         flight.style.visibility = "hidden";
@@ -140,12 +144,13 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
       const b = mark.getBoundingClientRect();
       const f = dockFrame(
         k,
-        { x: a.left + a.width / 2, y: a.top + a.height / 2, size: a.width * 0.86 },
+        { x: a.left + a.width / 2, y: a.top + a.height / 2, size: a.width * WHEEL_SPAN },
         { x: b.left + b.width / 2, y: b.top + b.height / 2, size: b.width },
       );
       flight.style.visibility = "visible";
       flight.style.opacity = String(Math.min(1, k / 0.06));
       flight.style.width = flight.style.height = `${f.size}px`;
+      flight.style.setProperty("--tilt", String(WHEEL_TILT + (1 - WHEEL_TILT) * Math.min(1, k * 2)));
       flight.style.transform = `translate(${f.x - f.size / 2}px, ${f.y - f.size / 2}px)`;
     };
 
@@ -242,15 +247,12 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
             </ul>
           </m.div>
 
-          <div className="hero-gyro" aria-hidden="true">
+          <div className="hero-wheel" aria-hidden="true">
             <m.div
-              ref={gyroStageRef}
-              className={cx("hero-gyro-stage", live && "is-live")}
-              style={pinned ? { scale: gyroScale } : { scale: 1 }}
+              ref={wheelStageRef}
+              className={cx("hero-wheel-stage", live && "is-live")}
+              style={pinned ? { scale: wheelScale } : { scale: 1 }}
             >
-              <m.div className="hero-ring" style={pinned ? { rotate: ringRotate } : { rotate: 0 }}>
-                <CalibrationRing />
-              </m.div>
               {/* The still sits under the live scene and is hidden only while
                   the scene reports a drawn frame. onLive(false) arrives on a
                   lost context and on unmount, and brings it back. */}
@@ -270,54 +272,12 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
         reveal={pinned ? deckReveal : undefined}
       />
 
-      {/* The gyroscope on its way to the header (see the dock above). */}
+      {/* The wheel on its way to the header (see the dock above). */}
       {pinned && (
-        <div className="gyro-flight" ref={flightRef} aria-hidden="true">
-          <GyroMark />
+        <div className="wheel-flight" ref={flightRef} aria-hidden="true">
+          <WheelMark />
         </div>
       )}
     </div>
-  );
-}
-
-// 72 ticks, one every 5 degrees; every sixth (each 30 degrees) runs longer,
-// the way a gimbal's scale marks its major divisions.
-const TICKS = Array.from({ length: 72 }, (_, i) => {
-  const major = i % 6 === 0;
-  const a = (i * 5 * Math.PI) / 180;
-  const r1 = 96;
-  const r2 = major ? 89 : 92.5;
-  const f = (n: number) => Number(n.toFixed(3));
-  return {
-    key: i,
-    major,
-    x1: f(100 + r1 * Math.sin(a)),
-    y1: f(100 - r1 * Math.cos(a)),
-    x2: f(100 + r2 * Math.sin(a)),
-    y2: f(100 - r2 * Math.cos(a)),
-  };
-});
-
-/**
- * The static scale behind the gyroscope: two concentric hairline circles and
- * 72 ticks. Pure SVG, so it is in the HTML and needs no WebGL; the hand-off
- * turns it through 40 degrees.
- */
-function CalibrationRing() {
-  return (
-    <svg className="hero-ring-svg" viewBox="0 0 200 200" focusable="false">
-      <circle cx="100" cy="100" r="96" />
-      <circle cx="100" cy="100" r="86" />
-      {TICKS.map((t) => (
-        <line
-          key={t.key}
-          className={t.major ? "is-major" : undefined}
-          x1={t.x1}
-          y1={t.y1}
-          x2={t.x2}
-          y2={t.y2}
-        />
-      ))}
-    </svg>
   );
 }

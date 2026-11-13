@@ -72,7 +72,7 @@
 
 /* ---------------------------------------------------------------- core */
 
-/* The hero's gyroscope. Unchanged in look; it sits over the still image,
+/* The hero's roulette wheel. It sits over the still image,
    which the hero hides only once the scene reports its first frame. */
 .scene-core {
   z-index: 1;

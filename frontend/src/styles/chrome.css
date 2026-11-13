@@ -50,8 +50,8 @@
   color: var(--text);
 }
 
-/* The docked gyroscope beside the name (GyroMark.tsx). --dock-mark is 0
-   while the hero's own gyroscope is still in view and flying here
+/* The docked wheel beside the name (WheelMark.tsx). --dock-mark is 0
+   while the hero's own wheel is still in view and flying here
    (Hero.tsx); everywhere else it is unset and the mark shows. */
 .brand {
   position: relative;
@@ -60,7 +60,7 @@
   gap: 10px;
 }
 
-/* The empty socket the gyroscope docks into: a dashed ring in the mark's
+/* The empty socket the wheel docks into: a dashed ring in the mark's
    place while it is still in the hero, gone once it has landed. */
 .brand::before {
   content: "";
@@ -83,56 +83,82 @@
   opacity: var(--dock-mark, 1);
 }
 
-/* Hairlines in screen pixels at any size, so the mark in flight (several
-   hundred px wide) and docked (26px) draw the same weight of line. */
-.gyro-mark {
+/* The wheel mark (WheelMark.tsx). Its lines are in screen pixels at any
+   size, so the mark in flight (several hundred px wide) and docked (26px)
+   draw the same weight of line; its pockets are fills, and scale. */
+.wheel-mark {
   overflow: visible;
-  fill: none;
-  stroke-width: 1.6px;
 }
 
-.gyro-mark ellipse,
-.gyro-mark circle,
-.gyro-mark path {
+.wheel-mark-bowl,
+.wheel-mark-track,
+.wheel-mark-inlay,
+.wheel-mark-turret {
   vector-effect: non-scaling-stroke;
 }
 
-.gyro-mark-stand,
-.gyro-mark-outer {
+.wheel-mark-bowl {
+  fill: var(--surface-2);
   stroke: var(--line-strong);
+  stroke-width: 1px;
 }
 
-.gyro-mark-inner {
-  stroke: var(--sky);
+.wheel-mark-track {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1px;
 }
 
-.gyro-mark-rotor {
+.wheel-mark-pocket.is-red {
+  fill: var(--ember);
+}
+
+.wheel-mark-pocket.is-black {
+  fill: var(--bg);
+}
+
+.wheel-mark-pocket.is-zero {
+  fill: var(--sky);
+}
+
+.wheel-mark-cone {
+  fill: var(--surface-3);
+}
+
+.wheel-mark-inlay {
+  fill: none;
   stroke: var(--ember);
-}
-
-.gyro-mark-rotor path {
   stroke-width: 1px;
   opacity: 0.8;
 }
 
-.gyro-mark-hub {
-  fill: var(--ember);
-  stroke: none;
+.wheel-mark-turret {
+  fill: none;
+  stroke: #c4c9cf;
+  stroke-width: 1.5px;
+  stroke-linecap: round;
 }
 
-/* The flywheel turns; the gimbals hold still, as a running gyroscope's
-   seem to. */
+.wheel-mark-knob {
+  fill: #c4c9cf;
+}
+
+.wheel-mark-ball {
+  fill: #f6f3ec;
+}
+
+/* The head turns slowly, the ball riding in its pocket. */
 @media (prefers-reduced-motion: no-preference) {
-  .gyro-mark-rotor {
-    animation: gyro-turn 2.4s linear infinite;
+  .wheel-mark-head {
+    animation: wheel-turn 16s linear infinite;
   }
 
-  .gyro-mark.is-paused .gyro-mark-rotor {
+  .wheel-mark.is-paused .wheel-mark-head {
     animation-play-state: paused;
   }
 }
 
-@keyframes gyro-turn {
+@keyframes wheel-turn {
   to {
     transform: rotate(360deg);
   }
@@ -344,7 +370,7 @@
  * each item; the server's even spacing is the no-JavaScript layout. The
  * marker, when rendered, is placed by the component along the track, and
  * the component fades the whole rail out while the hero is pinned, where
- * it would crowd the gyroscope's ring.
+ * it would crowd the wheel.
  */
 .index-rail {
   display: none;

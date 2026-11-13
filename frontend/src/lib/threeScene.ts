@@ -44,6 +44,22 @@ export interface SceneController {
   dispose(): void;
 }
 
+/** Collects anything holding GPU memory so teardown is not hand-maintained. */
+export function makeTracker() {
+  const bag: Array<{ dispose: () => void }> = [];
+  return {
+    bag,
+    track<T extends { dispose: () => void }>(x: T): T {
+      bag.push(x);
+      return x;
+    },
+    disposeAll() {
+      bag.forEach((d) => d.dispose());
+      bag.length = 0;
+    },
+  };
+}
+
 const INERT: SceneController = { setPaused: () => {}, dispose: () => {} };
 
 /**
@@ -100,7 +116,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
 
   const applySize = () => {
     // clientWidth/Height, not getBoundingClientRect: the rect is the
-    // *transformed* box, and the hero's gyroscope is scaled as the work
+    // *transformed* box, and the hero's wheel is scaled as the work
     // index rises over it. Measuring the rect would size the buffer to the
     // shrunken box and leave the scene soft when it grows back.
     const w = Math.max(1, el.clientWidth);

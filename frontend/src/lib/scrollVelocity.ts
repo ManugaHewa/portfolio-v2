@@ -1,6 +1,6 @@
 /**
  * How fast the page is scrolling, for the WebGL scenes: the starfield
- * stretches its stars into streaks with it, and the hero gyroscope spins up.
+ * stretches its stars into streaks with it, and the hero's wheel spins up.
  *
  * One passive scroll listener for the whole page, attached while at least
  * one scene is reading and removed when the last one stops. Scenes read it

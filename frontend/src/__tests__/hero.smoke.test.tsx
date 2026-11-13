@@ -87,16 +87,14 @@ describe("Hero", () => {
     expect(html).toContain("Milton, Ontario · 43.52° N, 79.88° W");
     expect(html).toContain("Manuga");
     expect(html).not.toMatch(/hero-copy[^>]*opacity:\s*0/);
-    expect(html).toContain("hero-ring-svg");
+    expect(html).toContain("hero-wheel-stage");
   });
 
-  it("keeps the calibration ring and the still decorative", () => {
+  it("keeps the wheel and its still decorative", () => {
     const { container } = renderHero();
-    const gyro = container.querySelector(".hero-gyro")!;
-    expect(gyro).toHaveAttribute("aria-hidden", "true");
-    expect(gyro.querySelectorAll(".hero-ring-svg line")).toHaveLength(72);
-    expect(gyro.querySelectorAll(".hero-ring-svg circle")).toHaveLength(2);
-    expect(gyro.querySelector(".hero-still")).not.toBeNull();
+    const wheel = container.querySelector(".hero-wheel")!;
+    expect(wheel).toHaveAttribute("aria-hidden", "true");
+    expect(wheel.querySelector(".hero-still")).not.toBeNull();
   });
 
   it("scrolls the hero back to its start when keyboard focus lands in the faded copy", () => {

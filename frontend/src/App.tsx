@@ -105,7 +105,7 @@ export default function App({ initialProjects }: AppProps) {
 
             <ScrollProgress />
             <Nav />
-            {/* Faded out while the hero is pinned, beside the gyroscope's ring. */}
+            {/* Faded out while the hero is pinned, beside the wheel. */}
             <IndexRail sections={PAGE_SECTIONS} hideWhilePinned="top" />
 
             {/* Page-wide, fixed, and purely a backdrop. */}

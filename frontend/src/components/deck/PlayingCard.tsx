@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { m } from "../../motion/m";
+import { POCKETS } from "../../lib/roulette";
 import { projectNumber } from "../../stats";
 import type { ProjectSummary } from "../../types";
 import { MORPH_SPRING } from "../work/workUtils";
@@ -36,6 +37,19 @@ interface CardFaceProps {
    * into the head of the dialog, and closing shrinks it back.
    */
   layoutId?: string;
+}
+
+/**
+ * The corner of a card's face, as it shows on the underside of a lifted
+ * corner (the squeeze, DeckTable.tsx): the face's surface, its frame and
+ * its corner index, laid out as on the face itself (deck.css turns it).
+ */
+export function PeelCorner({ project }: { project: ProjectSummary }) {
+  return (
+    <span className="pcard-peel-face" data-tier={project.tier === 1 ? "case" : "other"}>
+      <CornerIndex project={project} />
+    </span>
+  );
 }
 
 /**
@@ -104,12 +118,27 @@ export function JokerFace() {
   );
 }
 
+const f = (n: number) => Number(n.toFixed(2));
+const BACK_IN = 21;
+const BACK_OUT = 30;
+// The rosette's frets, one between each pocket, the zero's at the top.
+const FRETS = Array.from({ length: POCKETS }, (_, i) => {
+  const a = -Math.PI / 2 + ((i + 0.5) * 2 * Math.PI) / POCKETS;
+  return { key: i, x1: f(BACK_IN * Math.cos(a)), y1: f(BACK_IN * Math.sin(a)), x2: f(BACK_OUT * Math.cos(a)), y2: f(BACK_OUT * Math.sin(a)) };
+});
+const ZERO = (() => {
+  const half = Math.PI / POCKETS;
+  const p = (r: number, a: number) => `${f(r * Math.cos(a - Math.PI / 2))} ${f(r * Math.sin(a - Math.PI / 2))}`;
+  return `M${p(BACK_IN, -half)}L${p(BACK_OUT, -half)}A${BACK_OUT} ${BACK_OUT} 0 0 1 ${p(BACK_OUT, half)}L${p(BACK_IN, half)}A${BACK_IN} ${BACK_IN} 0 0 0 ${p(BACK_IN, -half)}Z`;
+})();
+
 /**
- * The back, engraved: a fine cross-hatch, the gyroscope's three rings at
- * their tilts in sky and ember around the monogram, and a frame inset from
- * the edge the way a printed card's is. One drawing for every card. The
- * monogram is generated content (deck.css), not text, so a page holding a
- * dozen card backs does not read "MH" a dozen times.
+ * The back, engraved: a fine cross-hatch, the hero's roulette wheel as a
+ * rosette (its rim, a fret between each of the 37 pockets, the zero picked
+ * out in sky) around the monogram, and a frame inset from the edge the way a
+ * printed card's is. One drawing for every card. The monogram is generated
+ * content (cards.css), not text, so a page holding a dozen card backs does
+ * not read "MH" a dozen times.
  */
 export function CardBack() {
   return (
@@ -117,10 +146,13 @@ export function CardBack() {
       <svg className="pcard-back-art" viewBox="-50 -70 100 140" focusable="false">
         <rect className="pcard-back-frame" x="-43" y="-63" width="86" height="126" rx="5" />
         <rect className="pcard-back-frame is-inner" x="-39" y="-59" width="78" height="118" rx="3" />
-        <g className="pcard-back-rings">
-          <ellipse rx="30" ry="10" />
-          <ellipse className="is-ember" rx="9" ry="30" />
-          <ellipse rx="22" ry="7" transform="rotate(58)" />
+        <g className="pcard-back-wheel">
+          <path className="pcard-back-zero" d={ZERO} />
+          <circle r={BACK_OUT} />
+          <circle r={BACK_IN} />
+          {FRETS.map((l) => (
+            <line key={l.key} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} />
+          ))}
           <circle r="11" className="pcard-back-core" />
         </g>
       </svg>

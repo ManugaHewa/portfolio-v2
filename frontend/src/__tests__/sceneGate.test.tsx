@@ -154,7 +154,7 @@ describe("which scenes run on which device", () => {
     }
   });
 
-  it("runs only the gyroscope and the starfield on a phone or a touch screen", () => {
+  it("runs only the wheel and the starfield on a phone or a touch screen", () => {
     stubMatchMedia(phone);
     for (const v of ALWAYS) {
       const { unmount } = render(<Probe variant={v} />);
@@ -243,7 +243,7 @@ describe("the render budget", () => {
     stubMatchMedia(desktop);
     const large = sceneBudget();
     expect(small.detail).toBeLessThan(large.detail);
-    // The hero gyroscope's solid tubes keep antialiasing on a phone; the
+    // The hero wheel's metalwork keeps antialiasing on a phone; the
     // line scenes drop it.
     expect(small.antialias).toBe(true);
     expect(smallLines.antialias).toBe(false);
@@ -283,7 +283,7 @@ describe("mounting a section scene on approach", () => {
     expect(screen.queryByTestId("scene3d")).toBeNull();
   });
 
-  it("mounts the gyroscope and the starfield straight away", async () => {
+  it("mounts the wheel and the starfield straight away", async () => {
     stubMatchMedia(desktop);
     render(
       <>
