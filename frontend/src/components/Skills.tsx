@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { FocusEvent, PointerEvent as ReactPointerEvent } from "react";
+import type { FocusEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { Odometer, SectionHead, useMotionAllowed, useReplayInView } from "../motion";
 import { m } from "../motion/m";
 import type { Variants } from "../motion/m";
 import { Scene } from "./Scene";
 import { hideConstellation, showConstellation } from "../lib/constellation";
+import { requestDeal } from "../lib/dealRequest";
+import { caseStudyPath } from "../lib/paths";
 import { CATEGORIES, skillsIn } from "../skills";
 import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
 
@@ -70,9 +72,20 @@ export function rowProject(target: EventTarget | null): string | null {
   return target.closest<HTMLElement>("[data-project]")?.dataset.project ?? null;
 }
 
-/** Where a project sits on the page: its case-study card, or its row under Other work. */
-export const projectAnchor = (p: { slug: string; tier: number }) =>
-  p.tier === 1 ? `#case-${p.slug}` : `#other-${p.slug}`;
+/**
+ * A skill's project number, followed: with a plain click, the page scrolls
+ * up to the deck and the deck deals that project's card (lib/dealRequest.ts).
+ * The link itself goes to the project's own page, which is where a new tab,
+ * a middle click or a visitor without JavaScript ends up.
+ */
+export function dealFromSkill(e: ReactMouseEvent<HTMLAnchorElement>, slug: string): void {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  const deck = document.getElementById("work-index");
+  if (!deck) return;
+  e.preventDefault();
+  requestDeal(slug);
+  deck.scrollIntoView({ block: "start" });
+}
 
 /**
  * Skills grouped by where they sit in a project, each with the project it was
@@ -86,8 +99,7 @@ export const projectAnchor = (p: { slug: string; tier: number }) =>
  * Pointing at a row, or tabbing to its number, lights up every row that
  * names the same project, across all the columns, so one hover shows
  * everything that project used (skills.css, [data-hot]). Following the
- * number lands on the project's card or row, which marks itself (:target in
- * work.css).
+ * number deals that project's card in the deck (dealFromSkill).
  */
 export function Skills() {
   // Before hydration this is false as well, which is harmless: the entrance
@@ -164,7 +176,8 @@ export function Skills() {
                         {project ? (
                           <a
                             className="skills-evidence skills-number"
-                            href={projectAnchor(project)}
+                            href={caseStudyPath(project.slug)}
+                            onClick={(e) => dealFromSkill(e, project.slug)}
                             aria-label={`${s.name}, used in project ${projectNumber(project.slug)}, ${project.title}`}
                           >
                             {projectNumber(project.slug)}

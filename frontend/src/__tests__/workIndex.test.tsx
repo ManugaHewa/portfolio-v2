@@ -2,7 +2,10 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { WorkIndex } from "../components/WorkIndex";
-import { drawCard, initialDeck, shuffleDeck, tableCards, thrown } from "../components/deck/useDeck";
+import { RIFFLE_MS, deckCards, drawCard, initialDeck, pullCard, shuffleDeck, tableCards, thrown } from "../components/deck/useDeck";
+import { requestDeal, takeDeal } from "../lib/dealRequest";
+import type { DeckState } from "../components/deck/useDeck";
+import { pilePose, spreadCentre, spreadPose } from "../components/deck/DeckTable";
 import { STATS, projectNumber } from "../stats";
 import { projectSummaries } from "../../../content/projects";
 import type { ProjectSummary } from "../types";
@@ -51,7 +54,7 @@ describe("the deck", () => {
     host.innerHTML = html;
     expect(host.querySelector(".pcard.is-up .pcard-title")?.textContent).toBe(projects[0].title);
     // Every project is in the page as a link, for crawlers and for no-JS visitors.
-    const links = host.querySelectorAll(".deck-list a");
+    const links = host.querySelectorAll(".deck-list ol a");
     expect(links).toHaveLength(projects.length);
   });
 
@@ -117,34 +120,134 @@ describe("the deck", () => {
   });
 });
 
+describe("deck interactions", () => {
+  it("spreads the deck into cards to pick, and gathers it again", () => {
+    const { container } = renderIndex();
+    // jsdom lays nothing out, so the table is measured at a made-up size.
+    const spread = screen.getByRole("button", { name: "Spread the deck" });
+    act(() => {
+      fireEvent.click(spread);
+    });
+    expect(spread).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Gather the deck" })).toBeInTheDocument();
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Gather the deck" }));
+    });
+    expect(container.querySelector(".pcard.is-fanned")).toBeNull();
+  });
+
+  it("deals the project a skill asks for, once the table is on screen", () => {
+    const { container } = renderIndex();
+    const wanted = projects[projects.length - 1];
+    act(() => {
+      requestDeal(wanted.slug);
+    });
+    expect(faceUp(container)).toBe(wanted.title);
+    expect(takeDeal()).toBeNull();
+  });
+
+  it("riffles before it deals the new top card", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = renderIndex();
+      act(() => {
+        fireEvent.click(screen.getByRole("button", { name: "Shuffle" }));
+      });
+      // Every card back in the deck, nothing dealt, while it is riffled.
+      expect(container.querySelector(".deck-count")).toHaveTextContent(`00 / ${projects.length}`);
+      expect(container.querySelectorAll(".deck-pile .pcard")).toHaveLength(projects.length);
+      act(() => {
+        vi.advanceTimersByTime(RIFFLE_MS + 10);
+      });
+      expect(container.querySelector(".deck-count")).toHaveTextContent(`01 / ${projects.length}`);
+      expect(container.querySelector("[aria-live='polite']")?.textContent).toMatch(/^Shuffled\. Card 1 of /);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("deck logic", () => {
-  it("starts with the first card turned over", () => {
-    expect(initialDeck(3)).toEqual({ order: [0, 1, 2], drawn: 1, deal: 0 });
+  const state = (order: number[], drawn: number): DeckState => ({ order, drawn, deal: 0, spread: false, riffling: false });
+
+  it("starts with the first card turned over, gathered", () => {
+    expect(initialDeck(3)).toEqual({ order: [0, 1, 2], drawn: 1, deal: 0, spread: false, riffling: false });
     expect(initialDeck(0).drawn).toBe(0);
   });
 
-  it("draws one at a time and stops at the bottom", () => {
-    let s = initialDeck(2);
+  it("draws one at a time, gathers a spread deck, and stops at the bottom", () => {
+    let s = { ...initialDeck(2), spread: true };
     s = drawCard(s);
     expect(s.drawn).toBe(2);
+    expect(s.spread).toBe(false);
     expect(drawCard(s)).toBe(s);
   });
 
-  it("shuffles every card back, deals the new top card and counts the deal", () => {
-    const s = shuffleDeck({ order: [0, 1, 2, 3], drawn: 4, deal: 0 }, () => 0);
+  it("does nothing while the deck is being riffled", () => {
+    const s = { ...initialDeck(3), riffling: true };
+    expect(drawCard(s)).toBe(s);
+    expect(pullCard(s, 2)).toBe(s);
+  });
+
+  it("pulls a card out of the deck and deals it", () => {
+    const s = pullCard(state([0, 1, 2, 3], 1), 3);
+    expect(s.order).toEqual([0, 3, 1, 2]);
+    expect(s.drawn).toBe(2);
+    expect(tableCards(s)[0]).toBe(3);
+  });
+
+  it("brings a card already on the table back to the top of it", () => {
+    const s = pullCard(state([0, 1, 2, 3], 3), 0);
+    expect(s.order).toEqual([1, 2, 0, 3]);
+    expect(s.drawn).toBe(3);
+    expect(tableCards(s)).toEqual([0, 2, 1]);
+    const same = state([0, 1], 2);
+    expect(pullCard(same, 1).order).toEqual([0, 1]);
+  });
+
+  it("shuffles every card back into the deck for the riffle, dealing nothing yet", () => {
+    const s = shuffleDeck(state([0, 1, 2, 3], 4), () => 0);
     expect([...s.order].sort()).toEqual([0, 1, 2, 3]);
-    expect(s.drawn).toBe(1);
-    expect(s.deal).toBe(1);
+    expect(s).toMatchObject({ drawn: 0, deal: 1, riffling: true, spread: false });
+    expect(deckCards(s)).toHaveLength(4);
   });
 
   it("puts the face-up card first on the table, then the ones under it", () => {
-    expect(tableCards({ order: [4, 3, 2, 1, 0], drawn: 3, deal: 0 })).toEqual([2, 3, 4]);
-    expect(tableCards({ order: [0, 1, 2, 3, 4, 5], drawn: 6, deal: 0 }, 4)).toEqual([5, 4, 3, 2]);
+    expect(tableCards(state([4, 3, 2, 1, 0], 3))).toEqual([2, 3, 4]);
+    expect(tableCards(state([0, 1, 2, 3, 4, 5], 6), 4)).toEqual([5, 4, 3, 2]);
+    expect(deckCards(state([4, 3, 2, 1, 0], 3))).toEqual([1, 0]);
   });
 
   it("counts a far drag or a fast flick as a throw, and a nudge as nothing", () => {
     expect(thrown({ x: 120, y: 0 }, { x: 0, y: 0 })).toBe(true);
     expect(thrown({ x: 20, y: 10 }, { x: 900, y: 0 })).toBe(true);
     expect(thrown({ x: 20, y: 10 }, { x: 50, y: 30 })).toBe(false);
+  });
+});
+
+describe("deck geometry", () => {
+  it("stacks the deck a little thicker per card, up to a point", () => {
+    expect(pilePose(0)).toEqual({ x: 0, y: 0, rotate: -2 });
+    expect(pilePose(3).x).toBeCloseTo(4.8, 5);
+    expect(pilePose(20)).toEqual(pilePose(6));
+  });
+
+  it("spreads the cards evenly along an arc centred on the table, narrower when few are left", () => {
+    const fan = Array.from({ length: 12 }, (_, k) => spreadPose(k, 12, 100));
+    expect(fan[0].rotate).toBeCloseTo(-16, 5);
+    expect(fan[11].rotate).toBeCloseTo(16, 5);
+    expect(fan.every((p) => p.x === 100)).toBe(true);
+    expect(Math.abs(spreadPose(0, 3, 0).rotate)).toBeLessThan(16);
+    expect(spreadPose(0, 1, 0).rotate).toBeCloseTo(0, 5);
+  });
+
+  it("finds a spread card's real centre, swung out along the arc", () => {
+    const flat = spreadCentre({ x: 0, y: 0, rotate: 0 }, 400);
+    expect(flat).toEqual({ x: 0, y: 0, rotate: 0 });
+    const right = spreadCentre({ x: 0, y: 0, rotate: 20 }, 400);
+    expect(right.x).toBeGreaterThan(0);
+    expect(right.y).toBeGreaterThan(0);
+    const left = spreadCentre({ x: 0, y: 0, rotate: -20 }, 400);
+    expect(left.x).toBeCloseTo(-right.x, 5);
   });
 });

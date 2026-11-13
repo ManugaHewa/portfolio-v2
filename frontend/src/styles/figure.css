@@ -1,0 +1,101 @@
+/*
+ * A case study's figure: its number and what it is, on a plate. It heads
+ * the dialog (ProjectModal.tsx, dialog.css), where it is what the deck's
+ * face-up card grows into; and the message the work section shows while
+ * there are no projects to deal.
+ */
+
+/* The plate. Its corners are set in style (workUtils.ts, FIGURE_RADIUS) so
+   Motion can correct them while it is scaled during the morph. */
+/* A grid down to the drawing, so each layer fills the plate whether the
+   plate's height is set or comes from what it shows. */
+.case-figure {
+  position: relative;
+  container-type: inline-size;
+  display: grid;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+/* The number at the top left, what the project is along the bottom: the
+   space between them is the plate's. */
+.case-figure-inner {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--pad, var(--s6));
+}
+
+/* The project number, large, as decoration: generated content on an empty
+   element, so it is not text. A solid tint of ember, in the display face,
+   which has no slashed zero and draws cleanly at any size (an outline on
+   the variable mono drew its overlapping contours). */
+.case-figure-num::before {
+  content: attr(data-number);
+  display: block;
+  font-family: var(--font-sans);
+  font-size: clamp(3.5rem, 1.2rem + 4.4vw, 6.75rem);
+  font-weight: 800;
+  font-stretch: 110%;
+  font-variant-numeric: normal;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: rgba(233, 142, 73, 0.6);
+}
+
+/* A calibration scale along the top right: fine ticks every 8px, a longer
+   one every 40px, the same marks as the hero's ring and the index rail. */
+.case-scale {
+  position: absolute;
+  top: var(--pad, var(--s6));
+  right: var(--pad, var(--s6));
+  width: 34%;
+  height: 10px;
+  background:
+    repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 40px) top / 100% 10px no-repeat,
+    repeating-linear-gradient(90deg, var(--line-strong) 0 1px, transparent 1px 8px) top / 100% 5px no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
+  mask-image: linear-gradient(90deg, transparent, #000 40%);
+}
+
+/* What the project is, in the display face, sized to the plate so it fits a
+   five-column card and a phone alike. */
+.case-figure-line {
+  max-width: 44ch;
+  font-size: clamp(1rem, 3.6cqi, 1.375rem);
+  font-weight: 600;
+  font-stretch: 104%;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden;
+  text-wrap: pretty;
+}
+
+.case-figure-inner.has-shot {
+  padding: 0;
+}
+
+.case-figure-inner.has-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The work section's message while the project list is loading or failed
+   (WorkIndex.tsx). */
+.work-state {
+  max-width: 62ch;
+  padding: var(--s6);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-2);
+  font-size: var(--fs-lede);
+  line-height: 1.5;
+}

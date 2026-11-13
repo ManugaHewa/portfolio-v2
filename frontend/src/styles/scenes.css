@@ -92,13 +92,7 @@
 
 /* --------------------------------------------------------------- field */
 
-/* Work. Held at 40% strength across the middle 60%, where the case cards and
-   their text are, and at full strength only out at the edges. */
-.scene-field {
-  opacity: 0.35;
-  -webkit-mask-image: radial-gradient(farthest-side at 50% 50%, rgb(0 0 0 / 0.4) 60%, #000 100%);
-  mask-image: radial-gradient(farthest-side at 50% 50%, rgb(0 0 0 / 0.4) 60%, #000 100%);
-}
+/* Behind the deck's table (deck.css, .deck-scene): the field of motes. */
 
 /* ------------------------------------------------------------ corridor */
 

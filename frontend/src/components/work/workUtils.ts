@@ -1,13 +1,13 @@
 /**
- * Small pieces the case cards, the other-work rows and the dialog share.
+ * Small pieces the deck's cards and the case study dialog share.
  */
 
 import { morphId } from "../../motion/morph";
 
 /**
- * The shared layoutId of a case study's figure. The card's figure and the
- * dialog's carry it, so opening a case study grows the figure out of its card
- * into the head of the dialog, and closing shrinks it back.
+ * The shared layoutId of a case study's picture. The face of its card in
+ * the deck and the dialog's figure carry it, so opening a case study grows
+ * the card into the head of the dialog, and closing shrinks it back.
  */
 export const figureId = (slug: string) => `${morphId(slug)}-figure`;
 
@@ -21,14 +21,6 @@ export const FIGURE_RADIUS = {
   borderTopLeftRadius: 19,
   borderTopRightRadius: 19,
   borderBottomLeftRadius: 0,
-  borderBottomRightRadius: 0,
-} as const;
-
-/** The same, in the stacked deck (work.css), where the figure is the card's left edge. */
-export const FIGURE_RADIUS_STACKED = {
-  borderTopLeftRadius: 19,
-  borderTopRightRadius: 0,
-  borderBottomLeftRadius: 19,
   borderBottomRightRadius: 0,
 } as const;
 
@@ -47,11 +39,3 @@ export function isOngoing(status: string | null | undefined): boolean {
   return Boolean(status) && !/^completed/i.test(status as string);
 }
 
-/**
- * A stack as one line: the first `max` names, then "+N" for the rest, so a
- * long stack cannot push a card's footer around.
- */
-export function stackLine(stack: string[], max: number): string {
-  const shown = stack.slice(0, max).join(" · ");
-  return stack.length > max ? `${shown} +${stack.length - max}` : shown;
-}

@@ -71,15 +71,15 @@ describe("the prerendered home page", () => {
     for (const project of PROJECTS) {
       expect(text, project.slug).toContain(project.title);
     }
-    // Each case study says what it is on its card; the problem and the
-    // outcomes are in the case study the card opens. Each Other work row
-    // carries its one-line summary.
-    for (const project of PROJECTS.filter((p) => p.tier === 1)) {
-      expect(text, `${project.slug} subtitle`).toContain(project.subtitle);
+    // Every project is named in the deck's list, linked to its own page,
+    // where the whole case study is (caseStudyPages.test.tsx); the card face
+    // up on the table says what the first one is.
+    for (const project of PROJECTS) {
+      const link = doc.querySelector(`.deck-list a[href="/work/${project.slug}/"]`);
+      expect(link?.textContent, project.slug).toContain(project.title);
     }
-    for (const project of PROJECTS.filter((p) => p.tier !== 1)) {
-      expect(text, `${project.slug} subtitle`).toContain(project.subtitle);
-    }
+    const first = PROJECTS.find((p) => p.tier === 1)!;
+    expect(doc.querySelector(".pcard.is-up")?.textContent).toContain(first.subtitle);
     // The work index's counts are in the HTML as the real numbers, both as
     // the visible digits and as the screen reader copy.
     const readouts = [...doc.querySelectorAll("#work-index .odometer")];
@@ -106,15 +106,12 @@ describe("the prerendered home page", () => {
 
     expect(recoverable).toEqual([]);
     expect(errors.filter((e) => /hydrat|did not match/i.test(e))).toEqual([]);
-    // The cards and rows were in the HTML and are still there after
-    // hydration, each under the id the work index links to.
-    for (const project of PROJECTS) {
-      const id = project.tier === 1 ? `case-${project.slug}` : `other-${project.slug}`;
-      expect(container.querySelector(`[id="${id}"]`), id).not.toBeNull();
-    }
-    expect(container.querySelectorAll(".case-card")).toHaveLength(
-      PROJECTS.filter((p) => p.tier === 1).length,
-    );
+    // The deck was in the HTML and is still there after hydration: the
+    // face-up card, the rest of the deck face down, and the list of all.
+    const first = PROJECTS.find((p) => p.tier === 1)!;
+    expect(container.querySelector(`.pcard.is-up[id="case-${first.slug}"]`)).not.toBeNull();
+    expect(container.querySelectorAll(".deck-pile .pcard")).toHaveLength(PROJECTS.length - 1);
+    expect(container.querySelectorAll(".deck-list ol a")).toHaveLength(PROJECTS.length);
     // Motion is allowed here (jsdom's matchMedia matches nothing), so the
     // animated versions took over after hydration: the tech band runs.
     expect(container.querySelector(".marquee.is-running")).not.toBeNull();

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { NUMBERING, Skills, evidenceProject, projectAnchor, rowProject } from "../components/Skills";
+import { NUMBERING, Skills, evidenceProject, rowProject } from "../components/Skills";
+import { peekDeal, takeDeal } from "../lib/dealRequest";
 import { CATEGORIES, SKILLS, skillsIn } from "../skills";
 import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
 import { Wrap } from "./motion/helpers";
@@ -37,10 +38,8 @@ describe("skills data", () => {
     expect(evidenceProject("Smart Grocery App")?.slug).toBe("smart-grocery");
   });
 
-  it("anchors case studies to their cards and other work to its rows", () => {
-    for (const p of PROJECT_INDEX) {
-      expect(projectAnchor(p)).toBe(p.tier === 1 ? `#case-${p.slug}` : `#other-${p.slug}`);
-    }
+  it("covers every project in the index with a page address", () => {
+    for (const p of PROJECT_INDEX) expect(p.slug).toMatch(/^[a-z0-9-]+$/);
   });
 });
 
@@ -75,7 +74,7 @@ describe("Skills section", () => {
         const p = evidenceProject(s.evidence);
         if (p) {
           const link = within(row).getByRole("link", { name: `${s.name}, used in project ${projectNumber(p.slug)}, ${p.title}` });
-          expect(link).toHaveAttribute("href", projectAnchor(p));
+          expect(link).toHaveAttribute("href", `/work/${p.slug}/`);
           expect(link).toHaveTextContent(projectNumber(p.slug));
         } else {
           expect(within(row).queryByRole("link")).toBeNull();
@@ -136,5 +135,35 @@ describe("skill-to-project highlight", () => {
   it("reads no project outside a row tied to one", () => {
     expect(rowProject(null)).toBeNull();
     expect(rowProject(document.createElement("div"))).toBeNull();
+  });
+});
+
+describe("a skill's number deals its project", () => {
+  it("asks the deck for the card on a plain click, and scrolls to it", () => {
+    const deck = document.createElement("section");
+    deck.id = "work-index";
+    deck.scrollIntoView = () => {};
+    document.body.appendChild(deck);
+    try {
+      const { container } = renderSkills();
+      const link = container.querySelector<HTMLAnchorElement>(".skills-number")!;
+      const slug = link.closest<HTMLElement>("[data-project]")!.dataset.project!;
+      const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+      link.dispatchEvent(click);
+      expect(click.defaultPrevented).toBe(true);
+      expect(peekDeal()).toBe(slug);
+      takeDeal();
+    } finally {
+      deck.remove();
+    }
+  });
+
+  it("leaves a modified click to the browser: the project's own page", () => {
+    const { container } = renderSkills();
+    const link = container.querySelector<HTMLAnchorElement>(".skills-number")!;
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ctrlKey: true });
+    link.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(false);
+    expect(peekDeal()).toBeNull();
   });
 });

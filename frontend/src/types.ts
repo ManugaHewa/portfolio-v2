@@ -49,3 +49,9 @@ export interface ProjectDetail extends ProjectSummary {
   nextSteps: string[];
   learned: string | null;
 }
+
+/**
+ * Opens a project's dialog. `trigger` is the control that was pressed, so
+ * focus can go back to it when the dialog closes.
+ */
+export type OpenProject = (project: ProjectSummary, trigger: HTMLElement) => void;

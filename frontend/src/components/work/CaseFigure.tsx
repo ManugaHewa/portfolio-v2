@@ -17,9 +17,8 @@ interface FigureContentsProps {
 }
 
 /**
- * What a case study's figure shows (redesign SPEC.md, section 5.3), the same
- * in its card and at the head of its dialog, so the morph between the two
- * carries one picture rather than two.
+ * What a case study's figure shows (redesign SPEC.md, section 5.3), at the
+ * head of its dialog, where the deck's face-up card grows into it.
  *
  * A screenshot when there is one. Otherwise a plate drawn from the project's
  * own data: its number, large, as decoration (generated content on an empty

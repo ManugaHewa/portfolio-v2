@@ -4,8 +4,6 @@ import { IndexRail, MotionPauseProvider, ScrollProgress, useIsomorphicLayoutEffe
 import { Nav, PAGE_SECTIONS } from "./components/Nav";
 import { Scene } from "./components/Scene";
 import { Hero } from "./components/Hero";
-import { Work } from "./components/work/Work";
-import type { OpenProject } from "./components/work/Work";
 import { TechBand } from "./components/TechBand";
 import { Pipeline } from "./components/Pipeline";
 import { Skills } from "./components/Skills";
@@ -13,7 +11,7 @@ import { ContactSection } from "./components/ContactSection";
 import { Footer } from "./components/Footer";
 import { ProjectModal } from "./components/ProjectModal";
 import { api } from "./api";
-import type { ProjectDetail, ProjectSummary } from "./types";
+import type { OpenProject, ProjectDetail, ProjectSummary } from "./types";
 
 interface AppProps {
   /**
@@ -91,17 +89,11 @@ export default function App({ initialProjects }: AppProps) {
     setDetailError(false);
   }, []);
 
-  // The tier is a column on the row, not a slice of the ordering, so
-  // reordering the seed cannot quietly promote something into the case
-  // studies. Both lists keep the order the API sent them in.
-  const cases = projects.filter((p) => p.tier === 1);
-  const otherWork = projects.filter((p) => p.tier !== 1);
-
   return (
     <LazyMotion features={domMax} strict>
       <MotionPauseProvider>
-        {/* Around the page and the dialog both, so a case-study card and its
-            dialog can share a layoutId across the portal. */}
+        {/* Around the page and the dialog both, so the deck's face-up card
+            and its dialog can share a layoutId across the portal. */}
         <LayoutGroup>
           <div id="app-shell" ref={shellRef}>
             <a className="skip-link" href="#main">
@@ -117,14 +109,7 @@ export default function App({ initialProjects }: AppProps) {
             <Scene variant="starfield" className="scene-starfield" />
 
             <main id="main">
-              <Hero projects={projects} onOpen={onOpen} />
-              <Work
-                cases={cases}
-                otherWork={otherWork}
-                loading={loadingProjects}
-                error={loadError}
-                onOpen={onOpen}
-              />
+              <Hero projects={projects} loading={loadingProjects} error={loadError} onOpen={onOpen} />
               <TechBand />
               <Pipeline />
               <Skills />

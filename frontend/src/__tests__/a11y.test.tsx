@@ -73,10 +73,9 @@ describe("page landmarks", () => {
 
   it("gives every section a heading that names it", async () => {
     await act(async () => { render(<App />); });
-    // The redesign's sections (SPEC.md section 5): the work index under the
-    // hero, the case studies with Other work inside, how it's built, skills
-    // and contact. Each is labelled by a real heading with a real name.
-    for (const id of ["work-index", "work", "other-work", "pipeline", "skills", "contact"]) {
+    // The sections: the work (the deck, under the hero), how it's built,
+    // skills and contact. Each is labelled by a real heading with a real name.
+    for (const id of ["work-index", "pipeline", "skills", "contact"]) {
       const section = document.getElementById(id);
       expect(section, `#${id} should exist`).not.toBeNull();
       const labelledBy = section?.getAttribute("aria-labelledby");
@@ -115,7 +114,7 @@ describe("axe, structural rules", () => {
   it("finds nothing with a project open", async () => {
     await act(async () => { render(<App />); });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /read the case study for rxflow/i }));
+      fireEvent.click(await screen.findByRole("button", { name: /read the case study for rxflow/i }));
     });
     await screen.findByRole("dialog");
     expect(await violations()).toEqual([]);

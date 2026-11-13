@@ -1,6 +1,8 @@
 import { forwardRef } from "react";
+import { m } from "../../motion/m";
 import { projectNumber } from "../../stats";
 import type { ProjectSummary } from "../../types";
+import { MORPH_SPRING } from "../work/workUtils";
 
 /**
  * A project as a playing card (deck.css). The corner index is the
@@ -28,6 +30,12 @@ interface CardFaceProps {
   onOpen?: (button: HTMLButtonElement) => void;
   /** A card under the face-up one: drawn, but no longer the one in play. */
   resting?: boolean;
+  /**
+   * The face-up card's face carries the shared layoutId of the dialog's
+   * figure (ProjectModal.tsx), so opening the case study grows the card
+   * into the head of the dialog, and closing shrinks it back.
+   */
+  layoutId?: string;
 }
 
 /**
@@ -35,12 +43,17 @@ interface CardFaceProps {
  * category and status, and the way into its case study.
  */
 export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function CardFace(
-  { project: p, onOpen, resting = false },
+  { project: p, onOpen, resting = false, layoutId },
   ref,
 ) {
   const meta = [p.category, p.status].filter(Boolean).join(" · ");
   return (
-    <div className="pcard-face" data-tier={p.tier === 1 ? "case" : "other"}>
+    <m.div
+      className="pcard-face"
+      data-tier={p.tier === 1 ? "case" : "other"}
+      layoutId={layoutId}
+      transition={{ layout: MORPH_SPRING }}
+    >
       <CornerIndex project={p} />
       <CornerIndex project={p} flipped />
       <div className="pcard-body">
@@ -48,25 +61,22 @@ export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function Ca
         <p className="pcard-line">{p.subtitle}</p>
         {meta && <p className="pcard-meta mono">{meta}</p>}
         {onOpen && !resting && (
-          <button
-            type="button"
-            className="pcard-open"
-            ref={ref}
-            onClick={(e) => onOpen(e.currentTarget)}
-          >
+          <button type="button" className="pcard-open" ref={ref} onClick={(e) => onOpen(e.currentTarget)}>
             {p.tier === 1 ? "Read the case study" : "Open the project"}
             <span className="visually-hidden"> for {p.title}</span>
           </button>
         )}
       </div>
-    </div>
+    </m.div>
   );
 });
 
 /**
  * The back, engraved: a fine cross-hatch, the gyroscope's three rings at
  * their tilts in sky and ember around the monogram, and a frame inset from
- * the edge the way a printed card's is. One drawing for every card.
+ * the edge the way a printed card's is. One drawing for every card. The
+ * monogram is generated content (deck.css), not text, so a page holding a
+ * dozen card backs does not read "MH" a dozen times.
  */
 export function CardBack() {
   return (
@@ -80,9 +90,6 @@ export function CardBack() {
           <ellipse rx="22" ry="7" transform="rotate(58)" />
           <circle r="11" className="pcard-back-core" />
         </g>
-        <text className="pcard-back-mark" y="3.6" textAnchor="middle">
-          MH
-        </text>
       </svg>
     </div>
   );

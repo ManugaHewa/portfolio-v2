@@ -88,7 +88,7 @@ interface LayerProps {
   /** The full case study, only once it is for this project. */
   full: ProjectDetail | null;
   detailError: boolean;
-  /** Grow the figure out of the case card (shared layoutId) rather than fade in. */
+  /** Grow the figure out of the deck's face-up card (shared layoutId) rather than fade in. */
   morph: boolean;
   /** Motion allowed at all; false means every change lands at once or as a short fade. */
   allowed: boolean;
@@ -352,11 +352,10 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
  * reader's cursor cannot walk out of the dialog into the page behind).
  *
  * It opens at once with the summary the page already has and fills in the
- * rest when /api/projects/:slug answers. Opened from a case card, the card's
- * figure grows out of the card into the head of the dialog (the two figures
- * share a layoutId inside App's LayoutGroup) and shrinks back into it on
- * close. Opened from an Other work row, or with reduced motion or motion
- * paused, it fades.
+ * rest when /api/projects/:slug answers. Opened from the deck's face-up
+ * card, the card grows into the figure at the head of the dialog (the card's
+ * face and the figure share a layoutId inside App's LayoutGroup) and shrinks
+ * back into the card on close. With reduced motion or motion paused it fades.
  *
  * Nothing renders until the page has hydrated: the prerendered HTML has no
  * dialog, and createPortal needs document.body.
@@ -376,9 +375,10 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
   const slug = project?.slug ?? null;
 
   // Decided once per opening: grow out of the card only when the control that
-  // opened the dialog sits inside that project's case card. The layoutId has
-  // to be fixed for the figure's whole life, because Motion registers a shared
-  // element when it mounts.
+  // opened the dialog sits inside that project's face-up card in the deck
+  // (DeckTable.tsx gives it the id). The layoutId has to be fixed for the
+  // figure's whole life, because Motion registers a shared element when it
+  // mounts.
   const morph = useMemo(
     () => Boolean(slug && allowed && returnFocusTo?.closest(`[id="${morphId(slug)}"]`)),
     // eslint-disable-next-line react-hooks/exhaustive-deps

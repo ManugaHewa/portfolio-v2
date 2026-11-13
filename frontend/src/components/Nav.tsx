@@ -16,15 +16,13 @@ export const PAGE_SECTIONS = [
   { id: "contact", label: "Contact" },
 ];
 
-// The case studies (#work) follow the work index and count as Work too.
-const SPY_IDS = ["work-index", "work", "pipeline", "skills", "contact"];
-const navTarget = (id: string | null) => (id === "work" ? "work-index" : id);
+const SPY_IDS = PAGE_SECTIONS.map((s) => s.id);
 
 export function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
-  const active = navTarget(useActiveSection(SPY_IDS));
+  const active = useActiveSection(SPY_IDS);
 
   // The bottom hairline appears once the page has moved, so the header does
   // not draw a line across the hero at rest.

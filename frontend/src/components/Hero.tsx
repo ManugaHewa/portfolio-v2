@@ -8,12 +8,15 @@ import { GyroMark } from "./GyroMark";
 import { RollLabel } from "./RollLabel";
 import { WorkIndex } from "./WorkIndex";
 import { SITE } from "../site";
-import type { ProjectSummary } from "../types";
-import type { OpenProject } from "./work/Work";
+import type { OpenProject, ProjectSummary } from "../types";
 
 interface HeroProps {
-  /** Every project, case studies first, for the deck in the work index. */
+  /** Every project, for the deck in the work index. */
   projects: ProjectSummary[];
+  /** The list has not arrived yet (development only: production prerenders it). */
+  loading?: boolean;
+  /** The list failed to load. */
+  error?: boolean;
   onOpen: OpenProject;
 }
 
@@ -70,7 +73,7 @@ const COPY_GONE_AT = 120;
  * useMediaQuery(PIN_QUERY) is true, which is never on the server or during
  * hydration: until then every style below is the resting one.
  */
-export function Hero({ projects, onOpen }: HeroProps) {
+export function Hero({ projects, loading, error, onOpen }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
   const indexHeadRef = useRef<HTMLDivElement>(null);
   const pinned = useMediaQuery(PIN_QUERY);
@@ -260,6 +263,8 @@ export function Hero({ projects, onOpen }: HeroProps) {
 
       <WorkIndex
         projects={projects}
+        loading={loading}
+        error={error}
         onOpen={onOpen}
         headRef={indexHeadRef}
         reveal={pinned ? deckReveal : undefined}

@@ -1,9 +1,9 @@
+import { useMemo } from "react";
 import type { Ref } from "react";
-import { Odometer, SplitTitle } from "../motion";
+import { Odometer, SplitTitle, useMotionAllowed } from "../motion";
 import type { MotionValue } from "../motion/m";
 import { STATS } from "../stats";
-import type { ProjectSummary } from "../types";
-import type { OpenProject } from "./work/Work";
+import type { OpenProject, ProjectSummary } from "../types";
 import { DeckControls } from "./deck/DeckControls";
 import { DeckTable } from "./deck/DeckTable";
 import { useDeck } from "./deck/useDeck";
@@ -16,8 +16,12 @@ const READINGS: Array<[number, string]> = [
 ];
 
 interface WorkIndexProps {
-  /** Every project, case studies first, in page order. */
+  /** Every project, in the order the API sent them. */
   projects: ProjectSummary[];
+  /** No project list yet: nothing was prerendered and the API has not answered. */
+  loading?: boolean;
+  /** The API failed and there was no prerendered list to fall back on. */
+  error?: boolean;
   onOpen: OpenProject;
   /** The heading block, which the hero times its copy's fade against. */
   headRef?: Ref<HTMLDivElement>;
@@ -26,8 +30,10 @@ interface WorkIndexProps {
 }
 
 /**
- * The first place the projects appear: a deck of cards, one per project
- * (components/deck). Rises over the pinned hero (redesign SPEC.md, 5.2).
+ * The work: every project as a card in one deck (components/deck), the one
+ * place the projects are shown; each opens its case study, and each has a
+ * page of its own (/work/<slug>/). Rises over the pinned hero (redesign
+ * SPEC.md, 5.2).
  *
  * The section spans the page so it can sit in the same 12-column grid as the
  * hero stage. The sheet takes the copy column (the heading, the three
@@ -35,9 +41,18 @@ interface WorkIndexProps {
  * background, so the copy it rises over goes under it rather than showing
  * through. The card table takes the other five columns, which the gyroscope
  * leaves as it flies into the header; below 1100px it follows the sheet.
+ *
+ * The cards are in number order (the case studies, then the other work),
+ * whatever order the list arrived in, so the deck's numbers count up.
  */
-export function WorkIndex({ projects, onOpen, headRef, reveal }: WorkIndexProps) {
-  const deck = useDeck(projects.length);
+export function WorkIndex({ projects, loading = false, error = false, onOpen, headRef, reveal }: WorkIndexProps) {
+  const ordered = useMemo(
+    () => [...projects.filter((p) => p.tier === 1), ...projects.filter((p) => p.tier !== 1)],
+    [projects],
+  );
+  const deck = useDeck(ordered.length, !useMotionAllowed());
+  const empty = ordered.length === 0;
+
   return (
     <section className="work-index" id="work-index" aria-labelledby="work-index-heading">
       <div className="container work-index-grid">
@@ -53,11 +68,21 @@ export function WorkIndex({ projects, onOpen, headRef, reveal }: WorkIndexProps)
               ))}
             </p>
           </div>
-          {projects.length > 0 && <DeckControls projects={projects} deck={deck} />}
+          {!empty && <DeckControls projects={ordered} deck={deck} />}
+          {empty && error && (
+            <p className="work-state" role="alert">
+              Couldn&rsquo;t load the projects. Reloading the page usually fixes it.
+            </p>
+          )}
+          {empty && loading && !error && (
+            <p className="work-state" role="status">
+              Dealing the projects&hellip;
+            </p>
+          )}
         </div>
-        {projects.length > 0 && (
+        {!empty && (
           <div className="work-index-table">
-            <DeckTable projects={projects} deck={deck} onOpen={onOpen} reveal={reveal} />
+            <DeckTable projects={ordered} deck={deck} onOpen={onOpen} reveal={reveal} />
           </div>
         )}
       </div>

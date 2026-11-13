@@ -11,10 +11,11 @@ portfolio-v2/
 │                         API, and prerendered into the HTML at build time
 ├── frontend/             React 18 + TypeScript + Vite
 │   ├── src/
-│   │   ├── components/   Hero, WorkIndex and deck/ (the deck of project
-│   │   │                 cards), work/ (case studies), ProjectModal,
-│   │   │                 Pipeline, Skills, ContactForm, CaseStudyPage,
-│   │   │                 PrivacyPage, Scene3D (the WebGL scenes)...
+│   │   ├── components/   Hero, WorkIndex and deck/ (every project as a
+│   │   │                 card in one deck: draw, spread, shuffle), the
+│   │   │                 case study dialog (ProjectModal), Pipeline,
+│   │   │                 Skills, ContactForm, CaseStudyPage, PrivacyPage,
+│   │   │                 Scene3D (the WebGL scenes)...
 │   │   ├── motion/       animation primitives on Motion (framer-motion)
 │   │   ├── styles/       plain CSS, one file per section, tokens.css
 │   │   ├── api.ts        typed fetch client for the backend
@@ -90,6 +91,21 @@ prerendered ones.
 
 To change what a project says, edit `content/projects.ts` and run the seed
 again.
+
+### Previewing the production build
+
+```bash
+npm run preview
+```
+
+Builds the frontend (prerendered pages, case study pages, sitemap) and serves
+it at http://localhost:4173 (the next free port if that one is taken; the
+terminal prints the address). The page talks to the API exactly as in
+production. If the backend is not running, the preview answers the read-only
+project routes itself, from `content/projects.ts` (the source the API is
+seeded from), so the deck and every case study still open; sending a contact
+message needs the real backend and says so (503). Stop it with Ctrl+C, and
+run it again after any change: it serves the build it started with.
 
 ## Testing
 
