@@ -41,12 +41,14 @@ import {
   POCKETS_R,
   WHEEL,
   ballPose,
+  callSpin,
   newBall,
   pocketInk,
   stepBall,
   surfaceAt,
 } from "../lib/roulette";
 import type { PocketInk } from "../lib/roulette";
+import { answerSpin, readSpin } from "../lib/spin";
 
 /*
  * The wheel's inks. The page's two accents stand in for the felt's red and
@@ -103,8 +105,11 @@ const ELEVATION = 64;
  *
  * Scrolling spins the head up (lib/scrollVelocity.ts); a mouse in the hero
  * tilts the table a few degrees toward it. On first appearing the head spins
- * up from rest and the first ball is thrown. Never under reduced motion (no
- * scene runs then: the hero shows its still).
+ * up from rest and the first ball is thrown. The hero's Spin button asks for
+ * a throw of its own (lib/spin.ts): the head is pushed, the ball is picked
+ * up and thrown again, and where it settles (always a number in the deck, or
+ * the zero) is the answer. Never under reduced motion (no scene runs then:
+ * the hero shows its still, and answers a spin itself).
  */
 export function rouletteScene(detail: number): SceneDef {
   const t = makeTracker();
@@ -314,7 +319,13 @@ export function rouletteScene(detail: number): SceneDef {
 
       let wheel = 0;
       let boost = 0;
+      // The croupier's push on the head when a spin is asked for.
+      let kick = 0;
       let run = newBall(0.6);
+      // A spin asked for before this scene was built was not its to answer
+      // (the hero answered it itself), nor is one it has answered already.
+      let seen = readSpin()?.id ?? 0;
+      let answered = 0;
       const up = new Vector3();
       const FACE = new Vector3(0, 0, 1);
 
@@ -322,14 +333,29 @@ export function rouletteScene(detail: number): SceneDef {
         // A push from the page: spins up quickly, runs down slowly.
         const target = Math.min(1, Math.abs(readScrollVelocity()) / 2400);
         boost += (target - boost) * (1 - Math.exp(-dt * (target > boost ? 5 : 1.2)));
+        kick *= Math.exp(-dt / 1.6);
         // From rest when it first appears, to about a turn every twelve
         // seconds, and up to two a second on a fast scroll.
         const spinUp = 1 - (1 - Math.min(1, time / 1.8)) ** 3;
-        const speed = (0.52 + 2.6 * boost) * spinUp;
+        const speed = (0.52 + 2.6 * boost + 1.3 * kick) * spinUp;
+
+        // The Spin button (Hero.tsx): the ball is taken up and thrown
+        // again, and the head is given a push.
+        const asked = readSpin();
+        if (asked && asked.id !== seen) {
+          seen = asked.id;
+          run = callSpin(run, asked.id, asked.top, { angle: wheel, speed });
+          kick = 1;
+        }
+
         wheel += speed * dt;
         head.rotation.y = -wheel;
 
         run = stepBall(run, dt, { angle: wheel, speed });
+        if (run.phase === "rest" && run.answers !== 0 && run.answers !== answered) {
+          answered = run.answers;
+          answerSpin({ id: run.answers, number: WHEEL[run.pocket] });
+        }
         const p = ballPose(run, wheel, speed);
         const x = p.r * Math.cos(p.angle);
         const z = p.r * Math.sin(p.angle);

@@ -1,8 +1,9 @@
 /**
  * The hero's roulette wheel as numbers: the pockets in wheel order, the
  * shape of the bowl and of the wheel head, and the ball's run from the
- * throw to its pocket. Scene3D.tsx ("core") draws it. Free of Three, so the
- * ball can be tested on its own.
+ * throw to its pocket, including a run asked for by the Spin button
+ * (callSpin). rouletteScene.ts draws it. Free of Three, so the ball can be
+ * tested on its own.
  *
  * Distances are scene units (the bowl is 3.6 across). Angles are radians
  * about the wheel's axis, increasing clockwise as seen from above. A point at
@@ -152,13 +153,22 @@ export interface Ball {
   angle: number;
   /** The angular speed the phase started at, radians a second (track, drop). */
   v0: number;
-  /** How long this phase lasts (waiting, rest), seconds. */
+  /** How long this phase lasts (waiting, rest, lift), seconds. */
   hold: number;
   /** Seconds into the drop when the ball meets a diamond, or -1. */
   hit: number;
   hops: Hop[];
   /** Where it came to rest (an index into WHEEL), or -1. */
   pocket: number;
+  /** A spin asked for (lib/spin.ts), waiting for its throw, or 0. */
+  call: number;
+  /** The spin this run is the answer to, or 0 for one of the wheel's own. */
+  answers: number;
+  /** The highest number an answering run may land on. */
+  top: number;
+  /** Where a lift starts: distance from the axis, and height above the surface. */
+  liftR: number;
+  liftAir: number;
 }
 
 export const RUN = {
@@ -178,6 +188,12 @@ export const RUN = {
   rest: [4.5, 6.5] as const,
   lift: 0.5,
   wait: [0.9, 1.4] as const,
+  /** A throw asked for is a softer one, so its answer comes sooner. */
+  called: [5.6, 6.4] as const,
+  /** A ball taken out of a run to throw again is picked up this quickly. */
+  snatch: 0.3,
+  /** And the throw asked for follows this soon. */
+  soon: 0.2,
 };
 
 // How the drop draws the ball in: slowly at first, then quickly.
@@ -188,7 +204,36 @@ const between = (range: readonly [number, number], random: () => number) =>
 
 /** A ball still in the hand, thrown after `wait` seconds. */
 export function newBall(wait = 0.6): Ball {
-  return { phase: "waiting", t: 0, angle: 0, v0: 0, hold: wait, hit: -1, hops: [], pocket: -1 };
+  return {
+    phase: "waiting",
+    t: 0,
+    angle: 0,
+    v0: 0,
+    hold: wait,
+    hit: -1,
+    hops: [],
+    pocket: -1,
+    call: 0,
+    answers: 0,
+    top: POCKETS - 1,
+    liftR: POCKET_R,
+    liftAir: 0,
+  };
+}
+
+/**
+ * The nearest pocket to `natural` (an unwrapped index) whose number is at
+ * most `top`, looking a step either way and then further, the way the ball
+ * is going first. Every pocket of 0 to 13 is at most two from any other
+ * pocket on a single-zero wheel, so the ball's way changes by little.
+ */
+export function steerPocket(natural: number, dir: number, top: number): number {
+  for (let d = 0; d < POCKETS; d++) {
+    for (const j of d === 0 ? [natural] : [natural + dir * d, natural - dir * d]) {
+      if (WHEEL[((j % POCKETS) + POCKETS) % POCKETS] <= top) return j;
+    }
+  }
+  return natural;
 }
 
 /** Angle travelled from t0 to t1 at a speed that falls by e every `tau` seconds from v0. */
@@ -204,12 +249,14 @@ function dropAt(b: Ball, t: number) {
  * The hops from where the ball reaches the head to its pocket: four or five,
  * each covering about half the way that is left, shorter and lower each
  * time, ending in the middle of a pocket. Further, the faster the ball meets
- * the head (it is going against the head's turn).
+ * the head (it is going against the head's turn). A run that answers a spin
+ * (`top` of 0 or more) ends in the nearest pocket numbered `top` or less.
  */
-function planRattle(start: number, relSpeed: number, random: () => number) {
+function planRattle(start: number, relSpeed: number, random: () => number, top = -1) {
   const dir = relSpeed < 0 ? -1 : 1;
   const way = Math.min(2.6, Math.max(0.9, Math.abs(relSpeed) * 0.55 + random() * 0.35));
-  const pocket = Math.floor((start + dir * way) / POCKET);
+  const natural = Math.floor((start + dir * way) / POCKET);
+  const pocket = top >= 0 ? steerPocket(natural, dir, top) : natural;
   const end = pocketCentre(pocket);
   const count = random() < 0.5 ? 4 : 5;
   const weights = Array.from({ length: count }, (_, i) => 0.5 ** i);
@@ -248,21 +295,26 @@ export function stepBall(
   // next phase with what is left of it.
   for (let guard = 0; left > 1e-9 && guard < 12; guard++) {
     if (b.phase === "waiting" || b.phase === "rest" || b.phase === "lift") {
-      const length = b.phase === "lift" ? RUN.lift : b.hold;
-      const step = Math.min(left, length - b.t);
+      const step = Math.min(left, b.hold - b.t);
       b.t += step;
       left -= step;
-      if (b.t < length) break;
+      if (b.t < b.hold) break;
       if (b.phase === "waiting") {
         b.phase = "track";
         b.angle = random() * Math.PI * 2;
-        b.v0 = -between(RUN.launch, random);
+        b.answers = b.call;
+        b.call = 0;
+        b.v0 = -between(b.answers ? RUN.called : RUN.launch, random);
       } else if (b.phase === "rest") {
         b.phase = "lift";
+        b.hold = RUN.lift;
+        b.liftR = POCKET_R;
+        b.liftAir = 0;
       } else {
         b.phase = "waiting";
-        b.hold = between(RUN.wait, random);
+        b.hold = b.call ? RUN.soon : between(RUN.wait, random);
         b.pocket = -1;
+        b.answers = 0;
       }
       b.t = 0;
     } else if (b.phase === "track") {
@@ -290,7 +342,7 @@ export function stepBall(
       if (b.t < RUN.drop) break;
       const end = dropAt(b, RUN.drop);
       const start = end.angle - wheel.angle;
-      const plan = planRattle(start, end.speed - wheel.speed, random);
+      const plan = planRattle(start, end.speed - wheel.speed, random, b.answers ? b.top : -1);
       b.phase = "rattle";
       b.angle = start;
       b.hops = plan.hops;
@@ -377,8 +429,43 @@ export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
     case "rest":
       return on(POCKET_R, b.angle + wheel, 0, 1, wheelSpeed);
     case "lift": {
-      const k = easeIn(Math.min(1, b.t / RUN.lift));
-      return on(POCKET_R, b.angle + wheel, 0.28 * k, 1 - k, wheelSpeed);
+      const k = easeIn(Math.min(1, b.t / Math.max(1e-6, b.hold)));
+      return on(b.liftR, b.angle + wheel, b.liftAir + 0.28 * k, 1 - k, wheelSpeed);
+    }
+  }
+}
+
+/**
+ * A spin asked for (`id`, lib/spin.ts): the ball is thrown again as soon as
+ * it can be, and that run lands on a number from 0 to `top`. In the hand,
+ * it is thrown at once; resting, it is picked out of its pocket; anywhere in
+ * a run, it is picked up where it is, quickly. `wheel` is the head's angle
+ * and speed now.
+ */
+export function callSpin(ball: Ball, id: number, top: number, wheel: { angle: number; speed: number }): Ball {
+  const b: Ball = { ...ball, call: id, top };
+  switch (ball.phase) {
+    case "waiting":
+      return { ...b, hold: Math.min(ball.hold, ball.t + RUN.soon) };
+    case "lift":
+      return b;
+    case "rest":
+      return { ...b, phase: "lift", t: 0, hold: RUN.lift, liftR: POCKET_R, liftAir: 0 };
+    default: {
+      const p = ballPose(ball, wheel.angle, wheel.speed);
+      return {
+        ...b,
+        phase: "lift",
+        t: 0,
+        hold: RUN.snatch,
+        angle: p.angle - wheel.angle,
+        liftR: p.r,
+        liftAir: p.air,
+        hops: [],
+        hit: -1,
+        pocket: -1,
+        answers: 0,
+      };
     }
   }
 }

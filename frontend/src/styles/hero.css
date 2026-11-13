@@ -163,6 +163,160 @@
   opacity: 0;
 }
 
+/* ------------------------------------------------------ the spin plate */
+
+/*
+ * Spin, on the wheel's front rim (SpinPlaque.tsx): a plate centred on the
+ * stage's bottom edge, half over the rim, on a surface of its own so the
+ * wheel never runs under its words. Its width is fixed and the button sits
+ * at its right end, so nothing in it or round it moves as its words change.
+ */
+.spin-plaque {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(94%, 440px);
+  height: 52px;
+  padding: 0 5px 0 var(--s4);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-1);
+  transform: translate(-50%, 50%);
+}
+
+.spin-call {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.spin-say,
+.spin-note {
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+/* The number as the wheel prints it: on its pocket's colour, ember for red,
+   the near-black for black, sky for the zero. */
+.spin-pocket {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding-inline: 5px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.spin-pocket.is-red {
+  background: var(--ember);
+  color: var(--on-ember);
+}
+
+.spin-pocket.is-black {
+  border-color: var(--line-strong);
+  background: #16181c;
+  color: var(--text);
+}
+
+.spin-pocket.is-zero {
+  background: var(--sky);
+  color: var(--on-ember);
+}
+
+/* Where it landed: the project's name over a note of where it is dealt,
+   the name cut short with an ellipsis on a narrow plate. */
+.spin-landed {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.spin-result {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.spin-landed .spin-note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spin-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 38px;
+  padding: 0 var(--s4) 0 var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-stretch: 104%;
+  cursor: pointer;
+  transition: border-color var(--dur-1) var(--ease-out), background-color var(--dur-1) var(--ease-out);
+}
+
+.spin-button:hover {
+  border-color: var(--text-2);
+  background: var(--surface-2);
+}
+
+.spin-button[aria-disabled="true"] {
+  cursor: progress;
+}
+
+/* The ball, in ivory. While the wheel answers it runs round a small track
+   of its own. */
+.spin-ball {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f6f3ec;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spin-button[aria-disabled="true"] .spin-ball {
+    animation: spin-ball 0.9s linear infinite;
+  }
+}
+
+/* "Pause motion" mid-throw: the wheel holds its frame, and so does this. */
+.spin-plaque.is-paused .spin-ball {
+  animation-play-state: paused;
+}
+
+@keyframes spin-ball {
+  from {
+    transform: rotate(0deg) translateX(3px) rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg) translateX(3px) rotate(360deg);
+  }
+}
+
 /* The wheel in flight to the header (Hero.tsx): fixed, above the work index
    and the header, placed and sized from script on each scroll change. It
    leaves seen at the live wheel's angle (--tilt, its height over its width)

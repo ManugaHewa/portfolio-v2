@@ -6,6 +6,7 @@ import { cx } from "../lib/cx";
 import { Scene } from "./Scene";
 import { WheelMark } from "./WheelMark";
 import { RollLabel } from "./RollLabel";
+import { SpinPlaque } from "./SpinPlaque";
 import { WorkIndex } from "./WorkIndex";
 import { SITE } from "../site";
 import type { OpenProject, ProjectSummary } from "../types";
@@ -134,8 +135,9 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
       const mark = document.querySelector(".brand-mark");
       root.style.setProperty("--dock-mark", k >= 1 ? "1" : "0");
       // The wheel fades out over the first tenth of the flight as its copy
-      // fades in on top of it.
+      // fades in on top of it; gone, its Spin plate is out of reach too.
       stage.style.opacity = String(1 - Math.min(1, k / 0.1));
+      stage.style.visibility = k >= 0.1 ? "hidden" : "";
       if (k <= 0 || k >= 1 || !mark) {
         flight.style.visibility = "hidden";
         return;
@@ -160,6 +162,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
       stop();
       root.style.removeProperty("--dock-mark");
       stage.style.opacity = "";
+      stage.style.visibility = "";
       flight.style.visibility = "hidden";
     };
   }, [pinned, scrollYProgress]);
@@ -208,7 +211,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
               Full-stack developer. I build{" "}
               <TextLoop
                 items={BUILDS}
-                interval={2600}
+                interval={3200}
                 srLabel="web apps, mobile apps, APIs and machine-learning tools."
               />
             </p>
@@ -247,7 +250,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
             </ul>
           </m.div>
 
-          <div className="hero-wheel" aria-hidden="true">
+          <div className="hero-wheel">
             <m.div
               ref={wheelStageRef}
               className={cx("hero-wheel-stage", live && "is-live")}
@@ -256,8 +259,10 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
               {/* The still sits under the live scene and is hidden only while
                   the scene reports a drawn frame. onLive(false) arrives on a
                   lost context and on unmount, and brings it back. */}
-              <div className="hero-still" />
+              <div className="hero-still" aria-hidden="true" />
               <Scene variant="core" className="scene-core" onLive={setLive} />
+              {/* Spin, on the wheel's front rim (SpinPlaque.tsx). */}
+              {projects.length > 0 && <SpinPlaque projects={projects} live={live} />}
             </m.div>
           </div>
         </div>

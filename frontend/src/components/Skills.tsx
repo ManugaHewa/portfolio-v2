@@ -5,7 +5,7 @@ import { m } from "../motion/m";
 import type { Variants } from "../motion/m";
 import { Scene } from "./Scene";
 import { hideConstellation, showConstellation } from "../lib/constellation";
-import { requestDeal } from "../lib/dealRequest";
+import { followDeal } from "../lib/dealRequest";
 import { caseStudyPath } from "../lib/paths";
 import { CATEGORIES, skillsIn } from "../skills";
 import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
@@ -79,12 +79,7 @@ export function rowProject(target: EventTarget | null): string | null {
  * a middle click or a visitor without JavaScript ends up.
  */
 export function dealFromSkill(e: ReactMouseEvent<HTMLAnchorElement>, slug: string): void {
-  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-  const deck = document.getElementById("work-index");
-  if (!deck) return;
-  e.preventDefault();
-  requestDeal(slug);
-  deck.scrollIntoView({ block: "start" });
+  followDeal(e, slug);
 }
 
 /**

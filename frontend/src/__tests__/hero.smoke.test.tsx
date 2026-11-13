@@ -90,11 +90,14 @@ describe("Hero", () => {
     expect(html).toContain("hero-wheel-stage");
   });
 
-  it("keeps the wheel and its still decorative", () => {
+  it("keeps the wheel and its still decorative, with Spin on its rim", () => {
     const { container } = renderHero();
     const wheel = container.querySelector(".hero-wheel")!;
-    expect(wheel).toHaveAttribute("aria-hidden", "true");
-    expect(wheel.querySelector(".hero-still")).not.toBeNull();
+    expect(wheel.querySelector(".hero-still")).toHaveAttribute("aria-hidden", "true");
+    // The plate is in the prerendered page, where the wheel is, and is the
+    // one thing in the column a screen reader meets.
+    expect(wheel.querySelector(".spin-plaque")).toHaveTextContent("Place your bets");
+    expect(screen.getByRole("button", { name: "Spin the wheel" })).toBeInTheDocument();
   });
 
   it("scrolls the hero back to its start when keyboard focus lands in the faded copy", () => {
