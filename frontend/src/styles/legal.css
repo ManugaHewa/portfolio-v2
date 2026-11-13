@@ -63,6 +63,21 @@
 
 /* ------------------------------------------------------- case study pages */
 
+/* The title is where the card from the deck, the dialog's figure or the
+   link lands when the page is arrived at from the home page
+   (lib/caseTransition.ts; the transition itself is in base.css, and only
+   runs where motion is welcome). */
+.case-page-title {
+  view-transition-name: case-page-title;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(case-page-title) {
+    animation-duration: 560ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
 /* A project's own page (CaseStudyPage.tsx): the same reading column, with
    the facts as a row of mono labels over values, lists marked by the scale's
    hairline tick, and the neighbouring projects at the foot. */
@@ -183,4 +198,129 @@
    scrolled, so it starts as opaque as the home page's becomes. */
 .site-header.legal-header {
   background: rgba(8, 9, 11, 0.96);
+}
+
+/* --------------------------------------------------------- the lost card */
+
+/* The 404's card (NotFoundPage.tsx): the deck's engraved back (cards.css),
+   leaning on the page and drifting a little, as if dropped. Pointing at it
+   or focusing it turns it over to its face: not in this deck. CSS alone, as
+   this page loads no script; under reduced motion it neither drifts nor
+   turns, it just shows its face. */
+.lost-card {
+  --card-w: 180px;
+  position: relative;
+  display: block;
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+  margin-bottom: var(--s7);
+  border-radius: 10px;
+  perspective: 1200px;
+  transform: rotate(-6deg);
+  text-decoration: none;
+}
+
+.lost-card-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform-style: preserve-3d;
+}
+
+.lost-card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 18px 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: inherit;
+  background: var(--surface-1);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: rotateY(180deg);
+}
+
+.lost-card-face::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid var(--sky-line);
+  border-radius: 6px;
+}
+
+.lost-card-index {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sky);
+}
+
+.lost-card-index.is-flipped {
+  top: auto;
+  left: auto;
+  right: 12px;
+  bottom: 12px;
+  transform: rotate(180deg);
+}
+
+.lost-card-title {
+  position: relative;
+  color: var(--text);
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-stretch: 108%;
+  line-height: 1.1;
+}
+
+.lost-card-line {
+  position: relative;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.lost-card:focus-visible {
+  outline-offset: 6px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lost-card {
+    animation: lost-drift 6s var(--ease-in-out) infinite alternate;
+  }
+
+  .lost-card-inner {
+    transition: transform 700ms var(--ease-out);
+  }
+
+  .lost-card:hover .lost-card-inner,
+  .lost-card:focus-visible .lost-card-inner {
+    transform: rotateY(180deg);
+  }
+}
+
+/* No turn to watch: the face is simply up. */
+@media (prefers-reduced-motion: reduce) {
+  .lost-card-inner {
+    transform: rotateY(180deg);
+  }
+}
+
+@keyframes lost-drift {
+  from {
+    transform: rotate(-6deg) translateY(0);
+  }
+  to {
+    transform: rotate(-3deg) translateY(-6px);
+  }
 }

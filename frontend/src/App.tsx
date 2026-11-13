@@ -11,6 +11,7 @@ import { ContactSection } from "./components/ContactSection";
 import { Footer } from "./components/Footer";
 import { ProjectModal } from "./components/ProjectModal";
 import { api } from "./api";
+import { useCaseTransition } from "./lib/caseTransition";
 import type { OpenProject, ProjectDetail, ProjectSummary } from "./types";
 
 interface AppProps {
@@ -38,6 +39,8 @@ export default function App({ initialProjects }: AppProps) {
   // since been closed or swapped cannot land in the dialog.
   const requested = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+  // A link to a project's own page carries its card into that page's title.
+  useCaseTransition();
 
   useEffect(() => {
     // Still asked for with prerendered projects on screen: the data lives in
