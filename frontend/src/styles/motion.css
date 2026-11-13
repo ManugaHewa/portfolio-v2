@@ -260,6 +260,18 @@
   flex-wrap: nowrap;
 }
 
+/* The moving strip can be grabbed and flung (Marquee.tsx). Sideways only on
+   a touch screen, so a vertical swipe still scrolls the page. */
+.marquee.is-running .marquee-viewport {
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+.marquee.is-grabbing .marquee-viewport {
+  cursor: grabbing;
+  user-select: none;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .marquee.is-running .marquee-list {
     animation: marquee-scroll var(--marquee-duration, 60s) linear infinite;
