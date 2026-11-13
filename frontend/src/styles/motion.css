@@ -106,8 +106,10 @@
 /* ---------------------------------------------------------- text loop */
 
 /* Every item stacked in one cell: the invisible ghosts hold the width of
-   the longest, the live word slides through the clipped cell. */
+   the longest, the live word sits in the clipped cell, and the reel runs
+   through it while the word changes. */
 .text-loop-stage {
+  position: relative;
   display: inline-grid;
   overflow: clip;
   padding-block: 0.08em 0.18em;
@@ -131,6 +133,41 @@
 
 .text-loop-word {
   display: inline-block;
+}
+
+/* The reel (TextLoop.tsx): a column of words over the cell, its top on the
+   cell's (the cell is its containing block), moved by Motion. --smear,
+   also Motion's, is how fast it is going: each word leaves a faint copy of
+   itself just above and below, the way a turning reel blurs. */
+.text-loop-reel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  --smear: 0;
+}
+
+.text-loop-reel .text-loop-word {
+  position: relative;
+  display: block;
+}
+
+.text-loop-reel .text-loop-word::before,
+.text-loop-reel .text-loop-word::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  opacity: calc(var(--smear) * 0.6);
+  pointer-events: none;
+}
+
+.text-loop-reel .text-loop-word::before {
+  top: -0.3em;
+}
+
+.text-loop-reel .text-loop-word::after {
+  top: 0.3em;
 }
 
 /* ----------------------------------------------------------- odometer */
