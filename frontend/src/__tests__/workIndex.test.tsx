@@ -71,6 +71,15 @@ describe("the deck", () => {
     expect(links).toHaveLength(projects.length);
   });
 
+  it("sits the deck in a dealer's shoe, under the cards and out of the reading order", () => {
+    const { container } = renderIndex();
+    const shoe = container.querySelector(".deck-pile > .deck-shoe");
+    expect(shoe).not.toBeNull();
+    expect(shoe).toHaveAttribute("aria-hidden", "true");
+    // First in the pile, so every card lies over it.
+    expect(container.querySelector(".deck-pile")?.firstElementChild).toBe(shoe);
+  });
+
   it("draws the projects in page order, and says each one", () => {
     const { container } = renderIndex();
     expect(faceUp(container)).toBe(projects[0].title);

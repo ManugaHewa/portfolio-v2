@@ -26,10 +26,33 @@ const FAN = [
   { x: -36, y: 24, rotate: -14, scale: 0.91 },
 ];
 
+type Bezier = [number, number, number, number];
+
 // The flight from the deck: a lift on the way, settling as it lands.
-const FLIGHT = { duration: 0.75, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
+const FLIGHT = { duration: 0.75, ease: [0.16, 1, 0.3, 1] as Bezier };
 // The turn, a touch quicker than the flight so the face is up before it lands.
-const TURN = { duration: 0.6, ease: [0.33, 1, 0.68, 1] as [number, number, number, number], delay: 0.05 };
+const TURN = { duration: 0.6, ease: [0.33, 1, 0.68, 1] as Bezier, delay: 0.05 };
+
+/*
+ * A card drawn from the shoe (deck.css, .deck-shoe), as a baccarat dealer
+ * deals: slid out of the shoe's mouth face down and flat along the felt,
+ * then lifted, turned over and laid in the slot. SHOE_OUT is the share of
+ * the draw spent sliding, and SHOE_SLIDE how much of the way to the slot.
+ */
+const SHOE_DRAW = 1;
+const SHOE_OUT = 0.42;
+const SHOE_SLIDE = 0.6;
+const SLIDE_EASE: Bezier = [0.3, 0, 0.2, 1];
+const LAND_EASE: Bezier = [0.16, 1, 0.3, 1];
+const SHOE_FLIGHT = {
+  duration: SHOE_DRAW,
+  ease: LAND_EASE,
+  x: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 1], ease: [SLIDE_EASE, LAND_EASE] },
+  y: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 0.7, 1], ease: [SLIDE_EASE, [0.3, 0, 0.4, 1] as Bezier, LAND_EASE] },
+  rotate: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 1], ease: [SLIDE_EASE, LAND_EASE] },
+  scale: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 0.7, 1], ease: [SLIDE_EASE, [0.3, 0, 0.4, 1] as Bezier, LAND_EASE] },
+};
+const SHOE_TURN = { duration: SHOE_DRAW, times: [0, SHOE_OUT + 0.04, 1], ease: [SLIDE_EASE, [0.33, 1, 0.68, 1] as Bezier] };
 const SETTLE = { type: "spring" as const, stiffness: 220, damping: 26 };
 // The spread opening and closing: a little give, as cards slide on felt.
 const SPREAD = { type: "spring" as const, stiffness: 170, damping: 20 };
@@ -151,9 +174,10 @@ interface DeckTableProps {
  * - The first time the table comes into view, the deck does a ribbon spread
  *   and turnover: spread across the table, turned face up in a wave so each
  *   project's corner shows, turned back and gathered.
- * - Drawing takes the top card off the deck, lifts it, carries it across
- *   and turns it face up as it lands; the card that was face up slides back
- *   into the hand behind it. The deck can be clicked, or its top card thrown
+ * - The deck sits in a dealer's shoe. Drawing slides the top card out of
+ *   the shoe's mouth face down, then lifts it, turns it over and lays it
+ *   in the slot, as a baccarat dealer deals; the card that was face up
+ *   slides back into the hand behind it. The deck can be clicked, or its top card thrown
  *   (a drag past 90px, or a flick), and the card flies from where it was
  *   let go. A card in the hand can be picked back up with a click.
  * - Spread (beside the heading) fans the face-down cards out in an arc
@@ -488,6 +512,8 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
         }}
       >
         <div className="deck-pile" ref={pileRef} aria-hidden={spread ? undefined : true}>
+          {/* The shoe the deck sits in, under the cards (deck.css). */}
+          <div className="deck-shoe" aria-hidden="true" />
           {inDeck.map((index, depth) => {
             const p = projects[index];
             const top = depth === 0;
@@ -671,6 +697,10 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
             const from = launch.current ?? fromDeck;
             const pose = FAN[rank];
             const flying = allowed && fresh && !spread;
+            // Off the top of the deck, not thrown or picked from the
+            // spread: dealt from the shoe.
+            const dealt = flying && launch.current === null;
+            const mouth = from.x - (from.x - pose.x) * SHOE_SLIDE;
             const inHand = rank > 0 && !veiled;
             // Brought close: to the middle of the table, square on, as large
             // as the window comfortably allows.
@@ -695,6 +725,14 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                 animate={
                   close
                     ? close
+                    : dealt
+                    ? {
+                        x: [from.x, mouth, pose.x],
+                        y: [from.y, from.y + 3, Math.min(from.y, 0) - 40, pose.y],
+                        rotate: [from.rotate, from.rotate, pose.rotate],
+                        scale: [1, 1, 1.05, pose.scale],
+                        opacity: 1,
+                      }
                     : flying
                     ? {
                         x: pose.x,
@@ -727,7 +765,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                       }
                     : { opacity: 0, transition: { duration: 0 } }
                 }
-                transition={allowed ? (flying ? FLIGHT : SETTLE) : { duration: 0 }}
+                transition={allowed ? (dealt ? SHOE_FLIGHT : flying ? FLIGHT : SETTLE) : { duration: 0 }}
                 // A card in the hand is picked back up with a click; the
                 // keyboard has the list of every project beside the heading.
                 onClick={inHand ? () => deck.pull(index) : undefined}
@@ -735,8 +773,8 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                 <m.div
                   className="pcard-inner"
                   initial={flying ? { rotateY: 180 } : false}
-                  animate={{ rotateY: 0 }}
-                  transition={allowed ? TURN : { duration: 0 }}
+                  animate={{ rotateY: dealt ? [180, 180, 0] : 0 }}
+                  transition={allowed ? (dealt ? SHOE_TURN : TURN) : { duration: 0 }}
                 >
                   <CardFace
                     project={p}

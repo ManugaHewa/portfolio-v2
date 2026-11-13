@@ -130,6 +130,66 @@
   left: 0;
 }
 
+/* ------------------------------------------------------------- the shoe */
+
+/*
+ * The dealer's shoe the deck sits in (DeckTable.tsx deals out of its mouth,
+ * at the left, under the face-up card): a dark box a little larger than the
+ * deck, open at the front, its raised back at the right, tilted with the
+ * deck about the deck's own pivot (below). Under the cards, it shows round
+ * their right side, and stands empty once every card is out.
+ */
+.deck-shoe {
+  position: absolute;
+  inset: -12px -30px -20px -6px;
+  border: 1px solid var(--line-strong);
+  border-radius: calc(var(--card-r) + 10px);
+  background: #0b0c0e;
+  /* The well the cards sit in, inside the shoe's walls. */
+  box-shadow: inset 0 0 0 6px #121417;
+  /* The deck's pivot (50% 160% of a card), in the shoe's larger box. */
+  transform: rotate(-2deg);
+  transform-origin: calc(50% - 12px) calc(160% - 39.2px);
+}
+
+/* The raised back, where the shoe's weight is: brushed steel, lit from the
+   left like the wheel's metalwork. */
+.deck-shoe::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  bottom: 6px;
+  width: 18px;
+  border-left: 1px solid var(--line-strong);
+  border-radius: 0 calc(var(--card-r) + 4px) calc(var(--card-r) + 4px) 0;
+  background: linear-gradient(90deg, #1c1f23, #30353b 55%, #23272b);
+}
+
+/* The mouth's steel lip, at the front, where the cards come out. */
+.deck-shoe::after {
+  content: "";
+  position: absolute;
+  top: 22%;
+  bottom: 22%;
+  left: -1px;
+  width: 4px;
+  border-radius: 2px;
+  background: #3a3f45;
+}
+
+/* A phone's table runs to the page's gutter: the shoe keeps inside it. */
+@media (max-width: 719.98px) {
+  .deck-shoe {
+    inset: -10px -14px -16px -6px;
+    transform-origin: calc(50% - 4px) calc(160% - 31.6px);
+  }
+
+  .deck-shoe::before {
+    width: 8px;
+  }
+}
+
 /* Every card in the deck turns about the same point, well below it: the
    deck's slight tilt, the spread's arc and the riffle all pivot there, so
    moving between them never jumps (DeckTable.tsx, FAN_ORIGIN). Their
