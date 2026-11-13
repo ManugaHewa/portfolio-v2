@@ -397,9 +397,64 @@
   padding-top: var(--s2);
 }
 
-.contact-actions-note {
+.contact-actions-side {
+  position: relative;
   flex: 1 1 200px;
+}
+
+.contact-actions-note {
   color: var(--text-3);
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.contact-actions-note.is-covered {
+  opacity: 0;
+}
+
+/* The stake (ChipStack.tsx): a short stack of chips, seen from the side,
+   pushed out beside the button while the message is out. Ember chips with
+   ivory spots on their edges and a sky one among them; the one the server's
+   yes drops on top is sky. */
+.chip-stack {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 34px;
+  height: 46px;
+  margin-top: -23px;
+  pointer-events: none;
+}
+
+.chip-stack svg {
+  display: block;
+}
+
+.chip-band.is-ember {
+  fill: #b9692f;
+}
+
+.chip-band.is-sky {
+  fill: #4b94bf;
+}
+
+.chip-face.is-ember {
+  fill: var(--ember);
+}
+
+.chip-face.is-sky {
+  fill: var(--sky);
+}
+
+.chip-spot {
+  fill: #f6f3ec;
+}
+
+.chip-inlay {
+  fill: none;
+  stroke: #f6f3ec;
+  stroke-width: 0.9;
+  stroke-dasharray: 2.2 2.2;
+  opacity: 0.85;
 }
 
 /* Sending is still the ember button, not a greyed-out one: the state is in

@@ -183,6 +183,40 @@ describe("ContactForm", () => {
     expect(await screen.findByText(/message received/i)).toBeInTheDocument();
   });
 
+  it("pushes a stack of chips out while the message is out, and drops one more on a yes", async () => {
+    let resolve: (v: { status: string }) => void = () => {};
+    sendMock.mockImplementation(() => new Promise((r) => (resolve = r)) as never);
+    const { container } = render(<ContactForm />);
+    expect(container.querySelector(".chip-stack")).toBeNull();
+    fillValid();
+    fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+    await screen.findByRole("button", { name: /^sending$/i });
+
+    const stack = container.querySelector(".chip-stack") as HTMLElement;
+    expect(stack).toHaveAttribute("aria-hidden", "true");
+    expect(stack.querySelectorAll(".chip-band")).toHaveLength(5);
+    // The note beside the button steps aside for it.
+    expect(container.querySelector(".contact-actions-note")).toHaveClass("is-covered");
+
+    await act(async () => resolve({ status: "received" }));
+    await waitFor(() => expect(container.querySelectorAll(".chip-stack .chip-band")).toHaveLength(6));
+    expect(await screen.findByText(/message received/i)).toBeInTheDocument();
+  });
+
+  it("takes the chips back when the send fails", async () => {
+    let reject: (e: unknown) => void = () => {};
+    sendMock.mockImplementation(() => new Promise((_, r) => (reject = r)) as never);
+    const { container } = render(<ContactForm />);
+    fillValid();
+    fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+    await screen.findByRole("button", { name: /^sending$/i });
+    expect(container.querySelector(".chip-stack")).not.toBeNull();
+
+    await act(async () => reject(new Error("network")));
+    await waitFor(() => expect(container.querySelector(".chip-stack")).toBeNull());
+    expect(container.querySelector(".contact-actions-note")).not.toHaveClass("is-covered");
+  });
+
   it("never steps the trace back when the answer beats the next frame", async () => {
     // Hold every frame, so the server's answer lands before the frame that
     // was meant to move the trace from validate to the network hop.

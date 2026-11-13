@@ -4,6 +4,7 @@ import type { Variants } from "../motion/m";
 import { Magnetic, Scramble, useIsomorphicLayoutEffect, useMotionAllowed } from "../motion";
 import { api } from "../api";
 import { SendTrace } from "./SendTrace";
+import { ChipStack } from "./ChipStack";
 import { signalSend } from "../lib/sendSignal";
 import { Turnstile, TURNSTILE_SITE_KEY } from "./Turnstile";
 import { RETENTION, SITE } from "../site";
@@ -466,7 +467,13 @@ export function ContactForm() {
             <SubmitLabel label={label} />
           </button>
         </Magnetic>
-        <span className="contact-actions-note small">Validated with Zod. No third-party form service.</span>
+        {/* The note steps aside for the stake while the message is out. */}
+        <span className="contact-actions-side">
+          <span className={`contact-actions-note small${sending ? " is-covered" : ""}`}>
+            Validated with Zod. No third-party form service.
+          </span>
+          <ChipStack state={delivered ? "sent" : sending ? "sending" : status === "error" ? "error" : "idle"} />
+        </span>
       </div>
 
       {sending && stage >= 0 && <SendTrace stage={stage} />}
