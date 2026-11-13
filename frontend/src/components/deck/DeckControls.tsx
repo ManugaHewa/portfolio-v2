@@ -41,6 +41,7 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
           className="btn btn-primary"
           onClick={empty ? deck.shuffle : deck.draw}
           aria-disabled={deck.riffling || undefined}
+          aria-keyshortcuts="D"
         >
           <RollLabel>{empty ? "Shuffle and deal again" : "Draw a card"}</RollLabel>
         </button>
@@ -50,16 +51,28 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
           onClick={() => deck.setSpread(!deck.spread)}
           aria-pressed={deck.spread}
           disabled={deck.remaining < 2}
+          aria-keyshortcuts="S"
         >
           <RollLabel>{deck.spread ? "Gather the deck" : "Spread the deck"}</RollLabel>
         </button>
-        <button type="button" className="btn btn-secondary" onClick={deck.shuffle} aria-disabled={deck.riffling || undefined}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={deck.shuffle}
+          aria-disabled={deck.riffling || undefined}
+          aria-keyshortcuts="R"
+        >
           <RollLabel>Shuffle</RollLabel>
         </button>
         <span className="deck-count mono" aria-hidden="true">
           {String(deck.drawn).padStart(2, "0")} / {String(deck.size).padStart(2, "0")}
         </span>
       </div>
+      {/* Shown once focus is in the section, where the keys work. The
+          buttons carry the same keys for assistive technology. */}
+      <p className="deck-keys mono" aria-hidden="true">
+        <kbd>D</kbd> draw <kbd>S</kbd> spread <kbd>R</kbd> shuffle
+      </p>
       <p className="visually-hidden" aria-live="polite">
         {said}
       </p>

@@ -72,6 +72,39 @@ export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function Ca
 });
 
 /**
+ * The joker: what the empty deck leaves on the table once all thirteen have
+ * been drawn. Its index is a J over both suits, and it says the deck is done
+ * and where to go from here. DRAFT copy, for the owner to approve, in one
+ * place (JOKER).
+ */
+export const JOKER = {
+  title: "That's the deck",
+  line: "All thirteen, face up. If one of them is close to what you need, tell me about it.",
+  link: "Get in touch",
+};
+
+export function JokerFace() {
+  return (
+    <div className="pcard-face is-joker" data-tier="joker">
+      {[false, true].map((flipped) => (
+        <span className={flipped ? "pcard-index is-flipped" : "pcard-index"} aria-hidden="true" key={String(flipped)}>
+          <span className="pcard-rank">J</span>
+          <span className="pcard-suit is-case" />
+          <span className="pcard-suit is-other" />
+        </span>
+      ))}
+      <div className="pcard-body">
+        <h3 className="pcard-title">{JOKER.title}</h3>
+        <p className="pcard-line">{JOKER.line}</p>
+        <a className="pcard-open" href="#contact">
+          {JOKER.link}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/**
  * The back, engraved: a fine cross-hatch, the gyroscope's three rings at
  * their tilts in sky and ember around the monogram, and a frame inset from
  * the edge the way a printed card's is. One drawing for every card. The

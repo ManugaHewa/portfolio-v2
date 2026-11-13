@@ -193,18 +193,6 @@
   transform-style: preserve-3d;
 }
 
-.pcard-face,
-.pcard-back {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border: 1px solid var(--line-strong);
-  border-radius: inherit;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
-}
-
 /* In a face-up card the back is the far side of the turn. */
 .pcard-inner > .pcard-back {
   transform: rotateY(180deg);
@@ -215,16 +203,33 @@
   filter: brightness(0.62);
 }
 
-.deck-empty {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--card-r);
-  color: var(--text-3);
-  font-size: var(--fs-label);
+/* The joker, in the deck's place once the deck is empty (DeckTable.tsx). */
+.pcard.is-joker-slot {
+  left: auto;
+  right: 0;
+  z-index: 45;
 }
+
+.pcard-face.is-joker {
+  --suit: var(--text);
+  --suit-line: var(--line-strong);
+  background:
+    repeating-linear-gradient(45deg, rgba(233, 142, 73, 0.05) 0 1px, transparent 1px 9px),
+    var(--surface-2);
+}
+
+.pcard-face.is-joker .pcard-index {
+  gap: 4px;
+}
+
+.pcard-face.is-joker > .pcard-body::before {
+  border-color: var(--ember);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  outline: 1px solid var(--sky);
+  outline-offset: 6px;
+}
+
 
 /* ---------------------------------------------------------------- face */
 
@@ -351,66 +356,6 @@
   color: var(--sky-hover);
 }
 
-/* ---------------------------------------------------------------- back */
-
-/* Engraved: a fine two-way hatch in the two accents at a whisper, the
-   gyroscope's rings round the monogram, a printed double frame. */
-.pcard-back {
-  background:
-    repeating-linear-gradient(45deg, rgba(106, 185, 231, 0.06) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(-45deg, rgba(233, 142, 73, 0.05) 0 1px, transparent 1px 7px),
-    var(--surface-1);
-}
-
-.pcard-back-art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.pcard-back-frame {
-  fill: none;
-  stroke: var(--line-strong);
-  stroke-width: 0.6;
-}
-
-.pcard-back-frame.is-inner {
-  stroke: var(--ember-line);
-}
-
-.pcard-back-rings ellipse {
-  fill: none;
-  stroke: var(--sky);
-  stroke-width: 0.7;
-  opacity: 0.75;
-}
-
-.pcard-back-rings ellipse.is-ember {
-  stroke: var(--ember);
-}
-
-.pcard-back-core {
-  fill: var(--surface-2);
-  stroke: var(--line-strong);
-  stroke-width: 0.6;
-}
-
-/* The monogram, on the core at the middle of the rings. */
-.pcard-back::after {
-  content: "MH";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--ember);
-  font-family: var(--font-sans);
-  font-size: calc(var(--card-w) * 0.1);
-  font-weight: 800;
-  font-stretch: 112%;
-  letter-spacing: 0.02em;
-}
-
 /* ------------------------------------------------------------ controls */
 
 .deck-controls {
@@ -436,6 +381,47 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s3) var(--s4);
+}
+
+/* The shortcut hint (DeckControls.tsx): kept in the layout so nothing
+   moves when it appears, and shown only while focus is in the section. */
+.deck-keys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: calc(-1 * var(--s3));
+  color: var(--text-3);
+  font-size: var(--fs-label);
+  letter-spacing: 0.02em;
+  visibility: hidden;
+}
+
+.work-index:focus-within .deck-keys {
+  visibility: visible;
+}
+
+.deck-keys kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.deck-keys kbd:first-child {
+  margin-left: 0;
+}
+
+/* A card in the hand can be picked back up. */
+.pcard.is-in-hand {
+  cursor: pointer;
 }
 
 .deck-count {

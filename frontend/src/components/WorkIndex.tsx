@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { Ref } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, Ref } from "react";
 import { Odometer, SplitTitle, useMotionAllowed } from "../motion";
 import type { MotionValue } from "../motion/m";
 import { STATS } from "../stats";
@@ -30,6 +30,19 @@ interface WorkIndexProps {
 }
 
 /**
+ * The deck's keyboard shortcut a key press means, if any. Single keys work
+ * only while focus is in the work section (the handler sits on it), as
+ * WCAG 2.1.4 asks of single-character shortcuts, and never with a modifier
+ * held or from a text field.
+ */
+export function deckKey(e: Pick<ReactKeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "repeat" | "target">) {
+  if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return null;
+  if (e.target instanceof Element && e.target.closest("input, textarea, select, [contenteditable]")) return null;
+  const k = e.key.toLowerCase();
+  return k === "d" ? "draw" : k === "s" ? "spread" : k === "r" ? "shuffle" : null;
+}
+
+/**
  * The work: every project as a card in one deck (components/deck), the one
  * place the projects are shown; each opens its case study, and each has a
  * page of its own (/work/<slug>/). Rises over the pinned hero (redesign
@@ -44,6 +57,9 @@ interface WorkIndexProps {
  *
  * The cards are in number order (the case studies, then the other work),
  * whatever order the list arrived in, so the deck's numbers count up.
+ *
+ * While focus is anywhere in the section, D draws, S spreads (or gathers)
+ * and R shuffles (deckKey).
  */
 export function WorkIndex({ projects, loading = false, error = false, onOpen, headRef, reveal }: WorkIndexProps) {
   const ordered = useMemo(
@@ -53,8 +69,18 @@ export function WorkIndex({ projects, loading = false, error = false, onOpen, he
   const deck = useDeck(ordered.length, !useMotionAllowed());
   const empty = ordered.length === 0;
 
+  const onKeyDown = (e: ReactKeyboardEvent) => {
+    const action = deckKey(e);
+    if (!action || empty || e.defaultPrevented) return;
+    e.preventDefault();
+    if (action === "draw") (deck.remaining > 0 ? deck.draw : deck.shuffle)();
+    else if (action === "spread") {
+      if (deck.remaining >= 2) deck.setSpread(!deck.spread);
+    } else deck.shuffle();
+  };
+
   return (
-    <section className="work-index" id="work-index" aria-labelledby="work-index-heading">
+    <section className="work-index" id="work-index" aria-labelledby="work-index-heading" onKeyDown={onKeyDown}>
       <div className="container work-index-grid">
         <div className="work-index-sheet">
           <div className="work-index-head" ref={headRef}>

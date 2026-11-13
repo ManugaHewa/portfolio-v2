@@ -1,0 +1,78 @@
+/*
+ * The playing card's shared parts (components/deck/PlayingCard.tsx): the
+ * box both faces share and the engraved back. The home page's deck
+ * (deck.css) and the 404's lost card (legal.css) both draw them, so this
+ * file is in both stylesheets (index.css, privacy-main.tsx).
+ */
+
+.pcard-face,
+.pcard-back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: inherit;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------------------------------------------------------------- back */
+
+/* Engraved: a fine two-way hatch in the two accents at a whisper, the
+   gyroscope's rings round the monogram, a printed double frame. */
+.pcard-back {
+  background:
+    repeating-linear-gradient(45deg, rgba(106, 185, 231, 0.06) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(-45deg, rgba(233, 142, 73, 0.05) 0 1px, transparent 1px 7px),
+    var(--surface-1);
+}
+
+.pcard-back-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.pcard-back-frame {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 0.6;
+}
+
+.pcard-back-frame.is-inner {
+  stroke: var(--ember-line);
+}
+
+.pcard-back-rings ellipse {
+  fill: none;
+  stroke: var(--sky);
+  stroke-width: 0.7;
+  opacity: 0.75;
+}
+
+.pcard-back-rings ellipse.is-ember {
+  stroke: var(--ember);
+}
+
+.pcard-back-core {
+  fill: var(--surface-2);
+  stroke: var(--line-strong);
+  stroke-width: 0.6;
+}
+
+/* The monogram, on the core at the middle of the rings. */
+.pcard-back::after {
+  content: "MH";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--ember);
+  font-family: var(--font-sans);
+  font-size: calc(var(--card-w, 240px) * 0.1);
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.02em;
+}

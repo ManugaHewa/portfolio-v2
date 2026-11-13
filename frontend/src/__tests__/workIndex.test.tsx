@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { WorkIndex } from "../components/WorkIndex";
+import { WorkIndex, deckKey } from "../components/WorkIndex";
 import { RIFFLE_MS, deckCards, drawCard, initialDeck, pullCard, shuffleDeck, tableCards, thrown } from "../components/deck/useDeck";
 import { requestDeal, takeDeal } from "../lib/dealRequest";
 import type { DeckState } from "../components/deck/useDeck";
-import { pilePose, spreadCentre, spreadPose } from "../components/deck/DeckTable";
+import { pilePose, ribbonPose, ribbonTimeline, spreadCentre, spreadPose } from "../components/deck/DeckTable";
 import { STATS, projectNumber } from "../stats";
 import { projectSummaries } from "../../../content/projects";
 import type { ProjectSummary } from "../types";
@@ -100,6 +100,9 @@ describe("the deck", () => {
         fireEvent.click(draw);
       });
     }
+    // The joker turns up where the deck was, pointing to the contact form.
+    expect(screen.getByRole("heading", { level: 3, name: "That's the deck" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", "#contact");
     const again = screen.getByRole("button", { name: "Shuffle and deal again" });
     act(() => {
       fireEvent.click(again);
@@ -167,6 +170,60 @@ describe("deck interactions", () => {
   });
 });
 
+describe("deck keys and the hand", () => {
+  it("draws, spreads and shuffles from the keyboard while focus is in the section", () => {
+    const { container } = renderIndex();
+    const section = container.querySelector("section#work-index")!;
+    act(() => {
+      fireEvent.keyDown(section, { key: "d" });
+    });
+    expect(faceUp(container)).toBe(projects[1].title);
+    act(() => {
+      fireEvent.keyDown(section, { key: "S" });
+    });
+    expect(screen.getByRole("button", { name: "Gather the deck" })).toBeInTheDocument();
+    act(() => {
+      fireEvent.keyDown(section, { key: "s" });
+    });
+    expect(screen.getByRole("button", { name: "Spread the deck" })).toBeInTheDocument();
+  });
+
+  it("leaves keys with a modifier, repeats and other keys alone", () => {
+    const base = { key: "d", altKey: false, ctrlKey: false, metaKey: false, repeat: false, target: document.createElement("div") };
+    expect(deckKey(base)).toBe("draw");
+    expect(deckKey({ ...base, key: "r" })).toBe("shuffle");
+    expect(deckKey({ ...base, ctrlKey: true })).toBeNull();
+    expect(deckKey({ ...base, repeat: true })).toBeNull();
+    expect(deckKey({ ...base, key: "x" })).toBeNull();
+    const input = document.createElement("input");
+    expect(deckKey({ ...base, target: input })).toBeNull();
+  });
+
+  it("puts the shortcuts on the buttons for assistive technology", () => {
+    renderIndex();
+    expect(screen.getByRole("button", { name: "Draw a card" })).toHaveAttribute("aria-keyshortcuts", "D");
+    expect(screen.getByRole("button", { name: "Spread the deck" })).toHaveAttribute("aria-keyshortcuts", "S");
+    expect(screen.getByRole("button", { name: "Shuffle" })).toHaveAttribute("aria-keyshortcuts", "R");
+  });
+
+  it("picks a card in the hand back up with a click", () => {
+    const { container } = renderIndex();
+    const draw = screen.getByRole("button", { name: "Draw a card" });
+    act(() => {
+      fireEvent.click(draw);
+    });
+    act(() => {
+      fireEvent.click(draw);
+    });
+    expect(faceUp(container)).toBe(projects[2].title);
+    const under = container.querySelector<HTMLElement>(".pcard.is-in-hand")!;
+    act(() => {
+      fireEvent.click(under);
+    });
+    expect(faceUp(container)).toBe(projects[1].title);
+  });
+});
+
 describe("deck logic", () => {
   const state = (order: number[], drawn: number): DeckState => ({ order, drawn, deal: 0, spread: false, riffling: false });
 
@@ -226,6 +283,20 @@ describe("deck logic", () => {
 });
 
 describe("deck geometry", () => {
+  it("lays the ribbon across the table, the top card at the deck", () => {
+    expect(ribbonPose(0, 12, 200)).toEqual({ x: 0, y: 0, rotate: 0 });
+    expect(ribbonPose(11, 12, 200).x).toBeCloseTo(-200, 5);
+    expect(ribbonPose(0, 1, 200)).toEqual({ x: 0, y: 0, rotate: 0 });
+  });
+
+  it("times the turnover so each card turns after the one to its left, and ends", () => {
+    const t = ribbonTimeline(12);
+    expect(t.up).toBeLessThan(t.down);
+    expect(t.down).toBeLessThan(t.gather);
+    expect(t.gather).toBeLessThan(t.done);
+    expect(ribbonTimeline(13).done).toBeGreaterThan(t.done);
+  });
+
   it("stacks the deck a little thicker per card, up to a point", () => {
     expect(pilePose(0)).toEqual({ x: 0, y: 0, rotate: -2 });
     expect(pilePose(3).x).toBeCloseTo(4.8, 5);
