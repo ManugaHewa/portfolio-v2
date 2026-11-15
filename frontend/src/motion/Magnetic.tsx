@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { m, useMotionValue, useSpring } from "./m";
 import { useFinePointer, useMotionAllowed } from "./hooks";
-import { clamp } from "./internal";
+import { clamp } from "../lib/math";
 import { cx } from "../lib/cx";
 
 export interface MagneticProps {

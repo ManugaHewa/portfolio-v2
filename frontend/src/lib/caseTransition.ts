@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { morphId } from "../motion/morph";
+import { isPlainClick } from "./dealRequest";
 
 /** View-transition name of the case study page title (legal.css). */
 export const CASE_TITLE = "case-page-title";
@@ -21,7 +22,7 @@ export function transitionSource(link: HTMLAnchorElement, slug: string): HTMLEle
 export function useCaseTransition(): void {
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (!isPlainClick(e)) return;
       const link = (e.target as Element | null)?.closest?.<HTMLAnchorElement>("a[href^='/work/']");
       const slug = link?.getAttribute("href")?.match(/^\/work\/([a-z0-9-]+)\/?$/)?.[1];
       if (!link || !slug || link.target === "_blank") return;

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useInView } from "./m";
-import { useMotionAllowed } from "./hooks";
-import { useIsomorphicLayoutEffect } from "./internal";
+import { useIsomorphicLayoutEffect, useMotionAllowed } from "./hooks";
 import { cx } from "../lib/cx";
+import { clamp, easeOutCubic, mod } from "../lib/math";
 
 export interface MarqueeProps {
   items: string[];
@@ -22,6 +22,10 @@ const FLING_SETTLE_MS = 1300;
 const FLING_MAX = 14;
 
 type Animated = Element & { getAnimations?: (options?: { subtree?: boolean }) => Animation[] };
+
+// One copy's width plus the gap after it: a lap.
+const lapWidth = (list: HTMLElement) =>
+  list.getBoundingClientRect().width + (parseFloat(getComputedStyle(list).columnGap) || 0);
 
 /**
  * A sideways-scrolling strip with its own pause toggle.
@@ -53,14 +57,13 @@ export function Marquee({ items, label }: MarqueeProps) {
   const grab = useRef<{ x: number; t: number; v: number; lapPx: number; lapMs: number } | null>(null);
   const [grabbing, setGrabbing] = useState(false);
 
-  // Lap time: one copy's width plus the gap after it.
+  // Lap time from the lap width.
   useIsomorphicLayoutEffect(() => {
     const root = rootRef.current;
     const list = listRef.current;
     if (!running || !root || !list) return;
     const measure = () => {
-      const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
-      const width = list.getBoundingClientRect().width + gap;
+      const width = lapWidth(list);
       if (width > 0) root.style.setProperty("--marquee-duration", `${(width / SPEED).toFixed(2)}s`);
     };
     measure();
@@ -88,11 +91,12 @@ export function Marquee({ items, label }: MarqueeProps) {
     cancelAnimationFrame(r.frame);
     const from = r.value;
     const start = performance.now();
+    // Fetched once per ease, not per frame (each call forces a style update).
+    const anims = root.getAnimations({ subtree: true });
     const step = (now: number) => {
       const t = Math.min(1, (now - start) / ms);
-      const eased = 1 - (1 - t) ** 3;
-      r.value = from + (to - from) * eased;
-      for (const a of root.getAnimations?.({ subtree: true }) ?? []) a.playbackRate = r.value;
+      r.value = from + (to - from) * easeOutCubic(t);
+      for (const a of anims) a.playbackRate = r.value;
       if (t < 1) r.frame = requestAnimationFrame(step);
     };
     r.frame = requestAnimationFrame(step);
@@ -112,11 +116,10 @@ export function Marquee({ items, label }: MarqueeProps) {
     const list = listRef.current;
     const duration = Number(anims[0]?.effect?.getTiming().duration);
     if (anims.length === 0 || !list || !(duration > 0)) return;
-    const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
     cancelAnimationFrame(rate.current.frame);
     for (const a of anims) a.pause();
     e.currentTarget.setPointerCapture(e.pointerId);
-    grab.current = { x: e.clientX, t: performance.now(), v: 0, lapPx: list.getBoundingClientRect().width + gap, lapMs: duration };
+    grab.current = { x: e.clientX, t: performance.now(), v: 0, lapPx: lapWidth(list), lapMs: duration };
     setGrabbing(true);
   };
 
@@ -133,7 +136,7 @@ export function Marquee({ items, label }: MarqueeProps) {
     // clock back. Offset far from zero so it never runs out.
     for (const a of animations()) {
       const time = Number(a.currentTime ?? 0) - dx * (g.lapMs / g.lapPx);
-      a.currentTime = (((time % g.lapMs) + g.lapMs) % g.lapMs) + g.lapMs * 1000;
+      a.currentTime = mod(time, g.lapMs) + g.lapMs * 1000;
     }
   };
 
@@ -145,7 +148,7 @@ export function Marquee({ items, label }: MarqueeProps) {
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     // The drift runs left at SPEED px/s, so a throw to the right is a negative rate.
     const thrownAt = -(g.v * 1000) / SPEED;
-    const r = Math.max(-FLING_MAX, Math.min(FLING_MAX, thrownAt));
+    const r = clamp(thrownAt, -FLING_MAX, FLING_MAX);
     rate.current.value = r;
     for (const a of animations()) {
       a.playbackRate = r;

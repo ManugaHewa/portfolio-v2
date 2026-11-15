@@ -1,12 +1,10 @@
 import { useContext } from "react";
 import { MotionPauseContext } from "../motion";
 import { cx } from "../lib/cx";
-import { POCKETS, WHEEL, pocketInk } from "../lib/roulette";
+import { POCKETS, WHEEL, pocketInk, wedgePath } from "../lib/roulette";
 
 const R_IN = 25.5;
 const R_OUT = 37;
-const f = (n: number) => Number(n.toFixed(2));
-const at = (r: number, a: number) => `${f(r * Math.cos(a))} ${f(r * Math.sin(a))}`;
 
 // One wedge per pocket, in wheel order, zero at the top.
 const SECTORS = WHEEL.map((n, i) => {
@@ -15,7 +13,7 @@ const SECTORS = WHEEL.map((n, i) => {
   return {
     key: n,
     ink: pocketInk(n),
-    d: `M${at(R_IN, a0)}L${at(R_OUT, a0)}A${R_OUT} ${R_OUT} 0 0 1 ${at(R_OUT, a1)}L${at(R_IN, a1)}A${R_IN} ${R_IN} 0 0 0 ${at(R_IN, a0)}Z`,
+    d: wedgePath(R_IN, R_OUT, a0, a1),
   };
 });
 

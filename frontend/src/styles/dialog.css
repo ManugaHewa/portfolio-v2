@@ -75,11 +75,6 @@
   padding-block: var(--s5);
 }
 
-/* Close sits where the scale would, so hide it. */
-.dialog-figure .case-scale {
-  display: none;
-}
-
 /* The scrolling part; its lower corners follow the surface's. */
 .dialog-scroll {
   position: relative;
@@ -182,16 +177,6 @@
 .dialog-head {
   display: grid;
   gap: var(--s4);
-}
-
-.dialog-readout {
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
 }
 
 .dialog-num {

@@ -1,9 +1,10 @@
 import { ALSO_ON_GITHUB } from "../../repositories";
-import { projectNumber } from "../../stats";
+import { pad2, projectNumber } from "../../stats";
 import type { ProjectSummary } from "../../types";
 import { caseStudyPath } from "../../lib/paths";
 import { RollLabel } from "../RollLabel";
 import { Suit } from "./PlayingCard";
+import { cutMarkOf } from "./useDeck";
 import type { Deck } from "./useDeck";
 
 interface DeckControlsProps {
@@ -22,7 +23,7 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
   const moved = deck.deal > 0 || deck.drawn > 1;
   const shuffled = deck.deal > 0 && deck.drawn === 1 ? "Shuffled. " : "";
   // Announced while the cut is the latest action; a trailing NBSP on alternate cuts re-announces a repeat.
-  const cutLast = deck.cuts > 0 && deck.cutMark === `${deck.deal}:${deck.drawn}`;
+  const cutLast = deck.cuts > 0 && deck.cutMark === cutMarkOf(deck);
   const said = cutLast
     ? `Cut the deck. A different card is on top.${deck.cuts % 2 === 0 ? "\u00a0" : ""}`
     : moved && current
@@ -66,7 +67,7 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
           <RollLabel>Shuffle</RollLabel>
         </button>
         <span className="deck-count mono" aria-hidden="true">
-          {String(deck.drawn).padStart(2, "0")} / {String(deck.size).padStart(2, "0")}
+          {pad2(deck.drawn)} / {pad2(deck.size)}
         </span>
       </div>
       {/* Shown while focus is in the section; buttons expose the keys to assistive tech. */}

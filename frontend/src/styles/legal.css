@@ -68,7 +68,7 @@
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(case-page-title) {
     animation-duration: 560ms;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-timing-function: var(--ease-out);
   }
 }
 
@@ -291,7 +291,7 @@
   }
 
   .lost-card-inner {
-    transition: transform 700ms var(--ease-out);
+    transition: transform var(--dur-4) var(--ease-out);
   }
 
   .lost-card:hover .lost-card-inner,

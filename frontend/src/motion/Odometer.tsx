@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { animate, m, useMotionValue, useTransform } from "./m";
 import type { MotionValue } from "./m";
-import { useHydrated, useMotionAllowed, useReplayInView } from "./hooks";
-import { useIsomorphicLayoutEffect } from "./internal";
+import { useHydrated, useIsomorphicLayoutEffect, useMotionAllowed, useReplayInView } from "./hooks";
+import { clamp, mod } from "../lib/math";
 import { cx } from "../lib/cx";
 
 export interface OdometerProps {
@@ -16,19 +16,17 @@ const CELL_EM = 1;
 // Slightly underdamped: a small overshoot, settling in about a second.
 const ROLL = { type: "spring" as const, stiffness: 60, damping: 13, restDelta: 0.001 };
 
-const mod10 = (n: number) => ((n % 10) + 10) % 10;
-
 /**
  * Reel position (0-10; 10 is the repeated 0) for one place value at
  * `count`. The units reel turns continuously; higher reels turn only while
  * the reel below passes 9 to 0, like a mechanical odometer.
  */
 export function reelPosition(count: number, place: number): number {
-  if (place === 1) return mod10(count);
+  if (place === 1) return mod(count, 10);
   const whole = Math.floor(count / place);
   const within = count - whole * place;
-  const carry = Math.min(1, Math.max(0, within - (place - 1)));
-  return mod10(whole + carry);
+  const carry = clamp(within - (place - 1), 0, 1);
+  return mod(whole + carry, 10);
 }
 
 const digitAt = (value: number, place: number) => Math.floor(value / place) % 10;

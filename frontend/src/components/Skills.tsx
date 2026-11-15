@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import type { FocusEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { Odometer, SectionHead, useMotionAllowed, useReplayInView } from "../motion";
+import { memo, useEffect, useRef, useState } from "react";
+import type { FocusEvent, PointerEvent as ReactPointerEvent } from "react";
+import { EASE_OUT, Odometer, SectionHead, useMotionAllowed, useReplayInView } from "../motion";
 import { m } from "../motion/m";
 import type { Variants } from "../motion/m";
 import { Scene } from "./Scene";
+import { cx } from "../lib/cx";
 import { hideConstellation, showConstellation } from "../lib/constellation";
 import { followDeal } from "../lib/dealRequest";
 import { caseStudyPath } from "../lib/paths";
 import { CATEGORIES, skillsIn } from "../skills";
-import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
+import { PROJECT_INDEX, STATS, pad2, projectNumber } from "../stats";
 
 // Evidence that names a project other than by its title.
 const ALIASES: Record<string, string> = {
@@ -23,26 +24,27 @@ export function evidenceProject(evidence: string) {
   return PROJECT_INDEX.find((p) => (slug ? p.slug === slug : p.title === evidence));
 }
 
-// A count padded like projectNumber.
-const asNumber = (n: number) => String(n).padStart(2, "0");
-
 /** The numbering note, from the data, so the ranges follow added or re-tiered projects. */
 export const NUMBERING =
   STATS.otherProjects > 0
-    ? `Numbers are the projects above: 01 to ${asNumber(STATS.caseStudies)} the case studies, ` +
-      `${asNumber(STATS.caseStudies + 1)} to ${asNumber(STATS.projects)} the other work.`
-    : `Numbers are the projects above, 01 to ${asNumber(STATS.caseStudies)}.`;
+    ? `Numbers are the projects above: 01 to ${pad2(STATS.caseStudies)} the case studies, ` +
+      `${pad2(STATS.caseStudies + 1)} to ${pad2(STATS.projects)} the other work.`
+    : `Numbers are the projects above, 01 to ${pad2(STATS.caseStudies)}.`;
+
+// Static, so worked out once rather than on every hover.
+const GROUPS = CATEGORIES.map((c) => ({
+  c,
+  rows: skillsIn(c.id).map((s) => ({ s, project: evidenceProject(s.evidence) })),
+}));
 
 /*
  * Group entrance: the columns arrive together when the block comes into
  * view, 50ms apart (watching each group alone left unrevealed holes). Each
  * group keeps data-reveal for the reduced-motion, no-JS and focus rules.
  */
-const GROUP_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
-
 const GROUP: Variants = {
   hidden: { opacity: 0, y: 16, transition: { duration: 0 } },
-  shown: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 0.6, ease: GROUP_EASE, delay: i * 0.05 } }),
+  shown: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE_OUT, delay: i * 0.05 } }),
 };
 
 // Reduced motion or "Pause motion": lands at once.
@@ -57,18 +59,13 @@ export function rowProject(target: EventTarget | null): string | null {
   return target.closest<HTMLElement>("[data-project]")?.dataset.project ?? null;
 }
 
-/** A skill's project number, clicked: deals that card in the deck (followDeal). */
-export function dealFromSkill(e: ReactMouseEvent<HTMLAnchorElement>, slug: string): void {
-  followDeal(e, slug);
-}
-
 /**
  * Skills grouped by where they sit in a project, each linked to the number
  * of the project it was used in; nothing is rated. Groups flow in CSS
  * columns (skills.css). Hovering a row, or focusing its number, lights
  * every row of that project ([data-hot]); following the number deals its card.
  */
-export function Skills() {
+export const Skills = memo(function Skills() {
   // Also false before hydration, which is fine: the entrance waits for the view.
   const animate = useMotionAllowed();
   const groupsRef = useRef<HTMLDivElement>(null);
@@ -106,8 +103,7 @@ export function Skills() {
           onFocus={point}
           onBlur={clear}
         >
-          {CATEGORIES.map((c, i) => {
-            const skills = skillsIn(c.id);
+          {GROUPS.map(({ c, rows }, i) => {
             const headingId = `skills-group-${c.id}`;
             return (
               <m.section
@@ -122,17 +118,16 @@ export function Skills() {
                     {c.label}
                   </h3>
                   <span className="skills-count">
-                    <Odometer value={skills.length} />
+                    <Odometer value={rows.length} />
                     <span className="visually-hidden"> skills</span>
                   </span>
                 </div>
                 <ul className="skills-rows" aria-labelledby={headingId}>
-                  {skills.map((s) => {
-                    const project = evidenceProject(s.evidence);
+                  {rows.map(({ s, project }) => {
                     const related = project !== undefined && project.slug === hot;
                     return (
                       <li
-                        className={related ? "skills-row is-related" : "skills-row"}
+                        className={cx("skills-row", related && "is-related")}
                         key={s.name}
                         data-project={project?.slug}
                       >
@@ -142,7 +137,7 @@ export function Skills() {
                           <a
                             className="skills-evidence skills-number"
                             href={caseStudyPath(project.slug)}
-                            onClick={(e) => dealFromSkill(e, project.slug)}
+                            onClick={(e) => followDeal(e, project.slug)}
                             aria-label={`${s.name}, used in project ${projectNumber(project.slug)}, ${project.title}`}
                           >
                             {projectNumber(project.slug)}
@@ -161,4 +156,4 @@ export function Skills() {
       </div>
     </section>
   );
-}
+});

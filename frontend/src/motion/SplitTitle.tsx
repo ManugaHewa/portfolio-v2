@@ -1,8 +1,8 @@
 import { Fragment, useMemo, useRef } from "react";
 import { m } from "./m";
 import type { Variants } from "./m";
-import { useReplayInView } from "./hooks";
-import { EASE_OUT, useInstantMotion } from "./internal";
+import { useMotionAllowed, useReplayInView } from "./hooks";
+import { EASE_OUT } from "./ease";
 
 export type SplitTitleTag = "h1" | "h2" | "h3";
 
@@ -27,7 +27,7 @@ const STAGGER = 0.07;
  */
 export function SplitTitle({ as = "h2", id, className, text }: SplitTitleProps) {
   const words = text.split(/\s+/).filter(Boolean);
-  const instant = useInstantMotion();
+  const instant = !useMotionAllowed();
   const ref = useRef<HTMLHeadingElement>(null);
   const shown = useReplayInView(ref, 0.6);
   // m.h1/h2/h3 share one props shape; the cast names one.

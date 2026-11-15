@@ -364,10 +364,6 @@ export const SKILLS: Skill[] = [
   },
 ];
 
-export const CATEGORY_BY_ID = Object.fromEntries(
-  CATEGORIES.map((c) => [c.id, c])
-) as Record<CategoryId, Category>;
-
 export function skillsIn(category: CategoryId): Skill[] {
   return SKILLS.filter((s) => s.category === category);
 }

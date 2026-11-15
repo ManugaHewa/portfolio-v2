@@ -1,4 +1,5 @@
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import { REDUCED_QUERY } from "../motion/hooks";
 import { sceneBudget } from "./sceneQuality";
 import type { SceneBudget } from "./sceneQuality";
 
@@ -17,6 +18,8 @@ export interface SceneDef {
   fov?: number;
   /** Frees what setup put on the GPU. */
   dispose?: () => void;
+  /** When true, frames update but are not drawn (the scene is hidden). */
+  skipDraw?: () => boolean;
 }
 
 export interface MountOptions {
@@ -59,7 +62,7 @@ const INERT: SceneController = { setPaused: () => {}, dispose: () => {} };
  * still image until a frame is drawn, and gets it back if the context is lost.
  */
 export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions = {}): SceneController {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (window.matchMedia(REDUCED_QUERY).matches) {
     return INERT;
   }
 
@@ -89,17 +92,23 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
   canvas.style.height = "100%";
   el.appendChild(canvas);
 
+  // Last applied size and ratio, so an unchanged resize (the observer's first call) does nothing.
+  let sized = "";
   const applySize = () => {
     // clientWidth/Height, not the transformed rect: the hero wheel scales
     // while it docks, and a rect-sized buffer would stay soft.
     const w = Math.max(1, el.clientWidth);
     const h = Math.max(1, el.clientHeight);
     current = budget();
-    renderer.setPixelRatio(current.pixelRatio);
-    // updateStyle false: CSS sizes the element; inline px would desync it.
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    const next = `${w}x${h}@${current.pixelRatio}`;
+    if (next !== sized) {
+      sized = next;
+      renderer.setPixelRatio(current.pixelRatio);
+      // updateStyle false: CSS sizes the element; inline px would desync it.
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
     return Math.max(w, h);
   };
 
@@ -133,7 +142,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
     lastFrame = now;
     t += dt;
     update?.(t, dt);
-    draw();
+    if (!def.skipDraw?.()) draw();
     raf = requestAnimationFrame(tick);
   };
 
@@ -180,9 +189,10 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
 
   const ro = new ResizeObserver(() => {
     if (lost || disposed) return;
+    const before = sized;
     handle.size = applySize();
     // Redraw now: a stopped loop would leave the resized buffer blank.
-    renderer.render(scene, camera);
+    if (sized !== before) renderer.render(scene, camera);
   });
   ro.observe(el);
 

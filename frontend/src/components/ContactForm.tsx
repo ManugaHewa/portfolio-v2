@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { AnimatePresence, m } from "../motion/m";
 import type { Variants } from "../motion/m";
-import { Magnetic, Scramble, useIsomorphicLayoutEffect, useMotionAllowed } from "../motion";
+import { EASE_OUT, Magnetic, Scramble, useIsomorphicLayoutEffect, useMotionAllowed } from "../motion";
 import { api } from "../api";
+import { cx } from "../lib/cx";
 import { SendTrace } from "./SendTrace";
 import { ChipStack } from "./ChipStack";
 import { signalSend } from "../lib/sendSignal";
@@ -79,7 +80,7 @@ const LETTER: Variants = {
   out: (i: number) => ({
     y: "-105%",
     opacity: 0,
-    transition: { duration: 0.16, ease: [0.16, 1, 0.3, 1], delay: i * 0.0125 },
+    transition: { duration: 0.16, ease: EASE_OUT, delay: i * 0.0125 },
   }),
 };
 
@@ -102,7 +103,8 @@ const letters = (text: string) =>
  * set letter by letter (a kerned word measures narrower). Not announced
  * here; SendTrace's status region speaks.
  */
-function SubmitLabel({ label }: { label: string }) {
+// Memoised: the form re-renders on every keystroke, the label only on a state change.
+const SubmitLabel = memo(function SubmitLabel({ label }: { label: string }) {
   const animate = useMotionAllowed();
   const ghost = useRef<HTMLSpanElement>(null);
   const [width, setWidth] = useState<number | null>(null);
@@ -135,7 +137,7 @@ function SubmitLabel({ label }: { label: string }) {
       <span className="visually-hidden">{label}</span>
     </m.span>
   );
-}
+});
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
@@ -145,10 +147,9 @@ export function ContactForm() {
   // Errors show once a field is left or a submit is tried.
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
-  // Send trace hop in flight; -1 when idle.
+  // Send trace hop in flight; -1 when idle. From 2 the API has answered, so the button says "Sent".
   const [stage, setStage] = useState(-1);
-  // From the API's answer until the success view, so the button says "Sent".
-  const [delivered, setDelivered] = useState(false);
+  const delivered = stage >= 2;
   // Honeypot value, kept out of `values`.
   const [website, setWebsite] = useState("");
   // The API drops sends made within seconds of this.
@@ -246,7 +247,6 @@ export function ContactForm() {
       const code = answer.httpStatus ?? null;
       setHttpCode(code);
       signalSend({ kind: "land", ok: true, code });
-      setDelivered(true);
       setStage(2);
       await new Promise((r) => setTimeout(r, 260));
       setStage(3);
@@ -255,7 +255,6 @@ export function ContactForm() {
       setSentHeight(formRef.current?.offsetHeight ?? null);
       setStatus("sent");
       setStage(-1);
-      setDelivered(false);
       setValues(EMPTY);
       setTouched({});
       setSubmitted(false);
@@ -267,7 +266,6 @@ export function ContactForm() {
       signalSend({ kind: "land", ok: false, code });
       setStatus("error");
       setStage(-1);
-      setDelivered(false);
     }
   };
 
@@ -285,7 +283,7 @@ export function ContactForm() {
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
               transition={
-                motionAllowed ? { duration: 0.4, ease: [0.16, 1, 0.3, 1], delay: 0.1 } : { duration: 0 }
+                motionAllowed ? { duration: 0.4, ease: EASE_OUT, delay: 0.1 } : { duration: 0 }
               }
             />
           </svg>
@@ -315,6 +313,8 @@ export function ContactForm() {
   }
 
   const label = delivered ? "Sent" : sending ? "Sending" : "Send message";
+  const state = delivered ? "sent" : status;
+  const bucket = countBucket(remaining);
   const describe = (field: keyof Fields, ...extra: string[]) => {
     const ids = [showError(field) ? `${field}-error` : null, ...extra].filter(Boolean);
     return ids.length ? ids.join(" ") : undefined;
@@ -379,7 +379,10 @@ export function ContactForm() {
       <div className="field">
         <div className="field-head">
           <label htmlFor="message">Message</label>
-          <span className={`field-count mono${remaining < 0 ? " is-over" : remaining <= 200 ? " is-low" : ""}`} id="message-count">
+          <span
+            className={cx("field-count", "mono", bucket === "over" ? "is-over" : bucket !== null && "is-low")}
+            id="message-count"
+          >
             <span aria-hidden="true">
               {values.message.length} / {LIMITS.message}
             </span>
@@ -439,21 +442,21 @@ export function ContactForm() {
             className="btn btn-primary contact-submit"
             type="submit"
             aria-disabled={sending ? true : undefined}
-            data-state={delivered ? "sent" : status}
+            data-state={state}
           >
             <SubmitLabel label={label} />
           </button>
         </Magnetic>
         {/* The note hides behind the chips while sending. */}
         <span className="contact-actions-side">
-          <span className={`contact-actions-note small${sending ? " is-covered" : ""}`}>
+          <span className={cx("contact-actions-note", "small", sending && "is-covered")}>
             Validated with Zod. No third-party form service.
           </span>
-          <ChipStack state={delivered ? "sent" : sending ? "sending" : status === "error" ? "error" : "idle"} />
+          <ChipStack state={state} />
         </span>
       </div>
 
-      {sending && stage >= 0 && <SendTrace stage={stage} />}
+      {sending && <SendTrace stage={stage} />}
 
       {status === "error" && (
         <p className="field-error field-error-block" role="alert">

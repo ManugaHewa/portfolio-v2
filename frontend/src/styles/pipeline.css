@@ -545,7 +545,7 @@
 .live-label {
   max-width: 34ch;
   color: var(--text-2);
-  font-size: 0.75rem;
+  font-size: var(--fs-label);
   line-height: 1.5;
 }
 

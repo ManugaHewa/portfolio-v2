@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMotionAllowed, useReplayInView } from "./hooks";
-import { clamp } from "./internal";
+import { clamp } from "../lib/math";
 import { cx } from "../lib/cx";
 
 export type ScrambleTrigger = "mount" | "inView" | { active: boolean };
@@ -55,7 +55,8 @@ export function Scramble({ text, className, trigger = "mount" }: ScrambleProps) 
   const rootRef = useRef<HTMLSpanElement>(null);
   const outRef = useRef<HTMLSpanElement>(null);
   const allowed = useMotionAllowed();
-  const inView = useReplayInView(rootRef, 0.6);
+  // Only "inView" needs an observer.
+  const inView = useReplayInView(rootRef, 0.6, trigger === "inView");
   const [running, setRunning] = useState(false);
   const done = useRef(false);
 

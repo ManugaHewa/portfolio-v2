@@ -1,6 +1,7 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { MotionPauseContext } from "../motion/hooks";
+import { cx } from "../lib/cx";
 import { followDeal, requestDeal } from "../lib/dealRequest";
 import { caseStudyPath } from "../lib/paths";
 import { pocketInk } from "../lib/roulette";
@@ -86,7 +87,7 @@ export function SpinPlaque({ projects, live }: SpinPlaqueProps) {
         : `Landed on 0, the joker.${again}`;
 
   return (
-    <div className={paused ? "spin-plaque is-paused" : "spin-plaque"}>
+    <div className={cx("spin-plaque", paused && "is-paused")}>
       <p className="spin-call">
         {landed === null ? (
           <span className="spin-say">{spinning ? "No more bets" : "Place your bets"}</span>

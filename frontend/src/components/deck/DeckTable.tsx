@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  MutableRefObject,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import { AnimatePresence, m, useMotionValue, useTransform } from "../../motion/m";
 import type { MotionValue } from "../../motion/m";
-import { morphId, useMotionAllowed, useReplayInView } from "../../motion";
+import { EASE_IN_OUT, EASE_OUT, morphId, useMotionAllowed, useReplayInView } from "../../motion";
+import type { Bezier } from "../../motion";
 import { cx } from "../../lib/cx";
+import { clamp } from "../../lib/math";
 import { onDealRequest, takeDeal } from "../../lib/dealRequest";
 import { runCascade } from "../../lib/winCascade";
 import { projectNumber } from "../../stats";
@@ -22,12 +29,12 @@ const FAN = [
   { x: -36, y: 24, rotate: -14, scale: 0.91 },
 ];
 
-type Bezier = [number, number, number, number];
+const TURN_EASE: Bezier = [0.33, 1, 0.68, 1];
 
 // Flight from the deck: lifts on the way, settles on landing.
-const FLIGHT = { duration: 0.75, ease: [0.16, 1, 0.3, 1] as Bezier };
+const FLIGHT = { duration: 0.75, ease: EASE_OUT };
 // The turn, quicker than the flight, so the face is up before it lands.
-const TURN = { duration: 0.6, ease: [0.33, 1, 0.68, 1] as Bezier, delay: 0.05 };
+const TURN = { duration: 0.6, ease: TURN_EASE, delay: 0.05 };
 
 /*
  * A draw from the shoe (deck.css .deck-shoe): slid out face down, then
@@ -38,16 +45,11 @@ const SHOE_DRAW = 1;
 const SHOE_OUT = 0.42;
 const SHOE_SLIDE = 0.6;
 const SLIDE_EASE: Bezier = [0.3, 0, 0.2, 1];
-const LAND_EASE: Bezier = [0.16, 1, 0.3, 1];
-const SHOE_FLIGHT = {
-  duration: SHOE_DRAW,
-  ease: LAND_EASE,
-  x: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 1], ease: [SLIDE_EASE, LAND_EASE] },
-  y: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 0.7, 1], ease: [SLIDE_EASE, [0.3, 0, 0.4, 1] as Bezier, LAND_EASE] },
-  rotate: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 1], ease: [SLIDE_EASE, LAND_EASE] },
-  scale: { duration: SHOE_DRAW, times: [0, SHOE_OUT, 0.7, 1], ease: [SLIDE_EASE, [0.3, 0, 0.4, 1] as Bezier, LAND_EASE] },
-};
-const SHOE_TURN = { duration: SHOE_DRAW, times: [0, SHOE_OUT + 0.04, 1], ease: [SLIDE_EASE, [0.33, 1, 0.68, 1] as Bezier] };
+// x and rotate: slide, then land. y and scale: slide, lift, land.
+const SHOE_FLAT = { duration: SHOE_DRAW, times: [0, SHOE_OUT, 1], ease: [SLIDE_EASE, EASE_OUT] };
+const SHOE_LIFT = { duration: SHOE_DRAW, times: [0, SHOE_OUT, 0.7, 1], ease: [SLIDE_EASE, [0.3, 0, 0.4, 1] as Bezier, EASE_OUT] };
+const SHOE_FLIGHT = { duration: SHOE_DRAW, ease: EASE_OUT, x: SHOE_FLAT, y: SHOE_LIFT, rotate: SHOE_FLAT, scale: SHOE_LIFT };
+const SHOE_TURN = { duration: SHOE_DRAW, times: [0, SHOE_OUT + 0.04, 1], ease: [SLIDE_EASE, TURN_EASE] };
 const SETTLE = { type: "spring" as const, stiffness: 220, damping: 26 };
 // Spread open and close: a little give, like cards on felt.
 const SPREAD = { type: "spring" as const, stiffness: 170, damping: 20 };
@@ -130,7 +132,7 @@ export function spreadCentre(pose: Pose, height: number): Pose {
  */
 export function cutAt(at: number, remaining: number): number {
   if (remaining < 2) return 0;
-  return Math.max(1, Math.min(remaining - 1, Math.round(1 + Math.max(0, Math.min(1, at)) * (remaining - 2))));
+  return clamp(Math.round(1 + clamp(at, 0, 1) * (remaining - 2)), 1, remaining - 1);
 }
 
 /** Pull distance needed for a release to complete a cut (px). */
@@ -140,6 +142,31 @@ export const CUT_PULL = 60;
 // face-up card this long to bring it close.
 const SQUEEZE_MS = 220;
 const INSPECT_MS = 380;
+
+type Timer = MutableRefObject<ReturnType<typeof setTimeout> | null>;
+
+/** Press and hold: `onHold` after `ms` unless released first; `onRelease` on any pointerup or cancel. */
+function pressAndHold(timer: Timer, ms: number, onHold: () => void, onRelease: () => void) {
+  if (timer.current) clearTimeout(timer.current);
+  timer.current = setTimeout(() => {
+    timer.current = null;
+    onHold();
+  }, ms);
+  const end = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    onRelease();
+    window.removeEventListener("pointerup", end);
+    window.removeEventListener("pointercancel", end);
+  };
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", end);
+}
+
+const cancelTimer = (timer: Timer) => {
+  if (timer.current) clearTimeout(timer.current);
+  timer.current = null;
+};
 
 type Flourish = "ribbon" | "up" | "down" | "gather" | null;
 
@@ -181,8 +208,10 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   const pileRef = useRef<HTMLDivElement>(null);
   // Measured: deck offset from the face-up slot (span), deck-frame x of the
   // table's middle (centre), how far left the ribbon may run, card height,
-  // spread reach, table width and slot x.
-  const [frame, setFrame] = useState({ span: 0, centre: 0, left: 0, height: 0, reach: 1, width: 0, slot: 40 });
+  // table width and slot x.
+  const [frame, setFrame] = useState({ span: 0, centre: 0, left: 0, height: 0, width: 0, slot: 40 });
+  // The full arc needs about 520px.
+  const reach = clamp(frame.width / 520, 0.5, 1);
   // Start pose of the next face-up card, in the slot's frame.
   const launch = useRef<Pose | null>(null);
   // Cards on the table at the last render: a card raised from the hand moves up instead of flying in.
@@ -197,12 +226,8 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   const flourishTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   // Squeeze state and its hold timer; `took` stops the press's click from drawing.
   const [squeezing, setSqueezing] = useState(false);
-  const hold = useRef<{ timer: ReturnType<typeof setTimeout> | null; x: number; y: number; took: boolean }>({
-    timer: null,
-    x: 0,
-    y: 0,
-    took: false,
-  });
+  const squeezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const holdAt = useRef({ x: 0, y: 0, took: false });
   // Hand cut: packet size, pull offset, and whether held (hovering only previews).
   const [cut, setCut] = useState<{ k: number; x: number; y: number; held: boolean; out: boolean } | null>(null);
   const cutFrom = useRef({ x: 0, y: 0 });
@@ -221,16 +246,16 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
       const controls = table.closest(".work-index")?.querySelector(".deck-controls")?.getBoundingClientRect();
       const tableLeft = table.getBoundingClientRect().left;
       const gap = controls && controls.right < tableLeft ? tableLeft - controls.right - 32 : 0;
-      setFrame({
+      const next = {
         span: pile.offsetLeft - slotLeft,
         centre: (table.clientWidth - pile.offsetWidth) / 2 - pile.offsetLeft,
-        left: pile.offsetLeft + Math.max(0, Math.min(gap, pile.offsetWidth)),
+        left: pile.offsetLeft + clamp(gap, 0, pile.offsetWidth),
         height: pile.offsetHeight,
-        // The full arc needs about 520px.
-        reach: Math.min(1, Math.max(0.5, table.clientWidth / 520)),
         width: table.clientWidth,
         slot: slotLeft,
-      });
+      };
+      // Unchanged (the observer's first call): no re-render.
+      setFrame((prev) => ((Object.keys(next) as Array<keyof typeof next>).every((k) => prev[k] === next[k]) ? prev : next));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -299,8 +324,8 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   // Timers outliving the table.
   useEffect(
     () => () => {
-      if (hold.current.timer) clearTimeout(hold.current.timer);
-      if (inspectTimer.current) clearTimeout(inspectTimer.current);
+      cancelTimer(squeezeTimer);
+      cancelTimer(inspectTimer);
     },
     [],
   );
@@ -332,7 +357,6 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   // No reveal: fully in.
   const fullyIn = useMotionValue(1);
   const source = reveal ?? fullyIn;
-  const opacity = useTransform(source, (v) => v);
   const lift = useTransform(source, [0, 1], [48, 0]);
   const pointerEvents = useTransform(source, (v) => (v > 0.6 ? "auto" : "none"));
 
@@ -350,13 +374,15 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   const lifted = cut ? cut.k : deck.cutting;
   const packet: Pose | null = cut
     ? cut.out
-      ? { x: cut.x, y: cut.y - 12, rotate: Math.max(-8, Math.min(8, cut.x * 0.03)) - 2 }
+      ? { x: cut.x, y: cut.y - 12, rotate: clamp(cut.x * 0.03, -8, 8) - 2 }
       : { x: -3, y: -10, rotate: -2 }
     : deck.cutting
       ? { x: -cardW * 0.62, y: -26, rotate: -8 }
       : null;
-  const canCut = allowed && !spread && flourish === null && !deck.riffling && !deck.cutting && inDeck.length >= 2;
-  const canSqueeze = allowed && !spread && flourish === null && !deck.riffling && !deck.cutting && !cut;
+  // The deck is at rest: no spread, flourish, riffle or cut under way.
+  const idle = allowed && !spread && flourish === null && !deck.riffling && !deck.cutting;
+  const canCut = idle && inDeck.length >= 2;
+  const canSqueeze = idle && !cut;
   useEffect(() => {
     if (!canCut) setCut(null);
   }, [canCut]);
@@ -364,27 +390,19 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   // Squeeze: a still hold lifts the corner; moving first (a throw) cancels.
   // Releasing anywhere lays it down.
   const startSqueeze = (x: number, y: number) => {
-    hold.current = { timer: null, x, y, took: false };
-    hold.current.timer = setTimeout(() => {
-      hold.current.timer = null;
-      hold.current.took = true;
-      setSqueezing(true);
-    }, SQUEEZE_MS);
-    const end = () => {
-      if (hold.current.timer) clearTimeout(hold.current.timer);
-      hold.current.timer = null;
-      setSqueezing(false);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-    };
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
+    holdAt.current = { x, y, took: false };
+    pressAndHold(
+      squeezeTimer,
+      SQUEEZE_MS,
+      () => {
+        holdAt.current.took = true;
+        setSqueezing(true);
+      },
+      () => setSqueezing(false),
+    );
   };
   const stillHolding = (x: number, y: number) => {
-    if (hold.current.timer && Math.hypot(x - hold.current.x, y - hold.current.y) > 6) {
-      clearTimeout(hold.current.timer);
-      hold.current.timer = null;
-    }
+    if (squeezeTimer.current && Math.hypot(x - holdAt.current.x, y - holdAt.current.y) > 6) cancelTimer(squeezeTimer);
   };
 
   // Hand cut, on the strip along the deck's right edge.
@@ -426,20 +444,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   // Touch hold on the face-up card (not its button).
   const startInspect = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== "touch" || (e.target as Element).closest(".pcard-open")) return;
-    if (inspectTimer.current) clearTimeout(inspectTimer.current);
-    inspectTimer.current = setTimeout(() => {
-      inspectTimer.current = null;
-      setInspecting(true);
-    }, INSPECT_MS);
-    const end = () => {
-      if (inspectTimer.current) clearTimeout(inspectTimer.current);
-      inspectTimer.current = null;
-      setInspecting(false);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-    };
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
+    pressAndHold(inspectTimer, INSPECT_MS, () => setInspecting(true), () => setInspecting(false));
   };
 
   const take = (index: number, from: Pose) => {
@@ -452,7 +457,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
   };
 
   return (
-    <m.div className="deck" style={reveal ? { opacity, y: lift, pointerEvents } : undefined}>
+    <m.div className="deck" style={reveal ? { opacity: reveal, y: lift, pointerEvents } : undefined}>
       <Scene variant="field" className="scene-layer deck-scene" />
       <div
         className={cx(
@@ -472,7 +477,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
           {inDeck.map((index, depth) => {
             const p = projects[index];
             const top = depth === 0;
-            const fan = spreadPose(depth, inDeck.length, frame.centre, frame.reach);
+            const fan = spreadPose(depth, inDeck.length, frame.centre, reach);
             const base = spread ? fan : ribbon ? ribbonPose(depth, inDeck.length, frame.left) : pilePose(depth);
             const inPacket = packet !== null && depth < lifted;
             const pose = inPacket
@@ -509,7 +514,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                   !allowed
                     ? { duration: 0 }
                     : riffle
-                      ? { duration: 0.62, delay: 0.32 + depth * 0.028, ease: [0.65, 0, 0.35, 1] }
+                      ? { duration: 0.62, delay: 0.32 + depth * 0.028, ease: EASE_IN_OUT }
                       : flourish === "ribbon"
                         ? { ...SPREAD, delay: (inDeck.length - 1 - depth) * 0.018 }
                         : inPacket && cut?.out
@@ -531,8 +536,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                 whileFocus={spread && allowed ? { y: fan.y - 26 } : undefined}
                 onDragStart={() => {
                   dragged.current = true;
-                  if (hold.current.timer) clearTimeout(hold.current.timer);
-                  hold.current.timer = null;
+                  cancelTimer(squeezeTimer);
                   setSqueezing(false);
                 }}
                 onPointerDown={
@@ -560,8 +564,8 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                 onClick={() => {
                   if (dragged.current) return;
                   // A squeeze is not a draw.
-                  if (hold.current.took) {
-                    hold.current.took = false;
+                  if (holdAt.current.took) {
+                    holdAt.current.took = false;
                     return;
                   }
                   if (spread) pick();
@@ -631,7 +635,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
               initial={allowed ? { rotateY: -90, opacity: 0, x: 30, y: 24, rotate: 5 } : false}
               animate={{ rotateY: 0, opacity: 1, x: 30, y: 24, rotate: 5 }}
               exit={{ opacity: 0, transition: { duration: allowed ? 0.2 : 0 } }}
-              transition={allowed ? { duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.35 } : { duration: 0 }}
+              transition={allowed ? { duration: 0.6, ease: EASE_OUT, delay: 0.35 } : { duration: 0 }}
             >
               <JokerFace />
             </m.div>
@@ -709,7 +713,7 @@ export function DeckTable({ projects, deck, onOpen, reveal }: DeckTableProps) {
                         rotate: fromDeck.rotate,
                         scale: 1,
                         opacity: 0,
-                        transition: { duration: 0.34, ease: [0.65, 0, 0.35, 1] },
+                        transition: { duration: 0.34, ease: EASE_IN_OUT },
                       }
                     : { opacity: 0, transition: { duration: 0 } }
                 }

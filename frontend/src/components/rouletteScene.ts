@@ -49,6 +49,9 @@ import {
 } from "../lib/roulette";
 import type { PocketInk } from "../lib/roulette";
 import { answerSpin, readSpin } from "../lib/spin";
+import { wheelHidden } from "../lib/wheelHidden";
+import { clamp, easeOutCubic } from "../lib/math";
+import { FINE_POINTER_QUERY } from "../motion/hooks";
 
 /* Inks: ember stands in for red, sky for the zero's green; steel for metal. */
 const INK: Record<PocketInk, string> = { red: "#e98e49", black: "#16181c", zero: "#6ab9e7" };
@@ -101,6 +104,8 @@ export function rouletteScene(detail: number): SceneDef {
   return {
     fov: 30,
     dispose: t.disposeAll,
+    // Hidden during the dock: keep the ball running, skip the GPU work.
+    skipDraw: wheelHidden,
     setup: ({ scene, camera, renderer }) => {
       const e = (ELEVATION * Math.PI) / 180;
       // Far enough that the bowl spans about 95% of the stage (Hero.tsx, WHEEL_SPAN).
@@ -172,12 +177,12 @@ export function rouletteScene(detail: number): SceneDef {
       // Number ring on the rim; pocket floors in darker shades.
       const numbers = numbersTexture(renderer.capabilities.getMaxAnisotropy());
       if (numbers) {
-        t.track(numbers.texture);
+        t.track(numbers);
         head.add(
           new Mesh(
             t.track(ring(NUMBERS_R[0], -0.03 + 0.002, NUMBERS_R[1], -0.01 + 0.002, POCKETS * 8)),
             t.track(
-              new MeshLambertMaterial({ map: numbers.texture, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+              new MeshLambertMaterial({ map: numbers, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
             ),
           ),
         );
@@ -272,12 +277,12 @@ export function rouletteScene(detail: number): SceneDef {
       // The table leans toward a mouse in the hero.
       const lean = { x: 0, y: 0, tx: 0, ty: 0 };
       const area = renderer.domElement.closest("section, .hero");
-      const mouse = window.matchMedia?.("(pointer: fine) and (hover: hover)").matches ?? false;
+      const mouse = window.matchMedia?.(FINE_POINTER_QUERY).matches ?? false;
       const onMove = (ev: PointerEvent) => {
         if (ev.pointerType !== "mouse" || !area) return;
         const r = area.getBoundingClientRect();
-        lean.ty = Math.max(-1, Math.min(1, ((ev.clientX - r.left) / r.width) * 2 - 1));
-        lean.tx = Math.max(-1, Math.min(1, ((ev.clientY - r.top) / r.height) * 2 - 1));
+        lean.ty = clamp(((ev.clientX - r.left) / r.width) * 2 - 1, -1, 1);
+        lean.tx = clamp(((ev.clientY - r.top) / r.height) * 2 - 1, -1, 1);
       };
       const onLeave = () => {
         lean.tx = 0;
@@ -312,7 +317,7 @@ export function rouletteScene(detail: number): SceneDef {
         boost += (target - boost) * (1 - Math.exp(-dt * (target > boost ? 5 : 1.2)));
         kick *= Math.exp(-dt / 1.6);
         // Spins up from rest to about a turn per 12 s; up to two a second on fast scrolls.
-        const spinUp = 1 - (1 - Math.min(1, time / 1.8)) ** 3;
+        const spinUp = easeOutCubic(Math.min(1, time / 1.8));
         const speed = (0.52 + 2.6 * boost + 1.3 * kick) * spinUp;
 
         // Spin button: rethrow the ball and push the head.
@@ -366,14 +371,12 @@ function lathe(profile: ReadonlyArray<readonly [number, number]>, inks: string[]
     profile.map(([r, y]) => new Vector2(r, y)),
     segments,
   );
+  // Parsed once, not per vertex.
+  const rgb = profile.map((_, j) => new Color(inks[j] ?? inks[inks.length - 1]));
   const colours: number[] = [];
-  const c = new Color();
   // Three orders vertices meridian by meridian.
   for (let i = 0; i <= segments; i++) {
-    for (let j = 0; j < profile.length; j++) {
-      c.set(inks[j] ?? inks[inks.length - 1]);
-      colours.push(c.r, c.g, c.b);
-    }
+    for (const c of rgb) colours.push(c.r, c.g, c.b);
   }
   geo.setAttribute("color", new Float32BufferAttribute(colours, 3));
   return geo;
@@ -412,7 +415,7 @@ function ring(r0: number, y0: number, r1: number, y1: number, segments: number):
  * like the ring (86x64 ~ 0.2x0.15 units) so digits aren't stretched.
  * Redrawn once the web font loads.
  */
-function numbersTexture(anisotropy: number): { texture: CanvasTexture } | null {
+function numbersTexture(anisotropy: number): CanvasTexture | null {
   const cell = 86;
   const height = 64;
   const canvas = document.createElement("canvas");
@@ -423,13 +426,13 @@ function numbersTexture(anisotropy: number): { texture: CanvasTexture } | null {
   const family = getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim() || "monospace";
   const font = `600 31px ${family}`;
   const draw = () => {
+    g.font = font;
+    g.textAlign = "center";
+    g.textBaseline = "middle";
     WHEEL.forEach((n, i) => {
       g.fillStyle = INK[pocketInk(n)];
       g.fillRect(i * cell, 0, cell, height);
       g.fillStyle = NUMERAL;
-      g.font = font;
-      g.textAlign = "center";
-      g.textBaseline = "middle";
       g.fillText(String(n), i * cell + cell / 2, height / 2 + 1);
     });
     // Hairlines between numbers.
@@ -447,7 +450,7 @@ function numbersTexture(anisotropy: number): { texture: CanvasTexture } | null {
       texture.needsUpdate = true;
     })
     .catch(() => {});
-  return { texture };
+  return texture;
 }
 
 /** Pocket floors: one unfiltered texel per pocket, for sharp edges. */

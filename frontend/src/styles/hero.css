@@ -34,11 +34,6 @@
   container-type: inline-size;
 }
 
-/* Keyboard focus keeps the copy opaque. !important beats Motion's inline opacity. */
-.hero-copy.is-focused {
-  opacity: 1 !important;
-}
-
 .hero-place {
   color: var(--text-3);
   margin-bottom: var(--s5);
@@ -198,7 +193,7 @@
   border: 1px solid transparent;
   border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: var(--fs-label);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -249,7 +244,7 @@
   background: transparent;
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 0.9375rem;
+  font-size: var(--fs-small);
   font-weight: 600;
   font-stretch: 104%;
   cursor: pointer;
@@ -270,7 +265,7 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #f6f3ec;
+  background: var(--ivory);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -359,7 +354,7 @@
 
 .work-index-label {
   color: var(--text-2);
-  font-size: 0.75rem;
+  font-size: var(--fs-label);
 }
 
 /* Phones: equal columns, labels wrap. */

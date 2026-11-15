@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ContactForm } from "./ContactForm";
 import { CopyEmail } from "./CopyEmail";
 import { Scene } from "./Scene";
@@ -14,7 +15,7 @@ const PROFILES = [
  * panel, so the signal scene never runs under typed text. Only the heading
  * animates; the section must be usable at once.
  */
-export function ContactSection() {
+export const ContactSection = memo(function ContactSection() {
   return (
     <section className="section contact" id="contact" aria-labelledby="contact-heading">
       <Scene variant="signal" className="scene-layer scene-signal" />
@@ -64,4 +65,4 @@ export function ContactSection() {
       </div>
     </section>
   );
-}
+});

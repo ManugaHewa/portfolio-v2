@@ -31,8 +31,11 @@
 
   --sky: #6ab9e7;
   --sky-hover: #95ceef;
-  --sky-soft: rgba(106, 185, 231, 0.13);
   --sky-line: rgba(106, 185, 231, 0.38);
+
+  /* The wheel's metal and ivory ball (rouletteScene.ts uses the same values). */
+  --steel: #c4c9cf;
+  --ivory: #f6f3ec;
 
   /* Radii and the site's only two shadows. */
   --r-sm: 8px;

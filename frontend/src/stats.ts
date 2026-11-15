@@ -4,31 +4,34 @@
  * a slim copy, so the case studies' text stays out of the main bundle.
  */
 import { PROJECTS } from "virtual:project-index";
-import { CATEGORIES, SKILLS } from "./skills";
 import { ALSO_ON_GITHUB } from "./repositories";
 
+/** Page order: case studies first, then other work, each in content order. */
+export const pageOrder = <T extends { tier: number }>(list: readonly T[]): T[] => [
+  ...list.filter((p) => p.tier === 1),
+  ...list.filter((p) => p.tier !== 1),
+];
+
+/** Two digits, as project numbers are written. */
+export const pad2 = (n: number) => String(n).padStart(2, "0");
+
 const caseStudies = PROJECTS.filter((p) => p.tier === 1);
-const otherProjects = PROJECTS.filter((p) => p.tier !== 1);
 
 export const STATS = {
   /** Projects on this page: case studies and other work together. */
   projects: PROJECTS.length,
   caseStudies: caseStudies.length,
-  otherProjects: otherProjects.length,
+  otherProjects: PROJECTS.length - caseStudies.length,
   /** The repository rows under Other work, which are not projects. */
   repositories: ALSO_ON_GITHUB.length,
-  skills: SKILLS.length,
-  /** Skill groups, one per category. */
-  groups: CATEGORIES.length,
 } as const;
 
-/** Slug, title, tier and stack size per project, in page order (case studies first). */
-export const PROJECT_INDEX: ReadonlyArray<{ slug: string; title: string; tier: number; stackSize: number }> = [
-  ...caseStudies,
-  ...otherProjects,
-].map(({ slug, title, tier, stack }) => ({ slug, title, tier, stackSize: stack.length }));
+/** Slug, title, tier and stack size per project, in page order. */
+export const PROJECT_INDEX: ReadonlyArray<{ slug: string; title: string; tier: number; stackSize: number }> = pageOrder(
+  PROJECTS,
+).map(({ slug, title, tier, stack }) => ({ slug, title, tier, stackSize: stack.length }));
 
-const NUMBERS = new Map(PROJECT_INDEX.map((p, i) => [p.slug, String(i + 1).padStart(2, "0")]));
+const NUMBERS = new Map(PROJECT_INDEX.map((p, i) => [p.slug, pad2(i + 1)]));
 
 /** A project's two-digit number in page order; "" for an unknown slug. */
 export function projectNumber(slug: string): string {

@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { memo, Fragment, useEffect, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
-import { PIN_QUERY, Scramble, SectionHead, useMediaQuery } from "../motion";
+import { HEADER_H, PIN_QUERY, Scramble, SectionHead, useMediaQuery } from "../motion";
 import { m, useMotionValue, useScroll, useSpring, useTransform } from "../motion/m";
 import type { MotionValue } from "../motion/m";
 import { Scene } from "./Scene";
@@ -9,6 +9,8 @@ import { CodePeek } from "./CodePeek";
 import { CommitStrip } from "./CommitStrip";
 import { PEEKS } from "virtual:code-peeks";
 import { projectNumber } from "../stats";
+import { cx } from "../lib/cx";
+import { clamp } from "../lib/math";
 
 /**
  * How the project list reaches the page. Each node cites the file that
@@ -73,8 +75,6 @@ interface Stage {
   ci: boolean;
 }
 
-const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-
 /** Lets a long path break after a slash, not mid-name. */
 const breakable = (s: string) => s.replace(/(\S)\//g, "$1/​");
 
@@ -102,7 +102,7 @@ function estimatedStations(): number[] {
 }
 
 function stageAt(progress: number, stations: number[]): Stage {
-  const fill = clamp01((progress - RAIL[0]) / (RAIL[1] - RAIL[0]));
+  const fill = clamp((progress - RAIL[0]) / (RAIL[1] - RAIL[0]), 0, 1);
   let lit = progress >= FIRST_NODE_AT ? 1 : 0;
   // Tolerance, so the last station lights even if measured a hair past 1.
   if (lit) lit += stations.slice(1).filter((s) => fill >= s - 0.004).length;
@@ -112,7 +112,7 @@ function stageAt(progress: number, stations: number[]): Stage {
 const sameStage = (a: Stage | null, b: Stage | null) =>
   a === b || (!!a && !!b && a.lit === b.lit && a.route === b.route && a.ci === b.ci);
 
-export function Pipeline() {
+export const Pipeline = memo(function Pipeline() {
   const trackRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<HTMLDivElement>(null);
   const routeRef = useRef<SVGSVGElement>(null);
@@ -122,7 +122,7 @@ export function Pipeline() {
   const [routeBox, setRouteBox] = useState<{ w: number; h: number } | null>(null);
 
   // The pin: from sticking under the header to the track's end at the screen's bottom.
-  const { scrollYProgress } = useScroll({ target: trackRef, offset: ["start 64px", "end end"] });
+  const { scrollYProgress } = useScroll({ target: trackRef, offset: [`start ${HEADER_H}px`, "end end"] });
   // A light spring smooths wheel steps without visible lag.
   const progress = useSpring(scrollYProgress, { stiffness: 260, damping: 34, restDelta: 0.0005 });
   const railFill = useTransform(progress, RAIL, [0, 1]);
@@ -130,7 +130,6 @@ export function Pipeline() {
   const tokenShift = useTransform(railFill, (f) => `${(f - 1) * 100}%`);
   const tokenOpacity = useTransform(progress, [0.02, 0.05], [0, 1]);
   const done = useMotionValue(1);
-  const doneShift = useMotionValue("0%");
 
   // Only the pinned layout scrubs; elsewhere it stays finished, laid out as a list.
   const driven = pinned;
@@ -158,7 +157,7 @@ export function Pipeline() {
       const r = rail?.getBoundingClientRect();
       if (r && r.width > 0 && boxes.length === PIPELINE_NODES.length) {
         stations.current = boxes.map((b, i) =>
-          i === 0 ? 0 : clamp01((b.getBoundingClientRect().left - r.left) / r.width),
+          i === 0 ? 0 : clamp((b.getBoundingClientRect().left - r.left) / r.width, 0, 1),
         );
       }
       const svg = routeRef.current?.getBoundingClientRect();
@@ -241,7 +240,7 @@ export function Pipeline() {
                   <m.span className="pl-rail-fill" style={{ scaleX: driven ? railFill : done }} />
                   <m.span
                     className="pl-token-track"
-                    style={{ x: driven ? tokenShift : doneShift, opacity: driven ? tokenOpacity : done }}
+                    style={{ x: driven ? tokenShift : "0%", opacity: driven ? tokenOpacity : done }}
                   >
                     <span className="pl-token" />
                   </m.span>
@@ -253,7 +252,7 @@ export function Pipeline() {
                     <Fragment key={node.label}>
                       <button
                         type="button"
-                        className={`pl-node${i === 0 ? " is-first" : ""}${last ? " is-last" : ""}${peek === i ? " is-open" : ""}`}
+                        className={cx("pl-node", i === 0 && "is-first", last && "is-last", peek === i && "is-open")}
                         data-on={lit(i)}
                         style={col}
                         aria-expanded={peek === i}
@@ -325,7 +324,7 @@ export function Pipeline() {
       </div>
     </section>
   );
-}
+});
 
 interface RouteLineProps {
   svgRef: RefObject<SVGSVGElement>;

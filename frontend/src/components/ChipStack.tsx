@@ -1,5 +1,6 @@
+import { memo } from "react";
 import { AnimatePresence, m } from "../motion/m";
-import { useMotionAllowed } from "../motion";
+import { EASE_IN_OUT, useMotionAllowed } from "../motion";
 
 /** Message state: not sent, sending, accepted, or failed. */
 export type ChipState = "idle" | "sending" | "sent" | "error";
@@ -43,7 +44,7 @@ function Chip({ ink, y, face }: { ink: "ember" | "sky"; y: number; face: boolean
  * (the send trace's status line speaks). Under reduced motion or "Pause
  * motion" it just appears and goes.
  */
-export function ChipStack({ state }: { state: ChipState }) {
+export const ChipStack = memo(function ChipStack({ state }: { state: ChipState }) {
   const animate = useMotionAllowed();
   const out = state === "sending" || state === "sent";
 
@@ -55,7 +56,7 @@ export function ChipStack({ state }: { state: ChipState }) {
           aria-hidden="true"
           key="stack"
           // Failed: the stack slides back under the button.
-          exit={{ x: animate ? -28 : 0, opacity: 0, transition: { duration: animate ? 0.3 : 0, ease: [0.65, 0, 0.35, 1] } }}
+          exit={{ x: animate ? -28 : 0, opacity: 0, transition: { duration: animate ? 0.3 : 0, ease: EASE_IN_OUT } }}
         >
           <svg viewBox="0 0 34 46" width="34" height="46" focusable="false">
             {STACK.map((ink, i) => (
@@ -87,4 +88,4 @@ export function ChipStack({ state }: { state: ChipState }) {
       )}
     </AnimatePresence>
   );
-}
+});

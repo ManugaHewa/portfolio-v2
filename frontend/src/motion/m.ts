@@ -13,8 +13,8 @@ export {
   useTransform,
   useSpring,
   useMotionValue,
-  useMotionTemplate,
   useInView,
+  useIsPresent,
   animate,
 } from "framer-motion";
-export type { MotionValue, Variants, Transition } from "framer-motion";
+export type { MotionValue, Variants } from "framer-motion";

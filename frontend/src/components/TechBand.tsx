@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Marquee } from "../motion";
 import { TECH_BAND } from "../stats";
 
@@ -8,7 +9,7 @@ const LABEL = "Technologies in these case studies";
  * order (TECH_BAND, stats.ts). Marquee owns the behaviour. The caption
  * repeats the list's name for sighted readers, so it is aria-hidden.
  */
-export function TechBand() {
+export const TechBand = memo(function TechBand() {
   return (
     <div className="tech-band">
       <p className="tech-band-caption container mono" aria-hidden="true">
@@ -17,4 +18,4 @@ export function TechBand() {
       <Marquee items={TECH_BAND} label={LABEL} />
     </div>
   );
-}
+});

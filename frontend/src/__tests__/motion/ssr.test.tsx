@@ -9,7 +9,6 @@ import {
   Marquee,
   Odometer,
   PauseMotionToggle,
-  Reveal,
   ScrollProgress,
   Scramble,
   SectionHead,
@@ -125,9 +124,6 @@ describe("hydration", () => {
         <TextLoop items={BUILDS} srLabel={SR} />
         <SplitTitle as="h2" text="Selected work" />
         <Odometer value={13} />
-        <Reveal as="div" index={1}>
-          row
-        </Reveal>
         <Magnetic>
           <a href="#work-index">See the work</a>
         </Magnetic>

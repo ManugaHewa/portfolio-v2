@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clamp } from "../../lib/math";
 
 /**
  * Deck state. Cards come off the top of `order`; the last drawn is face up.
@@ -23,6 +24,9 @@ export const RIFFLE_MS = 1050;
 export const CUT_MS = 420;
 
 /** Opening state, same on server and client: page order, first card face up. */
+/** Where in the game a cut was made, so it is announced once. */
+export const cutMarkOf = (s: Pick<DeckState, "deal" | "drawn">) => `${s.deal}:${s.drawn}`;
+
 export function initialDeck(size: number): DeckState {
   return {
     order: Array.from({ length: size }, (_, i) => i),
@@ -83,7 +87,7 @@ export function cutDeck(s: DeckState, k: number): DeckState {
     spread: false,
     cutting: 0,
     cuts: s.cuts + 1,
-    cutMark: `${s.deal}:${s.drawn}`,
+    cutMark: cutMarkOf(s),
   };
 }
 
@@ -91,7 +95,7 @@ export function cutDeck(s: DeckState, k: number): DeckState {
 export function cutDepth(remaining: number, random: () => number = Math.random): number {
   if (remaining < 2) return 0;
   const k = Math.round(remaining / 2 + (random() - 0.5) * Math.min(4, remaining - 2));
-  return Math.max(1, Math.min(remaining - 1, k));
+  return clamp(k, 1, remaining - 1);
 }
 
 /** Face-up card and those under it, newest first (project indices). */
@@ -177,7 +181,7 @@ export function useDeck(size: number, instant: boolean): Deck {
   return {
     ...state,
     size,
-    remaining: state.order.length - state.drawn,
+    remaining: left,
     current: state.drawn > 0 ? state.order[state.drawn - 1] : null,
     draw,
     pull,

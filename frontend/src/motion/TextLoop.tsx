@@ -68,7 +68,7 @@ export function TextLoop({ items, interval = 2600, srLabel, className }: TextLoo
   }, [allowed, reel.from]);
 
   const shown = reduced ? 0 : reel.index % Math.max(count, 1);
-  const turning = allowed && !reduced && reel.from !== null;
+  const turning = allowed && reel.from !== null;
   const rows = turning ? reelRows(reel.from as number, shown, count) : [];
   // Reel offset showing row `k`, as a share of its height.
   const at = (k: number) => `${(-k / Math.max(rows.length, 1)) * 100}%`;

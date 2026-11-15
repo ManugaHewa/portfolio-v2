@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { PauseMotionToggle, useActiveSection } from "../motion";
 import { SITE } from "../site";
 import { cx } from "../lib/cx";
@@ -14,7 +14,7 @@ export const PAGE_SECTIONS = [
 
 const SPY_IDS = PAGE_SECTIONS.map((s) => s.id);
 
-export function Nav() {
+export const Nav = memo(function Nav() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -92,4 +92,4 @@ export function Nav() {
       </nav>
     </header>
   );
-}
+});

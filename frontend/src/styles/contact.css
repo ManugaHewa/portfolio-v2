@@ -80,7 +80,7 @@
 .contact-profile,
 .copy-email-address {
   font-family: var(--font-mono);
-  font-size: 0.9375rem;
+  font-size: var(--fs-small);
   font-weight: 500;
   line-height: 1.5;
   letter-spacing: 0;
@@ -429,12 +429,12 @@
 }
 
 .chip-spot {
-  fill: #f6f3ec;
+  fill: var(--ivory);
 }
 
 .chip-inlay {
   fill: none;
-  stroke: #f6f3ec;
+  stroke: var(--ivory);
   stroke-width: 0.9;
   stroke-dasharray: 2.2 2.2;
   opacity: 0.85;
@@ -492,11 +492,6 @@
   flex: none;
   align-items: center;
   gap: var(--s2);
-  font-family: var(--font-mono);
-  font-size: var(--fs-label);
-  font-weight: 500;
-  line-height: 1.4;
-  letter-spacing: 0.02em;
   color: var(--text-3);
   white-space: nowrap;
   transition: color var(--dur-2) var(--ease-out);

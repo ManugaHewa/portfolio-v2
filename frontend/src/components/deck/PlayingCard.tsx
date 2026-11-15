@@ -1,6 +1,6 @@
-import { forwardRef } from "react";
+import { memo } from "react";
 import { m } from "../../motion/m";
-import { POCKETS } from "../../lib/roulette";
+import { POCKETS, svgNum as f, wedgePath } from "../../lib/roulette";
 import { projectNumber } from "../../stats";
 import type { ProjectSummary } from "../../types";
 import { MORPH_SPRING } from "../work/workUtils";
@@ -42,11 +42,8 @@ export function PeelCorner({ project }: { project: ProjectSummary }) {
   );
 }
 
-/** The face: indices, title, subtitle, category and status, and the case study button. */
-export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function CardFace(
-  { project: p, onOpen, resting = false, layoutId },
-  ref,
-) {
+/** The face: indices, title, subtitle, category and status, and the case study button. Memoised: pile faces never change. */
+export const CardFace = memo(function CardFace({ project: p, onOpen, resting = false, layoutId }: CardFaceProps) {
   const meta = [p.category, p.status].filter(Boolean).join(" · ");
   return (
     <m.div
@@ -62,7 +59,7 @@ export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function Ca
         <p className="pcard-line">{p.subtitle}</p>
         {meta && <p className="pcard-meta mono">{meta}</p>}
         {onOpen && !resting && (
-          <button type="button" className="pcard-open" ref={ref} onClick={(e) => onOpen(e.currentTarget)}>
+          <button type="button" className="pcard-open" onClick={(e) => onOpen(e.currentTarget)}>
             {p.tier === 1 ? "Read the case study" : "Open the project"}
             <span className="visually-hidden"> for {p.title}</span>
           </button>
@@ -100,7 +97,6 @@ export function JokerFace() {
   );
 }
 
-const f = (n: number) => Number(n.toFixed(2));
 const BACK_IN = 21;
 const BACK_OUT = 30;
 // Rosette frets between the pockets, zero at the top.
@@ -108,18 +104,15 @@ const FRETS = Array.from({ length: POCKETS }, (_, i) => {
   const a = -Math.PI / 2 + ((i + 0.5) * 2 * Math.PI) / POCKETS;
   return { key: i, x1: f(BACK_IN * Math.cos(a)), y1: f(BACK_IN * Math.sin(a)), x2: f(BACK_OUT * Math.cos(a)), y2: f(BACK_OUT * Math.sin(a)) };
 });
-const ZERO = (() => {
-  const half = Math.PI / POCKETS;
-  const p = (r: number, a: number) => `${f(r * Math.cos(a - Math.PI / 2))} ${f(r * Math.sin(a - Math.PI / 2))}`;
-  return `M${p(BACK_IN, -half)}L${p(BACK_OUT, -half)}A${BACK_OUT} ${BACK_OUT} 0 0 1 ${p(BACK_OUT, half)}L${p(BACK_IN, half)}A${BACK_IN} ${BACK_IN} 0 0 0 ${p(BACK_IN, -half)}Z`;
-})();
+const HALF = Math.PI / POCKETS;
+const ZERO = wedgePath(BACK_IN, BACK_OUT, -HALF - Math.PI / 2, HALF - Math.PI / 2);
 
 /**
  * The card back: cross-hatch, the wheel as a rosette (zero in sky) around
  * the monogram, and an inset frame. The monogram is generated content
  * (cards.css), so it is not read once per card.
  */
-export function CardBack() {
+export const CardBack = memo(function CardBack() {
   return (
     <div className="pcard-back" aria-hidden="true">
       <svg className="pcard-back-art" viewBox="-50 -70 100 140" focusable="false">
@@ -137,4 +130,4 @@ export function CardBack() {
       </svg>
     </div>
   );
-}
+});

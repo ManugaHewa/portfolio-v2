@@ -1,6 +1,7 @@
 import {
   createContext,
   createElement,
+  useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
@@ -18,10 +19,15 @@ import type { ReactNode, RefObject } from "react";
 export const PIN_QUERY =
   "(min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference)";
 
-const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
-const FINE_POINTER_QUERY = "(pointer: fine) and (hover: hover)";
+export const REDUCED_QUERY = "(prefers-reduced-motion: reduce)";
+export const FINE_POINTER_QUERY = "(pointer: fine) and (hover: hover)";
+
+/** Sticky header height (tokens.css --header-h); pinned stages stick just under it. */
+export const HEADER_H = 64;
 
 const noop = () => {};
+const yes = () => true;
+const no = () => false;
 
 /** useLayoutEffect in the browser, useEffect in the prerender (no layout there; React warns). */
 export const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -33,11 +39,7 @@ const subscribeNever = () => noop;
  * client one for later mounts, which skip a wasted "server" render.
  */
 export function useHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribeNever,
-    () => true,
-    () => false,
-  );
+  return useSyncExternalStore(subscribeNever, yes, no);
 }
 
 function canMatchMedia(): boolean {
@@ -46,26 +48,20 @@ function canMatchMedia(): boolean {
 
 /** A live media query match. False on the server and while hydrating. */
 export function useMediaQuery(query: string): boolean {
-  const subscribe = useMemo(
-    () => (onChange: () => void) => {
-      if (!canMatchMedia()) return noop;
-      const mql = window.matchMedia(query);
-      // addListener: Safari before 14.
-      if (typeof mql.addEventListener === "function") {
+  // Stable functions per query, so React does not re-check the snapshot on every render.
+  const store = useMemo(
+    () => ({
+      subscribe: (onChange: () => void) => {
+        if (!canMatchMedia()) return noop;
+        const mql = window.matchMedia(query);
         mql.addEventListener("change", onChange);
         return () => mql.removeEventListener("change", onChange);
-      }
-      mql.addListener(onChange);
-      return () => mql.removeListener(onChange);
-    },
+      },
+      read: () => (canMatchMedia() ? window.matchMedia(query).matches : false),
+    }),
     [query],
   );
-
-  return useSyncExternalStore(
-    subscribe,
-    () => (canMatchMedia() ? window.matchMedia(query).matches : false),
-    () => false,
-  );
+  return useSyncExternalStore(store.subscribe, store.read, no);
 }
 
 /** Reduced-motion setting. Not framer-motion's useReducedMotion, which mismatches the prerender. */
@@ -85,15 +81,29 @@ export function useFinePointer(): boolean {
  * bottom, the last section is current.
  */
 export function useActiveSection(ids: string[]): string | null {
-  const [active, setActive] = useState<string | null>(null);
   // String key, so callers can pass a fresh array each render.
   const key = ids.join("|");
+  const subscribe = useCallback((onChange: () => void) => (key ? watchSections(key, onChange) : noop), [key]);
+  const read = useCallback(() => spies.get(key)?.value ?? null, [key]);
+  return useSyncExternalStore(subscribe, read, nothing);
+}
 
-  useEffect(() => {
-    const list = key ? key.split("|") : [];
-    if (list.length === 0) return;
+const nothing = () => null;
+
+// One scroll listener and one measurement per frame for every caller with the same ids (the nav and the rail).
+interface Spy {
+  value: string | null;
+  listeners: Set<() => void>;
+  stop: () => void;
+}
+const spies = new Map<string, Spy>();
+
+function watchSections(key: string, onChange: () => void): () => void {
+  let spy = spies.get(key);
+  if (!spy) {
+    const list = key.split("|");
     let frame = 0;
-
+    const s: Spy = { value: null, listeners: new Set(), stop: noop };
     const measure = () => {
       frame = 0;
       const line = window.innerHeight * 0.34;
@@ -105,24 +115,33 @@ export function useActiveSection(ids: string[]): string | null {
       const doc = document.documentElement;
       const atBottom = window.innerHeight + window.scrollY >= doc.scrollHeight - 2;
       if (atBottom && current !== null) current = list[list.length - 1];
-      setActive(current);
+      if (current === s.value) return;
+      s.value = current;
+      for (const l of s.listeners) l();
     };
-
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
     };
-
-    measure();
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
-    return () => {
+    s.stop = () => {
       if (frame) cancelAnimationFrame(frame);
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
     };
-  }, [key]);
-
-  return active;
+    spies.set(key, s);
+    spy = s;
+    measure();
+  }
+  const s = spy;
+  s.listeners.add(onChange);
+  return () => {
+    s.listeners.delete(onChange);
+    if (s.listeners.size === 0) {
+      s.stop();
+      spies.delete(key);
+    }
+  };
 }
 
 /**
@@ -131,10 +150,12 @@ export function useActiveSection(ids: string[]): string | null {
  * It replays on each scroll down but never hides in front of the visitor.
  * False on the server and until the first report, matching the prerender.
  */
-export function useReplayInView(ref: RefObject<Element>, amount = 0.2): boolean {
+export function useReplayInView(ref: RefObject<Element>, amount = 0.2, enabled = true): boolean {
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
+    // Off: no observer at all (callers that only sometimes need it).
+    if (!enabled) return;
     const el = ref.current;
     if (!el || typeof IntersectionObserver !== "function") {
       setShown(true);
@@ -160,7 +181,7 @@ export function useReplayInView(ref: RefObject<Element>, amount = 0.2): boolean 
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [ref, amount]);
+  }, [ref, amount, enabled]);
 
   return shown;
 }

@@ -1,9 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
 import type { MutableRefObject } from "react";
 import { createPortal } from "react-dom";
-// A hook, so importing it directly cannot trip LazyMotion's strict mode.
-import { useIsPresent } from "framer-motion";
-import { AnimatePresence, m } from "../motion/m";
+import { AnimatePresence, m, useIsPresent } from "../motion/m";
 import { morphId, useHydrated, useMotionAllowed } from "../motion";
 import { projectNumber } from "../stats";
 import { SCREENSHOTS } from "../screenshots";
@@ -194,7 +192,7 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
             style={FIGURE_RADIUS}
             transition={{ layout: MORPH_SPRING }}
           >
-            <FigureContents project={shown} shot={shot} eager holdShape={morph} />
+            <FigureContents project={shown} shot={shot} holdShape={morph} />
           </m.div>
 
           <m.button
@@ -211,7 +209,7 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
           <m.div className="dialog-scroll" {...contentMotion}>
             <div className="dialog-body">
               <header className="dialog-head">
-                <p className="dialog-readout">
+                <p className="readout dialog-readout">
                   <span className="dialog-num">{number}</span>
                   {shown.category && <span> · {shown.category}</span>}
                 </p>

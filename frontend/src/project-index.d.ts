@@ -2,10 +2,7 @@
 declare module "virtual:project-index" {
   import type { ProjectContent } from "../../content/projects";
 
-  export type ProjectIndexEntry = Pick<
-    ProjectContent,
-    "slug" | "title" | "tier" | "category" | "status" | "stack"
-  >;
+  export type ProjectIndexEntry = Pick<ProjectContent, "slug" | "title" | "tier" | "stack">;
 
   /** Every project, in content order. */
   export const PROJECTS: ReadonlyArray<ProjectIndexEntry>;

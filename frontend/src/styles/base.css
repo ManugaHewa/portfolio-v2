@@ -195,10 +195,6 @@ a:hover {
   overflow: clip;
 }
 
-.overflow-clip {
-  overflow: clip;
-}
-
 /* --------------------------------------------------------------- type */
 
 .section-head {
@@ -307,7 +303,7 @@ a:hover {
 
 @media (prefers-reduced-motion: no-preference) {
   .roll-text {
-    transition: transform 420ms var(--ease-out);
+    transition: transform var(--dur-3) var(--ease-out);
   }
 
   :is(a, button):hover > .roll > .roll-text,

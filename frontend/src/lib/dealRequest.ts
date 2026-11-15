@@ -38,12 +38,16 @@ export interface DealClick {
   preventDefault(): void;
 }
 
+/** A plain left click nothing has handled yet (no modifier keys). */
+export const isPlainClick = (e: Omit<DealClick, "preventDefault">) =>
+  !e.defaultPrevented && e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+
 /**
  * Plain click on a project link: scroll to the deck and deal the card
  * instead of navigating. Modified clicks and no-JS visits follow the link.
  */
 export function followDeal(e: DealClick, slug: string): void {
-  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (!isPlainClick(e)) return;
   const deck = document.getElementById("work-index");
   if (!deck) return;
   e.preventDefault();

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, Ref } from "react";
 import { Odometer, SplitTitle, useMotionAllowed } from "../motion";
 import type { MotionValue } from "../motion/m";
-import { STATS } from "../stats";
+import { STATS, pageOrder } from "../stats";
 import type { OpenProject, ProjectSummary } from "../types";
 import { DeckControls } from "./deck/DeckControls";
 import { DeckTable } from "./deck/DeckTable";
@@ -54,10 +54,7 @@ export function deckKey(e: Pick<ReactKeyboardEvent, "key" | "altKey" | "ctrlKey"
  * the section, D draws, S spreads or gathers, R shuffles, C cuts (deckKey).
  */
 export function WorkIndex({ projects, loading = false, error = false, onOpen, headRef, reveal }: WorkIndexProps) {
-  const ordered = useMemo(
-    () => [...projects.filter((p) => p.tier === 1), ...projects.filter((p) => p.tier !== 1)],
-    [projects],
-  );
+  const ordered = useMemo(() => pageOrder(projects), [projects]);
   const deck = useDeck(ordered.length, !useMotionAllowed());
   const empty = ordered.length === 0;
 

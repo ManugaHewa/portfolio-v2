@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { m, useMotionValue, useScroll, useTransform } from "./m";
 import { PIN_QUERY, useActiveSection, useHydrated, useMediaQuery } from "./hooks";
+import { clamp, smoothstep01 } from "../lib/math";
 
 export interface RailSection {
   id: string;
@@ -27,10 +28,7 @@ const SEAT_DEPTH = 4.5;
 const SEAT = 0.2;
 
 const smoother = (u: number) => u * u * u * (u * (u * 6 - 15) + 10);
-const smoothstep = (a: number, b: number, v: number) => {
-  const u = Math.min(1, Math.max(0, (v - a) / (b - a)));
-  return u * u * (3 - 2 * u);
-};
+const smoothstep = (a: number, b: number, v: number) => smoothstep01(clamp((v - a) / (b - a), 0, 1));
 
 /**
  * The rail ball at scroll progress `p` (0-1), given ordered pocket
@@ -71,7 +69,7 @@ const sameList = (a: number[] | null, b: number[]) =>
  * With hideWhilePinned, and only while pinning, the rail fades in as the
  * pinned stage lets go. Never on the server or while hydrating.
  */
-export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
+export const IndexRail = memo(function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
   const active = useActiveSection(sections.map((s) => s.id));
   const hydrated = useHydrated();
   const pinned = useMediaQuery(PIN_QUERY);
@@ -81,16 +79,9 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
   const { scrollY, scrollYProgress } = useScroll();
   const last = Math.max(sections.length - 1, 1);
   const pockets = positions ?? sections.map((_, i) => i / last);
-  // Re-runs the transforms when pockets move, without a scroll.
-  const refresh = useMotionValue(0);
-  useEffect(() => {
-    refresh.set(refresh.get() + 1);
-  }, [positions, refresh]);
-  const markerY = useTransform(
-    [scrollYProgress, trackHeight, refresh],
-    ([p, h]) => railBall(p as number, pockets).at * (h as number),
-  );
-  const markerX = useTransform([scrollYProgress, refresh], ([p]) => -SEAT_DEPTH * railBall(p as number, pockets).seat);
+  // useTransform recomputes on every render, so moved pockets move the ball at once.
+  const markerY = useTransform([scrollYProgress, trackHeight], ([p, h]) => railBall(p as number, pockets).at * (h as number));
+  const markerX = useTransform(scrollYProgress, (p) => -SEAT_DEPTH * railBall(p, pockets).seat);
   // One turn per 2πr of travel.
   const markerTurn = useTransform(markerY, (y) => (y / BALL_R) * (180 / Math.PI));
   // Scroll positions where the pin ends and the fade-in starts.
@@ -98,8 +89,7 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
   const fadeFrom = useMotionValue(0);
   const railOpacity = useTransform([scrollY, fadeFrom, pinEnd], ([y, from, end]) => {
     const [at, a, b] = [y as number, from as number, end as number];
-    if (b <= a) return 1;
-    return Math.min(1, Math.max(0, (at - a) / (b - a)));
+    return b <= a ? 1 : clamp((at - a) / (b - a), 0, 1);
   });
   const key = sections.map((s) => s.id).join("|");
 
@@ -126,7 +116,7 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
         const el = document.getElementById(id);
         if (!el) return i / Math.max(ids.length - 1, 1);
         const top = el.getBoundingClientRect().top + window.scrollY - SCROLL_MARGIN;
-        return Math.min(1, Math.max(0, top / range));
+        return clamp(top / range, 0, 1);
       });
       setPositions((prev) => (sameList(prev, next) ? prev : next));
     };
@@ -164,7 +154,7 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
           <li
             className="index-rail-item"
             key={section.id}
-            style={{ "--pos": positions?.[i] ?? i / last } as CSSProperties}
+            style={{ "--pos": pockets[i] } as CSSProperties}
           >
             <a
               className="index-rail-tick"
@@ -181,4 +171,4 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
       )}
     </m.nav>
   );
-}
+});

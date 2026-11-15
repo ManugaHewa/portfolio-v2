@@ -3,6 +3,7 @@ import { projectNumber } from "../stats";
 import { Footer } from "./Footer";
 import { LegalHeader } from "./PrivacyPage";
 import { caseStudyPath } from "../lib/paths";
+import { Suit } from "./deck/PlayingCard";
 
 interface CaseStudyPageProps {
   project: ProjectContent;
@@ -49,7 +50,7 @@ export function CaseStudyPage({ project: p, previous, next }: CaseStudyPageProps
       <main id="main" className="container legal case-page">
         <h1 className="case-page-title">{p.title}</h1>
         <p className="case-page-index mono">
-          <span className={p.tier === 1 ? "pcard-suit is-case" : "pcard-suit is-other"} aria-hidden="true" />
+          <Suit tier={p.tier} />
           Project {projectNumber(p.slug)} · {p.tier === 1 ? "Case study" : "Other work"}
         </p>
         <p className="case-page-lede">{p.subtitle}</p>

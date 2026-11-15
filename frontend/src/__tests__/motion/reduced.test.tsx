@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Marquee, Odometer, Reveal, Scramble, SplitTitle, TextLoop } from "../../motion";
+import { Marquee, Odometer, Scramble, SplitTitle, TextLoop } from "../../motion";
 import { FINE, REDUCED, Wrap, find, installMatchMedia } from "./helpers";
 
 /*
@@ -58,18 +58,15 @@ describe("under reduced motion", () => {
     expect(container.textContent).toBe("backend/prisma/seed.ts");
   });
 
-  it("SplitTitle and Reveal land on their finished values", async () => {
+  it("SplitTitle lands on its finished values", async () => {
     const { container } = render(
       <Wrap>
         <SplitTitle as="h2" text="Get in touch" />
-        <Reveal index={4}>row</Reveal>
       </Wrap>,
     );
     const words = [...container.querySelectorAll<HTMLElement>(".split-word")];
-    const row = find(container, "[data-reveal]:not(.split-word)");
     await waitFor(() => {
       for (const w of words) expect(w.style.transform).toMatch(/^(none|translateY\(0%\))?$/);
-      expect(row.style.opacity).toBe("1");
     });
   });
 

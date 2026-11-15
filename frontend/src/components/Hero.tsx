@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import type { FocusEvent } from "react";
-import { HeroName, Magnetic, PIN_QUERY, Scramble, TextLoop, useMediaQuery } from "../motion";
+import type { FocusEvent, RefObject } from "react";
+import { HEADER_H, HeroName, Magnetic, PIN_QUERY, Scramble, TextLoop, useMediaQuery } from "../motion";
 import { m, useScroll, useTransform } from "../motion/m";
+import type { MotionValue } from "../motion/m";
 import { cx } from "../lib/cx";
+import { clamp, easeInOutCubic } from "../lib/math";
+import { setWheelHidden } from "../lib/wheelHidden";
 import { Scene } from "./Scene";
 import { WheelMark } from "./WheelMark";
 import { RollLabel } from "./RollLabel";
@@ -25,9 +28,6 @@ interface HeroProps {
 // mobile (RxFlow), APIs (DMS, Superhero), ML (Flaky Test Detector, Sketch2Photo, ShopSense).
 const BUILDS = ["web apps", "mobile apps", "APIs", "machine-learning tools"];
 
-// Sticky header height; the stage pins just under it.
-const HEADER_PX = 64;
-
 // Past this share of the hand-off the copy is fading, so keyboard focus in it scrolls back.
 const FOCUS_RETURN_AT = 0.05;
 
@@ -46,7 +46,7 @@ export function dockFrame(
   from: { x: number; y: number; size: number },
   to: { x: number; y: number; size: number },
 ) {
-  const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+  const e = easeInOutCubic(k);
   const bow = Math.sin(Math.PI * e) * Math.min(160, Math.abs(from.x - to.x) * 0.18);
   return {
     x: from.x + (to.x - from.x) * e,
@@ -68,20 +68,19 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
   const indexHeadRef = useRef<HTMLDivElement>(null);
   const pinned = useMediaQuery(PIN_QUERY);
-  const [live, setLive] = useState(false);
   const [keyboardInCopy, setKeyboardInCopy] = useState(false);
   const wheelStageRef = useRef<HTMLDivElement>(null);
   const flightRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({
     target: heroRef,
-    offset: [`start ${HEADER_PX}px`, "end end"],
+    offset: [`start ${HEADER_H}px`, "end end"],
   });
 
   // Work index heading rising: 0 entering at the bottom, 1 at COPY_GONE_AT below the header.
   const { scrollYProgress: indexRise } = useScroll({
     target: indexHeadRef,
-    offset: ["start end", `start ${HEADER_PX + COPY_GONE_AT}px`],
+    offset: ["start end", `start ${HEADER_H + COPY_GONE_AT}px`],
   });
 
   // The copy drifts up and fades, timed to the rising index (not the pin),
@@ -105,19 +104,23 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
     const root = document.documentElement;
     if (!pinned || !stage || !flight) return;
 
+    const mark = document.querySelector(".brand-mark");
     const update = (p: number) => {
-      const k = Math.min(1, Math.max(0, (p - DOCK_FROM) / (DOCK_TO - DOCK_FROM)));
-      const mark = document.querySelector(".brand-mark");
+      const k = clamp((p - DOCK_FROM) / (DOCK_TO - DOCK_FROM), 0, 1);
+      // Layout reads before any style writes, so each frame lays out once.
+      const flying = k > 0 && k < 1 && mark;
+      const a = flying ? stage.getBoundingClientRect() : null;
+      const b = flying ? mark.getBoundingClientRect() : null;
       root.style.setProperty("--dock-mark", k >= 1 ? "1" : "0");
-      // The wheel fades over the first tenth of the flight; hidden, its Spin plate is unreachable.
+      // The wheel fades over the first tenth of the flight; hidden, its Spin plate is unreachable
+      // and the scene stops drawing.
       stage.style.opacity = String(1 - Math.min(1, k / 0.1));
       stage.style.visibility = k >= 0.1 ? "hidden" : "";
-      if (k <= 0 || k >= 1 || !mark) {
+      setWheelHidden(k >= 0.1);
+      if (!a || !b) {
         flight.style.visibility = "hidden";
         return;
       }
-      const a = stage.getBoundingClientRect();
-      const b = mark.getBoundingClientRect();
       const f = dockFrame(
         k,
         { x: a.left + a.width / 2, y: a.top + a.height / 2, size: a.width * WHEEL_SPAN },
@@ -134,6 +137,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
     const stop = scrollYProgress.on("change", update);
     return () => {
       stop();
+      setWheelHidden(false);
       root.style.removeProperty("--dock-mark");
       stage.style.opacity = "";
       stage.style.visibility = "";
@@ -154,7 +158,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
     setKeyboardInCopy(true);
     const hero = heroRef.current;
     if (!pinned || !hero || scrollYProgress.get() <= FOCUS_RETURN_AT) return;
-    const top = hero.getBoundingClientRect().top + window.scrollY - HEADER_PX;
+    const top = hero.getBoundingClientRect().top + window.scrollY - HEADER_H;
     window.scrollTo({ top: Math.max(0, top) });
   };
 
@@ -168,12 +172,13 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
         <div className="container hero-grid">
           <m.div
             className={cx("hero-copy", keyboardInCopy && "is-focused")}
-            style={pinned ? { y: copyY, opacity: copyOpacity } : { y: 0, opacity: 1 }}
+            // Keyboard focus in the copy holds it opaque.
+            style={pinned ? { y: copyY, opacity: keyboardInCopy ? 1 : copyOpacity } : { y: 0, opacity: 1 }}
             onFocus={onCopyFocus}
             onBlur={onCopyBlur}
           >
             <p className="hero-place mono">
-              <Scramble text="Milton, Ontario · 43.52° N, 79.88° W" trigger="mount" />
+              <Scramble text="Milton, Ontario · 43.52° N, 79.88° W" />
             </p>
 
             <HeroName id="hero-name" text={SITE.name} />
@@ -192,7 +197,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
             </p>
 
             <div className="hero-actions">
-              <Magnetic strength={0.25} maxOffset={6}>
+              <Magnetic>
                 <a className="btn btn-primary" href="#work-index">
                   <RollLabel>See the work</RollLabel>
                 </a>
@@ -220,17 +225,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
           </m.div>
 
           <div className="hero-wheel">
-            <m.div
-              ref={wheelStageRef}
-              className={cx("hero-wheel-stage", live && "is-live")}
-              style={pinned ? { scale: wheelScale } : { scale: 1 }}
-            >
-              {/* The still shows unless the scene has drawn a frame. */}
-              <div className="hero-still" aria-hidden="true" />
-              <Scene variant="core" className="scene-core" onLive={setLive} />
-              {/* Spin, on the wheel's rim (SpinPlaque.tsx). */}
-              {projects.length > 0 && <SpinPlaque projects={projects} live={live} />}
-            </m.div>
+            <WheelStage stageRef={wheelStageRef} scale={pinned ? wheelScale : undefined} projects={projects} />
           </div>
         </div>
       </div>
@@ -251,5 +246,25 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
         </div>
       )}
     </div>
+  );
+}
+
+interface WheelStageProps {
+  stageRef: RefObject<HTMLDivElement>;
+  scale?: MotionValue<number>;
+  projects: ProjectSummary[];
+}
+
+/** The wheel, its still and the Spin plate. Owns `live`, so the scene's first frame re-renders only this. */
+function WheelStage({ stageRef, scale, projects }: WheelStageProps) {
+  const [live, setLive] = useState(false);
+  return (
+    <m.div ref={stageRef} className={cx("hero-wheel-stage", live && "is-live")} style={{ scale: scale ?? 1 }}>
+      {/* The still shows unless the scene has drawn a frame. */}
+      <div className="hero-still" aria-hidden="true" />
+      <Scene variant="core" className="scene-core" onLive={setLive} />
+      {/* Spin, on the wheel's rim (SpinPlaque.tsx). */}
+      {projects.length > 0 && <SpinPlaque projects={projects} live={live} />}
+    </m.div>
   );
 }

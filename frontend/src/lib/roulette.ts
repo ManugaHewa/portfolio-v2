@@ -6,6 +6,7 @@
  * Scene units (the bowl is 3.6 across). Angles in radians, clockwise from
  * above. Head angle `a` sits at `a + W` in the world, W being the head's turn.
  */
+import { easeInCubic, easeOutCubic, mod } from "./math";
 
 /** Single-zero pockets, clockwise from 0. */
 export const WHEEL = [
@@ -103,12 +104,20 @@ export function surfaceAt(r: number): { y: number; slope: number } {
 }
 
 const TAU = 2 * Math.PI;
-const wrap = (a: number) => ((a % TAU) + TAU) % TAU;
+const wrap = (a: number) => mod(a, TAU);
 
 /** Pocket index (into WHEEL) at a head angle. */
 export function pocketAt(angle: number): number {
   return Math.min(POCKETS - 1, Math.floor(wrap(angle) / POCKET));
 }
+
+/** A coordinate rounded for SVG output. */
+export const svgNum = (n: number) => Number(n.toFixed(2));
+const polar = (r: number, a: number) => `${svgNum(r * Math.cos(a))} ${svgNum(r * Math.sin(a))}`;
+
+/** SVG path of a ring wedge between radii rIn and rOut, from angle a0 to a1 (the header mark, the card back). */
+export const wedgePath = (rIn: number, rOut: number, a0: number, a1: number) =>
+  `M${polar(rIn, a0)}L${polar(rOut, a0)}A${rOut} ${rOut} 0 0 1 ${polar(rOut, a1)}L${polar(rIn, a1)}A${rIn} ${rIn} 0 0 0 ${polar(rIn, a0)}Z`;
 
 /** Head angle at the middle of pocket `i`. */
 export const pocketCentre = (i: number) => (i + 0.5) * POCKET;
@@ -216,7 +225,7 @@ export function newBall(wait = 0.6): Ball {
 export function steerPocket(natural: number, dir: number, top: number): number {
   for (let d = 0; d < POCKETS; d++) {
     for (const j of d === 0 ? [natural] : [natural + dir * d, natural - dir * d]) {
-      if (WHEEL[((j % POCKETS) + POCKETS) % POCKETS] <= top) return j;
+      if (WHEEL[mod(j, POCKETS)] <= top) return j;
     }
   }
   return natural;
@@ -259,7 +268,7 @@ function planRattle(start: number, relSpeed: number, random: () => number, top =
     });
     at = to;
   });
-  return { hops, end, pocket: ((pocket % POCKETS) + POCKETS) % POCKETS };
+  return { hops, end, pocket: mod(pocket, POCKETS) };
 }
 
 /** Advances the ball `dt` seconds; a long step runs through several phases. `wheel` is the head's angle and speed. */
@@ -357,8 +366,6 @@ export interface BallPose {
   speed: number;
 }
 
-const easeOut = (k: number) => 1 - (1 - k) ** 3;
-const easeIn = (k: number) => k * k * k;
 
 /** Where to draw the ball, given the head's angle and speed. */
 export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
@@ -374,7 +381,7 @@ export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
     case "waiting":
       return on(TRACK_R, b.angle, 0, 0);
     case "track":
-      return on(TRACK_R, b.angle, 0, easeOut(Math.min(1, b.t / RUN.appear)), b.v0 * Math.exp(-b.t / RUN.glide));
+      return on(TRACK_R, b.angle, 0, easeOutCubic(Math.min(1, b.t / RUN.appear)), b.v0 * Math.exp(-b.t / RUN.glide));
     case "drop": {
       const d = dropAt(b, b.t);
       const k = b.hit >= 0 ? (b.t - b.hit) / RUN.knock : -1;
@@ -407,7 +414,7 @@ export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
     case "rest":
       return on(POCKET_R, b.angle + wheel, 0, 1, wheelSpeed);
     case "lift": {
-      const k = easeIn(Math.min(1, b.t / Math.max(1e-6, b.hold)));
+      const k = easeInCubic(Math.min(1, b.t / Math.max(1e-6, b.hold)));
       return on(b.liftR, b.angle + wheel, b.liftAir + 0.28 * k, 1 - k, wheelSpeed);
     }
   }

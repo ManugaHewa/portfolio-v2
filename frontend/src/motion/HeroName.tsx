@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useFinePointer, useMotionAllowed } from "./hooks";
 import { cx } from "../lib/cx";
+import { smoothstep01 } from "../lib/math";
 
 export interface HeroNameProps {
   id?: string;
@@ -17,8 +18,7 @@ const PEAK = { wght: 900, wdth: 125 };
 
 /** Cursor pull on a letter `distance` px away: 1 under it, smoothstep to 0 at REACH. */
 export function pressure(distance: number): number {
-  const t = Math.max(0, 1 - distance / REACH);
-  return t * t * (3 - 2 * t);
+  return smoothstep01(Math.max(0, 1 - distance / REACH));
 }
 
 /**
@@ -39,9 +39,9 @@ export function HeroName({ id, text, className }: HeroNameProps) {
   const live = allowed && fine;
 
   useEffect(() => {
-    const h1 = ref.current;
-    const area = h1?.closest("section") ?? h1;
-    if (!live || !h1 || !area) return;
+    const area = ref.current;
+    if (!live || !area) return;
+    const h1 = area;
     const letters = Array.from(h1.querySelectorAll<HTMLElement>(".hero-name-char"));
     let centres: { x: number; y: number }[] = [];
     // Line index per letter.

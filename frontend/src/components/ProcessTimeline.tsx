@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { m } from "../motion/m";
 import type { Variants } from "../motion/m";
-import { useMotionAllowed, useReplayInView } from "../motion";
+import { EASE_OUT, useMotionAllowed, useReplayInView } from "../motion";
 
 interface ProcessTimelineProps {
   /** Delivery steps, in order. */
@@ -10,13 +10,12 @@ interface ProcessTimelineProps {
   outcomes: string[];
 }
 
-const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 // Delay between steps, s.
 const STEP = 0.14;
 
 const ITEM: Variants = {
   hidden: { opacity: 0, x: -10, transition: { duration: 0 } },
-  shown: (i: number) => ({ opacity: 1, x: 0, transition: { duration: 0.45, ease: EASE, delay: 0.1 + i * STEP } }),
+  shown: (i: number) => ({ opacity: 1, x: 0, transition: { duration: 0.45, ease: EASE_OUT, delay: 0.1 + i * STEP } }),
 };
 
 const ITEM_INSTANT: Variants = {

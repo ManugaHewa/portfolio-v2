@@ -134,17 +134,17 @@
 
 .wheel-mark-turret {
   fill: none;
-  stroke: #c4c9cf;
+  stroke: var(--steel);
   stroke-width: 1.5px;
   stroke-linecap: round;
 }
 
 .wheel-mark-knob {
-  fill: #c4c9cf;
+  fill: var(--steel);
 }
 
 .wheel-mark-ball {
-  fill: #f6f3ec;
+  fill: var(--ivory);
 }
 
 /* The head turns slowly, with the ball in its pocket. */
@@ -487,7 +487,7 @@
   height: 8px;
   margin-top: -4px;
   border-radius: 50%;
-  background: #f6f3ec;
+  background: var(--ivory);
   pointer-events: none;
 }
 
@@ -499,7 +499,7 @@
   width: 2px;
   height: 2px;
   border-radius: 50%;
-  background: #8f949a;
+  background: var(--text-3);
 }
 
 /* -------------------------------------------------------------- footer */

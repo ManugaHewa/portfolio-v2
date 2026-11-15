@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { cx } from "../lib/cx";
 
 interface Props {
   email: string;
@@ -64,7 +65,7 @@ export function CopyEmail({ email, className }: Props) {
   const copied = result === "copied";
 
   return (
-    <span className={className ? `copy-email ${className}` : "copy-email"}>
+    <span className={cx("copy-email", className)}>
       <a ref={addressRef} className="copy-email-address" href={`mailto:${email}`}>
         {email}
       </a>

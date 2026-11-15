@@ -24,6 +24,7 @@ import type { SceneController, SceneDef } from "../lib/threeScene";
 import { sceneBudget, scaled } from "../lib/sceneQuality";
 import { hashKey, readConstellation } from "../lib/constellation";
 import { readSend } from "../lib/sendSignal";
+import { clamp, easeInOutCubic, easeOutCubic, mod } from "../lib/math";
 import type { SceneVariant } from "../lib/sceneQuality";
 
 export type { SceneVariant };
@@ -130,7 +131,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         world.add(grid);
 
         // Expanding rings, one material each so each fades on its own.
-        const ringGeo = t.track(ringsGeometry([1], scaled(96, detail, 48)));
+        const ringGeo = t.track(ringGeometry(1, scaled(96, detail, 48)));
         const rings: Array<{ o: LineSegments; m: LineBasicMaterial; phase: number }> = [];
         for (let i = 0; i < RING_COUNT; i++) {
           const m = t.track(
@@ -261,7 +262,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         const FLY = 1.05;
         let seen = readSend()?.seq ?? 0;
         let flight = -1;
-        let answer: { ok: boolean } | null = null;
+        let answer: boolean | null = null;
         let burstAge = -1;
         let burstOk = true;
         let trailCount = 0;
@@ -283,7 +284,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
               answer = null;
               trailCount = 0;
             } else if (flight >= 0) {
-              answer = { ok: sent.event.ok };
+              answer = sent.event.ok;
             }
           }
 
@@ -306,8 +307,8 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
             trailGeo.setDrawRange(0, trailCount);
             trailAttr.needsUpdate = true;
 
-            if (k >= 1 && answer) {
-              burstOk = answer.ok;
+            if (k >= 1 && answer !== null) {
+              burstOk = answer;
               burstAge = 0;
               burstMat.color.set(burstOk ? EMBER : "#8f949a");
               burst.visible = true;
@@ -342,7 +343,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           stepPacket(dt);
           rings.forEach(({ o, m, phase }) => {
             // 0 at the origin, 1 at the far edge.
-            const u = ((time / PERIOD + phase) % 1 + 1) % 1;
+            const u = mod(time / PERIOD + phase, 1);
             const r = 0.25 + u * 8.5;
             o.scale.set(r, 1, r);
             // Invisible at both ends, so the restart never shows.
@@ -388,7 +389,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         const frames: Group[] = [];
         // One material per frame, so each fades as it nears the camera.
         const mats: LineBasicMaterial[] = [];
-        const ringGeo = t.track(ringsGeometry([2.6], 4)); // a square frame
+        const ringGeo = t.track(ringGeometry(2.6, 4)); // a square frame
 
         for (let i = 0; i < FRAMES; i++) {
           const mat = t.track(
@@ -586,7 +587,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         );
         const figStars = new Points(starGeo, starMat);
         figStars.frustumCulled = false;
-        host?.g.add(figLines, figStars);
+        host.g.add(figLines, figStars);
         let figKey: string | null = null;
         let figCount = 0;
         let figAge = 0;
@@ -644,7 +645,6 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         };
 
         const stepFigure = (dt: number) => {
-          if (!host) return;
           const want = readConstellation();
           if (want && want.key !== figKey) {
             figKey = want.key;
@@ -654,7 +654,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
             figKey = null;
           }
           figAge += dt;
-          figFade = Math.max(0, Math.min(1, figFade + (figKey ? dt / 0.2 : -dt / 0.35)));
+          figFade = clamp(figFade + (figKey ? dt / 0.2 : -dt / 0.35), 0, 1);
           // A star every 70ms, each line drawn as its far star arrives.
           const lit = Math.min(figCount, Math.floor(figAge / 0.07) + 1);
           starGeo.setDrawRange(0, lit);
@@ -664,10 +664,8 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           figLines.visible = figStars.visible = figFade > 0;
         };
 
-        // Two reusable shooting stars: a lead and an occasional follower.
-        const glow = softDot();
-        if (glow) t.track(glow);
-        const meteors = [0, 1].map(() => makeMeteor(t, glow));
+        // Two reusable shooting stars: a lead and an occasional follower. Same sprite as the stars.
+        const meteors = [0, 1].map(() => makeMeteor(t, starGlow));
         meteors.forEach((m) => scene.add(m.group));
         // First one a few seconds in, after the load.
         let next = 3.5;
@@ -749,9 +747,6 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     };
   },
 };
-
-const easeOutCubic = (k: number) => 1 - (1 - k) ** 3;
-const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
 
 interface Meteor {
   group: Group;
@@ -952,14 +947,12 @@ function wireframeFrom(geo: SphereGeometry): BufferGeometry {
   return g;
 }
 
-function ringsGeometry(radii: number[], segments: number): BufferGeometry {
+function ringGeometry(r: number, segments: number): BufferGeometry {
   const out: number[] = [];
-  for (const r of radii) {
-    for (let i = 0; i < segments; i++) {
-      const a0 = (i / segments) * Math.PI * 2;
-      const a1 = ((i + 1) / segments) * Math.PI * 2;
-      out.push(Math.cos(a0) * r, 0, Math.sin(a0) * r, Math.cos(a1) * r, 0, Math.sin(a1) * r);
-    }
+  for (let i = 0; i < segments; i++) {
+    const a0 = (i / segments) * Math.PI * 2;
+    const a1 = ((i + 1) / segments) * Math.PI * 2;
+    out.push(Math.cos(a0) * r, 0, Math.sin(a0) * r, Math.cos(a1) * r, 0, Math.sin(a1) * r);
   }
   const g = new BufferGeometry();
   g.setAttribute("position", new Float32BufferAttribute(out, 3));

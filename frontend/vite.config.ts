@@ -12,7 +12,7 @@ const PROJECT_INDEX_ID = "virtual:project-index";
 const PROJECTS_FILE = page("../content/projects.ts");
 
 /** Project fields src/stats.ts reads. */
-const INDEX_FIELDS = ["slug", "title", "tier", "category", "status", "stack"] as const;
+const INDEX_FIELDS = ["slug", "title", "tier", "stack"] as const;
 
 /**
  * Serves `virtual:project-index`: just the fields stats.ts needs, so the

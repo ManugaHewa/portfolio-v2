@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { m } from "../motion/m";
-import { useMotionAllowed } from "../motion";
+import { EASE_OUT, useMotionAllowed } from "../motion";
+import { cx } from "../lib/cx";
+import { clamp } from "../lib/math";
 
 /**
  * The four hops a message makes on submit, shaped like the pipeline above.
@@ -8,8 +10,6 @@ import { useMotionAllowed } from "../motion";
  * /api/contact" as long as the network takes.
  */
 export const TRACE_STEPS = ["validate", "POST /api/contact", "zod.parse", "Postgres"] as const;
-
-const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 interface Props {
   /** Index of the step in flight; earlier steps are done. */
@@ -19,7 +19,7 @@ interface Props {
 export function SendTrace({ stage }: Props) {
   // Off under reduced motion, "Pause motion" and before hydration: connectors fill at once.
   const animate = useMotionAllowed();
-  const current = Math.min(Math.max(stage, 0), TRACE_STEPS.length - 1);
+  const current = clamp(stage, 0, TRACE_STEPS.length - 1);
 
   return (
     <div className="send-trace" role="status" aria-live="polite">
@@ -40,9 +40,7 @@ export function SendTrace({ stage }: Props) {
                 />
               </span>
             )}
-            <span
-              className={`trace-step${i < stage ? " is-done" : ""}${i === stage ? " is-active" : ""}`}
-            >
+            <span className={cx("trace-step", "mono", i < stage && "is-done", i === stage && "is-active")}>
               <span className="trace-dot" />
               {label}
             </span>

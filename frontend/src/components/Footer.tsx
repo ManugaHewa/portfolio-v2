@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { SITE } from "../site";
 
 /**
@@ -5,7 +6,7 @@ import { SITE } from "../site";
  * none. "Back to top" targets #top, which every page has. The SVG wordmark
  * spans the column via textLength; decorative (the name is in the row below).
  */
-export function Footer() {
+export const Footer = memo(function Footer() {
   return (
     <footer className="site-footer">
       <div className="container">
@@ -55,4 +56,4 @@ export function Footer() {
       </div>
     </footer>
   );
-}
+});
