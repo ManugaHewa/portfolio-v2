@@ -1,31 +1,27 @@
 /**
- * The hero's roulette wheel as numbers: the pockets in wheel order, the
- * shape of the bowl and of the wheel head, and the ball's run from the
- * throw to its pocket, including a run asked for by the Spin button
- * (callSpin). rouletteScene.ts draws it. Free of Three, so the ball can be
- * tested on its own.
+ * The hero's roulette wheel as data: pocket order, bowl and head profiles,
+ * and the ball's run from throw to pocket (callSpin for the Spin button).
+ * Drawn by rouletteScene.ts; no Three, so it tests on its own.
  *
- * Distances are scene units (the bowl is 3.6 across). Angles are radians
- * about the wheel's axis, increasing clockwise as seen from above. A point at
- * angle `a` on the wheel head is at `a + W` in the world, where W is how far
- * the head has turned.
+ * Scene units (the bowl is 3.6 across). Angles in radians, clockwise from
+ * above. Head angle `a` sits at `a + W` in the world, W being the head's turn.
  */
 
-/** The single-zero wheel's pockets, clockwise from the zero. */
+/** Single-zero pockets, clockwise from 0. */
 export const WHEEL = [
   0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29,
   7, 28, 12, 35, 3, 26,
 ] as const;
 
 export const POCKETS = WHEEL.length;
-/** One pocket's share of the turn. */
+/** Angle per pocket. */
 export const POCKET = (2 * Math.PI) / POCKETS;
 
 const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 
 export type PocketInk = "zero" | "red" | "black";
 
-/** A number's colour on the wheel. Around the wheel, red and black alternate after the zero. */
+/** A number's colour on the wheel. */
 export function pocketInk(n: number): PocketInk {
   return n === 0 ? "zero" : RED.has(n) ? "red" : "black";
 }
@@ -33,12 +29,10 @@ export function pocketInk(n: number): PocketInk {
 export const BALL_R = 0.045;
 
 /*
- * Cross-sections, [radius, height], each traced from its outer foot up and
- * over its top surface towards the axis: Three's lathe faces a profile
- * traced that way up, towards the camera.
+ * Cross-sections as [radius, height], traced from the outer foot over the
+ * top towards the axis, so Three's lathe faces them up.
  *
- * The bowl stands still: a rim, a short wall the ball runs against, the
- * ball track, and the slope down to the wheel head, where the diamonds sit.
+ * The fixed bowl: rim, wall, ball track, and the slope with the diamonds.
  */
 export const BOWL_PROFILE: ReadonlyArray<readonly [number, number]> = [
   [1.8, -0.18],
@@ -54,11 +48,7 @@ export const BOWL_PROFILE: ReadonlyArray<readonly [number, number]> = [
   [1.28, -0.06],
 ];
 
-/*
- * The wheel head turns: its rim, the number ring (drawn over this as its own
- * textured ring), the step down into the pockets, the pockets' floor, and
- * the cone rising to the turret.
- */
+/* The turning head: rim, number ring, step into the pockets, pocket floor, cone to the turret. */
 export const HEAD_PROFILE: ReadonlyArray<readonly [number, number]> = [
   [1.27, -0.16],
   [1.27, -0.01],
@@ -73,21 +63,20 @@ export const HEAD_PROFILE: ReadonlyArray<readonly [number, number]> = [
   [0, 0.178],
 ];
 
-/** The number ring, between the pockets and the head's rim. */
+/** Number ring, between the pockets and the head's rim. */
 export const NUMBERS_R = [1.12, 1.27] as const;
-/** The pockets, between the cone and the number ring; frets divide them. */
+/** Pockets, between the cone and the number ring; frets divide them. */
 export const POCKETS_R = [0.86, 1.11] as const;
 
-/** Where the ball runs. */
+/** Radius of the ball's track. */
 export const TRACK_R = 1.585 - BALL_R;
 export const DIAMOND_R = 1.365;
 export const HEAD_R = 1.27;
 export const POCKET_R = 0.985;
-/** Eight diamonds on the slope, the first at angle 0. */
+/** Diamonds on the slope; the first at angle 0. */
 export const DIAMONDS = 8;
 
-// The surface the ball can touch, inside out: the pockets' floor, the
-// number ring, the head's rim, the gap, the slope, the track.
+// Surface the ball touches, inside out: pocket floor, number ring, head rim, gap, slope, track.
 const SURFACE: ReadonlyArray<readonly [number, number]> = [
   [0.86, -0.07],
   [1.11, -0.07],
@@ -99,7 +88,7 @@ const SURFACE: ReadonlyArray<readonly [number, number]> = [
   [1.585, 0.11],
 ];
 
-/** The height of the surface under the ball at radius `r`, and how steeply it rises outward. */
+/** Surface height at radius `r`, and its outward slope. */
 export function surfaceAt(r: number): { y: number; slope: number } {
   if (r <= SURFACE[0][0]) return { y: SURFACE[0][1], slope: 0 };
   for (let i = 1; i < SURFACE.length; i++) {
@@ -116,26 +105,24 @@ export function surfaceAt(r: number): { y: number; slope: number } {
 const TAU = 2 * Math.PI;
 const wrap = (a: number) => ((a % TAU) + TAU) % TAU;
 
-/** The pocket (an index into WHEEL) that an angle on the wheel head falls in. */
+/** Pocket index (into WHEEL) at a head angle. */
 export function pocketAt(angle: number): number {
   return Math.min(POCKETS - 1, Math.floor(wrap(angle) / POCKET));
 }
 
-/** The middle of pocket `i`, as an angle on the wheel head. */
+/** Head angle at the middle of pocket `i`. */
 export const pocketCentre = (i: number) => (i + 0.5) * POCKET;
 
 /* ------------------------------------------------------------- the ball */
 
 /**
- * The run, in phases: hidden in the dealer's hand ("waiting"); thrown round
- * the track, slowing ("track"); too slow to hold the wall, down the slope,
- * over a diamond if it meets one ("drop"); onto the turning head and across
- * the frets in shorter and lower hops ("rattle"); in its pocket, turning
- * with the head ("rest"); picked out again ("lift").
+ * In the dealer's hand (waiting), round the track slowing (track), down the
+ * slope, maybe off a diamond (drop), hopping across the frets (rattle), in
+ * its pocket turning with the head (rest), picked out (lift).
  */
 export type BallPhase = "waiting" | "track" | "drop" | "rattle" | "rest" | "lift";
 
-/** One hop across the frets, in the wheel head's frame. */
+/** One hop across the frets, in the head's frame. */
 interface Hop {
   from: number;
   to: number;
@@ -149,60 +136,60 @@ export interface Ball {
   phase: BallPhase;
   /** Seconds into the phase. */
   t: number;
-  /** In the world on the track and the slope; on the wheel head from the rattle on. */
+  /** World angle on the track and slope; head angle from the rattle on. */
   angle: number;
-  /** The angular speed the phase started at, radians a second (track, drop). */
+  /** Angular speed at the phase start, rad/s (track, drop). */
   v0: number;
-  /** How long this phase lasts (waiting, rest, lift), seconds. */
+  /** Phase length in seconds (waiting, rest, lift). */
   hold: number;
-  /** Seconds into the drop when the ball meets a diamond, or -1. */
+  /** Seconds into the drop when the ball hits a diamond, or -1. */
   hit: number;
   hops: Hop[];
-  /** Where it came to rest (an index into WHEEL), or -1. */
+  /** Resting pocket (index into WHEEL), or -1. */
   pocket: number;
-  /** A spin asked for (lib/spin.ts), waiting for its throw, or 0. */
+  /** Spin asked for (lib/spin.ts) awaiting its throw, or 0. */
   call: number;
-  /** The spin this run is the answer to, or 0 for one of the wheel's own. */
+  /** Spin this run answers, or 0 for the wheel's own. */
   answers: number;
-  /** The highest number an answering run may land on. */
+  /** Highest number an answering run may land on. */
   top: number;
-  /** Where a lift starts: distance from the axis, and height above the surface. */
+  /** Lift start: distance from the axis and height above the surface. */
   liftR: number;
   liftAir: number;
 }
 
 export const RUN = {
-  /** The throw's speed, radians a second, as a range. */
+  /** Throw speed range, rad/s. */
   launch: [7.4, 8.6] as const,
-  /** The ball leaves the wall below this speed. */
+  /** Below this speed the ball leaves the wall. */
   leaves: 3.1,
-  /** How quickly it slows on the track: speed falls by e every `glide` seconds. */
+  /** Track slowing: speed falls by e every `glide` seconds. */
   glide: 4.6,
   /** The same on the slope. */
   slide: 1.7,
   drop: 0.95,
-  /** The ball grows into view this long after the throw. */
+  /** Time for the ball to grow into view after the throw. */
   appear: 0.25,
-  /** How long a diamond knocks it up for. */
+  /** How long a diamond knocks it up. */
   knock: 0.2,
   rest: [4.5, 6.5] as const,
   lift: 0.5,
   wait: [0.9, 1.4] as const,
-  /** A throw asked for is a softer one, so its answer comes sooner. */
+  /** Softer throw for a called spin, so it lands sooner. */
   called: [5.6, 6.4] as const,
-  /** A ball taken out of a run to throw again is picked up this quickly. */
+  /** Pick-up time when a called spin interrupts a run. */
   snatch: 0.3,
-  /** And the throw asked for follows this soon. */
+  /** Delay before the called throw. */
   soon: 0.2,
 };
 
-// How the drop draws the ball in: slowly at first, then quickly.
+// Drop radius: slow at first, then fast.
 const dropR = (u: number) => TRACK_R - (TRACK_R - HEAD_R) * u ** 1.7;
 
 const between = (range: readonly [number, number], random: () => number) =>
   range[0] + (range[1] - range[0]) * random();
 
-/** A ball still in the hand, thrown after `wait` seconds. */
+/** A ball in the hand, thrown after `wait` seconds. */
 export function newBall(wait = 0.6): Ball {
   return {
     phase: "waiting",
@@ -222,10 +209,9 @@ export function newBall(wait = 0.6): Ball {
 }
 
 /**
- * The nearest pocket to `natural` (an unwrapped index) whose number is at
- * most `top`, looking a step either way and then further, the way the ball
- * is going first. Every pocket of 0 to 13 is at most two from any other
- * pocket on a single-zero wheel, so the ball's way changes by little.
+ * Nearest pocket to `natural` (unwrapped index) numbered `top` or lower,
+ * searching outward, the ball's way first. Every pocket is within two of
+ * one numbered 0 to 13, so the path barely changes.
  */
 export function steerPocket(natural: number, dir: number, top: number): number {
   for (let d = 0; d < POCKETS; d++) {
@@ -236,21 +222,19 @@ export function steerPocket(natural: number, dir: number, top: number): number {
   return natural;
 }
 
-/** Angle travelled from t0 to t1 at a speed that falls by e every `tau` seconds from v0. */
+/** Angle travelled from t0 to t1, speed falling by e every `tau` seconds from v0. */
 const glideAngle = (v0: number, tau: number, t0: number, t1: number) =>
   v0 * tau * (Math.exp(-t0 / tau) - Math.exp(-t1 / tau));
 
-/** Where the ball is `t` seconds into its drop, and how fast it is going round. */
+/** Angle, radius and speed `t` seconds into the drop. */
 function dropAt(b: Ball, t: number) {
   return { angle: b.angle + glideAngle(b.v0, RUN.slide, 0, t), r: dropR(t / RUN.drop), speed: b.v0 * Math.exp(-t / RUN.slide) };
 }
 
 /**
- * The hops from where the ball reaches the head to its pocket: four or five,
- * each covering about half the way that is left, shorter and lower each
- * time, ending in the middle of a pocket. Further, the faster the ball meets
- * the head (it is going against the head's turn). A run that answers a spin
- * (`top` of 0 or more) ends in the nearest pocket numbered `top` or less.
+ * Hops from the head to a pocket's middle: four or five, each covering
+ * about half the remaining way, shorter and lower each time. Faster impacts
+ * go further. With `top` >= 0, ends in the nearest pocket numbered `top` or lower.
  */
 function planRattle(start: number, relSpeed: number, random: () => number, top = -1) {
   const dir = relSpeed < 0 ? -1 : 1;
@@ -278,11 +262,7 @@ function planRattle(start: number, relSpeed: number, random: () => number, top =
   return { hops, end, pocket: ((pocket % POCKETS) + POCKETS) % POCKETS };
 }
 
-/**
- * The ball `dt` seconds on. `wheel` is the head's angle and speed now;
- * `random` is the source of chance (Math.random on the page). A long step
- * runs through as many phases as it covers.
- */
+/** Advances the ball `dt` seconds; a long step runs through several phases. `wheel` is the head's angle and speed. */
 export function stepBall(
   ball: Ball,
   dt: number,
@@ -291,8 +271,7 @@ export function stepBall(
 ): Ball {
   const b: Ball = { ...ball };
   let left = dt;
-  // Phases end at exact times; a step that covers an end carries on into the
-  // next phase with what is left of it.
+  // A step crossing a phase end carries the rest into the next phase.
   for (let guard = 0; left > 1e-9 && guard < 12; guard++) {
     if (b.phase === "waiting" || b.phase === "rest" || b.phase === "lift") {
       const step = Math.min(left, b.hold - b.t);
@@ -327,8 +306,7 @@ export function stepBall(
       b.phase = "drop";
       b.v0 = b.v0 * Math.exp(-ends / RUN.glide);
       b.t = 0;
-      // Whether the ball meets a diamond on the way down: it crosses their
-      // ring once, and meets one if it crosses where one stands.
+      // Diamond hit? The ball crosses their ring once.
       const u = ((TRACK_R - DIAMOND_R) / (TRACK_R - HEAD_R)) ** (1 / 1.7);
       const crossing = u * RUN.drop;
       const at = wrap(dropAt(b, crossing).angle);
@@ -371,18 +349,18 @@ export interface BallPose {
   y: number;
   /** World angle. */
   angle: number;
-  /** 0 hidden to 1 in full view. */
+  /** 0 hidden, 1 full size. */
   scale: number;
-  /** How far above the surface it is, for its shadow. */
+  /** Height above the surface, for the shadow. */
   air: number;
-  /** World angular speed, radians a second, for its blur. */
+  /** World angular speed, rad/s, for the blur. */
   speed: number;
 }
 
 const easeOut = (k: number) => 1 - (1 - k) ** 3;
 const easeIn = (k: number) => k * k * k;
 
-/** Where to draw the ball, given where the wheel head is (`wheel`) and how fast it turns. */
+/** Where to draw the ball, given the head's angle and speed. */
 export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
   const on = (r: number, angle: number, air = 0, scale = 1, speed = 0): BallPose => ({
     r,
@@ -409,7 +387,7 @@ export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
         if (t <= h.time) {
           const u = t / h.time;
           const r = h.r0 + (h.r1 - h.r0) * u;
-          // The surface under the arc runs from where it left to where it lands.
+          // Ground under the arc, from take-off to landing.
           const ground = surfaceAt(h.r0).y + (surfaceAt(h.r1).y - surfaceAt(h.r0).y) * u;
           const air = h.height * 4 * u * (1 - u);
           return {
@@ -436,11 +414,9 @@ export function ballPose(b: Ball, wheel: number, wheelSpeed: number): BallPose {
 }
 
 /**
- * A spin asked for (`id`, lib/spin.ts): the ball is thrown again as soon as
- * it can be, and that run lands on a number from 0 to `top`. In the hand,
- * it is thrown at once; resting, it is picked out of its pocket; anywhere in
- * a run, it is picked up where it is, quickly. `wheel` is the head's angle
- * and speed now.
+ * Calls spin `id` (lib/spin.ts): the next throw lands on 0..top. In the
+ * hand, it is thrown at once; resting, lifted out; mid-run, snatched where
+ * it is. `wheel` is the head's angle and speed.
  */
 export function callSpin(ball: Ball, id: number, top: number, wheel: { angle: number; speed: number }): Ball {
   const b: Ball = { ...ball, call: id, top };

@@ -1,13 +1,7 @@
 /**
- * A project asked for from elsewhere on the page, for the deck to deal: a
- * skill's project number, followed, or the number the hero's wheel landed
- * on, scrolls to the deck and the deck turns that project's card face up
- * (DeckTable.tsx), rather than jumping to a section that repeats the same
- * projects.
- *
- * The latest request waits here until the deck is on screen to show it,
- * then the deck takes it (and clears it), so the visitor sees the card come
- * off the deck rather than arriving after it has already landed.
+ * Asks the deck (DeckTable.tsx) to deal a project, from a skill's project
+ * number or the wheel's landing. The request waits until the deck is on
+ * screen, so the visitor sees the card dealt.
  */
 let pending: string | null = null;
 const listeners = new Set<() => void>();
@@ -17,7 +11,7 @@ export function requestDeal(slug: string): void {
   for (const listener of listeners) listener();
 }
 
-/** The waiting request, taken: a second call returns null. */
+/** Takes the waiting request; a second call returns null. */
 export function takeDeal(): string | null {
   const slug = pending;
   pending = null;
@@ -33,7 +27,7 @@ export function onDealRequest(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/** The parts of a click followDeal reads. */
+/** The click fields followDeal reads. */
 export interface DealClick {
   defaultPrevented: boolean;
   button: number;
@@ -45,9 +39,8 @@ export interface DealClick {
 }
 
 /**
- * A link to a project's page, followed with a plain click: the page scrolls
- * to the deck instead, and the deck deals that project's card. A new tab, a
- * middle click or a visitor without JavaScript get the link's own page.
+ * Plain click on a project link: scroll to the deck and deal the card
+ * instead of navigating. Modified clicks and no-JS visits follow the link.
  */
 export function followDeal(e: DealClick, slug: string): void {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

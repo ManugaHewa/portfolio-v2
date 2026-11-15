@@ -1,15 +1,11 @@
 /**
- * The hero's Spin button and its wheel (rouletteScene.ts) talking.
- *
- * The button asks: a numbered latest ask, which the scene reads in its own
- * render loop and acts on once per new number, as the contact form's send
- * signal works (lib/sendSignal.ts). A scene that is paused, off screen or
- * not built yet simply has not seen it. The wheel answers once the ball has
- * come to rest: the number it landed on, for the ask it answers.
+ * Spin button to wheel (rouletteScene.ts) and back. The button posts a
+ * numbered ask that the scene reads in its render loop; the wheel answers
+ * with the number the ball rests on.
  */
 export interface SpinAsk {
   id: number;
-  /** The highest number the ball may land on: the deck's last card. */
+  /** Highest number the ball may land on (the deck's last card). */
   top: number;
 }
 
@@ -22,7 +18,7 @@ let seq = 0;
 let latest: SpinAsk | null = null;
 const listeners = new Set<(answer: SpinAnswer) => void>();
 
-/** Asks the wheel for a spin landing on 0 to `top`; returns the ask's number. */
+/** Asks for a spin landing on 0..top. Returns the ask's id. */
 export function askSpin(top: number): number {
   seq += 1;
   latest = { id: seq, top };
@@ -33,7 +29,7 @@ export function readSpin(): SpinAsk | null {
   return latest;
 }
 
-/** The wheel's answer: where the ball came to rest for ask `id`. */
+/** Reports where the ball came to rest for ask `id`. */
 export function answerSpin(answer: SpinAnswer): void {
   for (const listener of listeners) listener(answer);
 }

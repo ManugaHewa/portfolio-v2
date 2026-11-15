@@ -10,32 +10,25 @@ import type { ProjectSummary } from "../types";
 
 interface SpinPlaqueProps {
   projects: ProjectSummary[];
-  /** The live wheel is drawing (Hero.tsx): it throws the ball and answers. */
+  /** The live wheel is drawing (Hero.tsx), so it throws and answers. */
   live: boolean;
 }
 
-// `count` numbers the landings, so the same number twice is said twice.
+// `count` numbers landings, so the same number twice is announced twice.
 type Call =
   | { phase: "idle" }
   | { phase: "spinning"; id: number }
   | { phase: "landed"; number: number; count: number };
 
 /**
- * The plate on the wheel's front rim: Spin, and where the ball landed.
+ * The plate on the wheel's rim: Spin, and where the ball landed.
  *
- * Spin asks the live wheel for a throw of its own (lib/spin.ts): the head
- * is pushed, the ball is picked up and thrown again, and the run always ends
- * on a number the deck holds, 1 to the last card, or on the zero. The number
- * is dealt in the deck (lib/dealRequest.ts), so it is the card face up when
- * the visitor reaches the table, and the plate links to it; the zero is the
- * joker, which says get in touch. With no live wheel to throw (reduced
- * motion, "Pause motion", a device without the scene) the plate picks the
- * number itself and simply lands, as every other move does then.
- *
- * In the prerendered page from the start, over the wheel or its still, so
- * nothing moves when the scene arrives; without JavaScript it is hidden
- * (index.html's noscript block), as nothing could answer it. Said once,
- * politely, by the hidden line: the throw, and the number.
+ * Spin asks the live wheel for a throw (lib/spin.ts) that lands on 0 or a
+ * deck number. That card is dealt (lib/dealRequest.ts) and the plate links
+ * to it; zero is the joker, linking to contact. Without a live wheel
+ * (reduced motion, "Pause motion", no scene) it picks and lands at once.
+ * Prerendered; hidden without JS (index.html noscript). A hidden polite
+ * line announces the throw and the number.
  */
 export function SpinPlaque({ projects, live }: SpinPlaqueProps) {
   const { paused } = useContext(MotionPauseContext);
@@ -47,14 +40,14 @@ export function SpinPlaque({ projects, live }: SpinPlaqueProps) {
   );
   const top = Math.max(0, ...byNumber.keys());
 
-  // Every landing deals its card, once.
+  // Each landing deals its card once.
   useEffect(() => {
     if (call.phase !== "landed") return;
     const p = byNumber.get(call.number);
     if (p) requestDeal(p.slug);
   }, [call, byNumber]);
 
-  // The wheel's answer, for the throw still waiting on one.
+  // The wheel's answer to the pending throw.
   useEffect(
     () =>
       onSpinAnswer((answer) => {
@@ -66,8 +59,7 @@ export function SpinPlaque({ projects, live }: SpinPlaqueProps) {
     [],
   );
 
-  // The wheel went away mid-throw (its context lost, or the scene switched
-  // off): nothing will answer, so the plate does.
+  // The wheel went away mid-throw (context lost or scene off): the plate answers.
   useEffect(() => {
     if (live) return;
     const number = Math.floor(Math.random() * (top + 1));
