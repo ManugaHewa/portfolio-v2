@@ -4,8 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <!-- "developer", as the page itself says, rather than "engineer": see
-         docs/audit-2026-10.md, claim C1. -->
+    <!-- "developer", not "engineer" (docs/audit-2026-10.md, claim C1). -->
     <title>Manuga Hewa Pathirana | Full-stack developer, Milton, ON</title>
     <meta
       name="description"
@@ -16,9 +15,7 @@
     <link rel="icon" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Link previews. Absolute URLs on the real domain: the previous tags
-         pointed at an old github.io address and an og.png that did not
-         exist. The image's source is frontend/scripts/og-image.html. -->
+    <!-- Link previews, absolute URLs. Image source: frontend/scripts/og-image.html. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Manuga Hewa Pathirana" />
     <meta property="og:locale" content="en_CA" />
@@ -41,8 +38,7 @@
     <meta name="twitter:image" content="https://manugahewa.dev/og.png" />
     <meta name="twitter:image:alt" content="Manuga Hewa Pathirana, full-stack developer, Milton, Ontario. manugahewa.dev" />
 
-    <!-- Structured data: who this page is about. Only facts the page itself
-         states. A data block, so the CSP's script-src does not apply. -->
+    <!-- Structured data, only facts the page states. A data block, so script-src doesn't apply. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -60,10 +56,7 @@
       }
     </script>
 
-    <!-- Entrances that start hidden in the prerendered HTML carry
-         data-reveal. Without JavaScript nothing moves them on, so show the
-         finished state. Only [data-reveal]: the old attribute-sniffing
-         selectors also un-hid things that were meant to stay hidden. -->
+    <!-- Without JS: show [data-reveal] entrances finished, and hide the Spin plate (nothing can answer it). -->
     <noscript>
       <style>
         [data-reveal] { opacity: 1 !important; transform: none !important; }

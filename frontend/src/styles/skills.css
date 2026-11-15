@@ -1,14 +1,7 @@
 /*
- * Skills (redesign SPEC.md, section 5.6). Skills.tsx.
- *
- * Seven groups in CSS columns, so they pack top to bottom and no group is
- * left alone on a last row: three columns on a wide screen, two from 720px,
- * one below. A group never splits across a column break, and the columns
- * balance (the default), so they end as close to level as whole groups
- * allow. Each row is a name, a dotted leader and the project number it was
- * used in, like an index at the back of a book. No ratings, meters or
- * colours: the categories are told apart by their headings and their place
- * on the page.
+ * Skills.tsx: seven groups in balanced CSS columns (three wide, two from
+ * 720px, one below), never split. Rows are name, dotted leader, project
+ * number, like a book index. No ratings or meters.
  */
 
 .skills-inner {
@@ -16,8 +9,7 @@
   z-index: 1;
 }
 
-/* The head as a spread: the title on the left, the intro opposite it on the
-   right, both sitting on the title's last baseline. */
+/* Head: title left, intro right, on the title's last baseline. */
 @media (min-width: 960px) {
   .skills .section-head {
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
@@ -49,10 +41,7 @@
   }
 }
 
-/* The globe turns behind the groups. A wash of the page colour under each
-   group keeps the small mono notes on (nearly) plain background, which is
-   what their contrast was measured against, without boxing the groups in:
-   no border, and the wash fades into the page at its edges. */
+/* A soft wash of page colour under each group keeps the mono notes on plain background (contrast), with no border. */
 .skills-group {
   break-inside: avoid;
   margin-bottom: var(--s7);
@@ -62,7 +51,7 @@
   background: color-mix(in srgb, var(--bg) 78%, transparent);
 }
 
-/* The heading and its count on one baseline, over a hairline. */
+/* Heading and count on one baseline, over a hairline. */
 .skills-group-head {
   display: flex;
   align-items: baseline;
@@ -110,7 +99,7 @@
   overflow-wrap: anywhere;
 }
 
-/* The dotted leader from the name to its number. Decoration only. */
+/* Dotted leader; decorative. */
 .skills-leader {
   flex: 1 1 var(--s5);
   min-width: var(--s5);
@@ -129,8 +118,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* A project number is a link to the project, so it looks like one: sky and
-   underlined, with a target big enough to hit on a phone. */
+/* Project numbers are links: sky, underlined, phone-sized targets. */
 .skills-number {
   display: inline-flex;
   align-items: center;
@@ -148,8 +136,7 @@
   color: var(--sky-hover);
 }
 
-/* One project lit across the columns: its rows keep full colour and an
-   ember number, every other row steps back to the quiet text colour. */
+/* One project lit: its rows stay bright with ember numbers, others recede. */
 .skills-row {
   transition: color var(--dur-1) var(--ease-out);
 }
@@ -171,7 +158,7 @@
   border-bottom-color: var(--ember-line);
 }
 
-/* Evidence that is not a project on the page ("coursework" and the like). */
+/* Evidence that isn't a project ("coursework" etc.). */
 .skills-note {
   color: var(--text-3);
   text-align: right;

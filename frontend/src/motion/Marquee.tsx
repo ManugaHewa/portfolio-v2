@@ -7,47 +7,37 @@ import { cx } from "../lib/cx";
 
 export interface MarqueeProps {
   items: string[];
-  /** The list's accessible name. */
+  /** Accessible name of the list. */
   label: string;
 }
 
-// Pixels per second at full speed, and the share of it kept under the
-// pointer or focus: slow enough to read a word, never a sudden stop.
+// Drift speed (px/s), and the share of it kept under pointer or focus.
 const SPEED = 40;
 const SLOW = 0.25;
-// How long the speed change takes, in ms.
+// Speed change duration, ms.
 const EASE_RATE_MS = 320;
-// How long a fling takes to come back to the drift, in ms.
+// Time for a fling to settle back into the drift, ms.
 const FLING_SETTLE_MS = 1300;
-// The fastest a fling may run, in multiples of the drift.
+// Fling speed cap, in multiples of the drift.
 const FLING_MAX = 14;
 
 type Animated = Element & { getAnimations?: (options?: { subtree?: boolean }) => Animation[] };
 
 /**
- * A strip that scrolls sideways, with its own pause toggle.
+ * A sideways-scrolling strip with its own pause toggle.
  *
- * The server and the first client render are ONE static list that wraps:
- * every item once, readable with no JavaScript, under reduced motion, and
- * by crawlers. After hydration, while motion is allowed and the strip's own
- * toggle is off, it becomes a moving row: a second, aria-hidden and inert
- * copy follows the first so the loop has no seam, and a CSS animation moves
- * both (motion.css). Paused, either way, it returns to the wrapped list.
+ * Server and first render: one static, wrapping list (readable without JS,
+ * under reduced motion and by crawlers). After hydration, while motion is
+ * allowed and not paused, an aria-hidden, inert copy follows the list and a
+ * CSS animation moves both (motion.css).
  *
- * The lap time comes from the measured width of one copy, so the strip runs
- * at about 40px a second whatever it holds. Under the pointer or with focus
- * inside, it eases to a quarter of that speed through the Web Animations
- * playbackRate, which changes speed without a jump. Off screen it stops.
+ * Lap time comes from one copy's width, so it drifts at about 40 px/s.
+ * Under the pointer or focus it eases to a quarter speed via playbackRate;
+ * off screen it stops. It can be grabbed, scrubbed and flung, then eases
+ * back to the drift; vertical swipes still scroll the page.
  *
- * It can be grabbed: pressing on the moving strip holds it, dragging scrubs
- * it along under the pointer (the animation's own clock, moved by the
- * distance dragged), and letting go throws it at the speed it was let go
- * at, either way, easing back into the drift over a second or so. A
- * vertical swipe on a touch screen still scrolls the page.
- *
- * The strip's own toggle is there only while motion is allowed. Under the
- * header's "Pause motion" or reduced motion the strip is already still, and a
- * toggle saying "not paused" that changes nothing would mislead.
+ * The toggle shows only while motion is allowed; otherwise the strip is
+ * already still.
  */
 export function Marquee({ items, label }: MarqueeProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -59,12 +49,11 @@ export function Marquee({ items, label }: MarqueeProps) {
   const running = allowed && !ownPaused;
   const rate = useRef({ value: 1, frame: 0 });
   const hovered = useRef(false);
-  // The grab in progress: the last pointer x and time, the smoothed
-  // velocity (px/ms), and one lap's length in px and in ms.
+  // Grab: last pointer x and time, smoothed velocity (px/ms), lap length in px and ms.
   const grab = useRef<{ x: number; t: number; v: number; lapPx: number; lapMs: number } | null>(null);
   const [grabbing, setGrabbing] = useState(false);
 
-  // The lap time, from one copy's width plus the gap after it.
+  // Lap time: one copy's width plus the gap after it.
   useIsomorphicLayoutEffect(() => {
     const root = rootRef.current;
     const list = listRef.current;
@@ -80,8 +69,7 @@ export function Marquee({ items, label }: MarqueeProps) {
     return () => ro.disconnect();
   }, [running]);
 
-  // React 18 has no inert prop. The copy holds only text, but inert keeps it
-  // out of find-in-page and selection as well as the accessibility tree.
+  // React 18 has no inert prop. inert also keeps the copy out of find-in-page and selection.
   useEffect(() => {
     if (copyRef.current) copyRef.current.inert = true;
   }, [running]);
@@ -110,12 +98,12 @@ export function Marquee({ items, label }: MarqueeProps) {
     r.frame = requestAnimationFrame(step);
   };
 
-  // A restarted animation (paused, then running again) starts at full speed.
+  // A restarted animation starts at full speed.
   useEffect(() => {
     if (!running) rate.current.value = 1;
   }, [running]);
 
-  // The drift the strip settles back to: slower under a mouse.
+  // The drift to settle back to: slower under a mouse.
   const restingRate = () => (hovered.current ? SLOW : 1);
 
   const onGrab = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -141,8 +129,8 @@ export function Marquee({ items, label }: MarqueeProps) {
     g.v = g.v * 0.6 + (dx / dt) * 0.4;
     g.x = e.clientX;
     g.t = now;
-    // The strip runs left as its clock runs forward, so dragging right
-    // winds the clock back. Kept far from zero so it never runs out.
+    // The strip moves left as its clock runs, so dragging right winds the
+    // clock back. Offset far from zero so it never runs out.
     for (const a of animations()) {
       const time = Number(a.currentTime ?? 0) - dx * (g.lapMs / g.lapPx);
       a.currentTime = (((time % g.lapMs) + g.lapMs) % g.lapMs) + g.lapMs * 1000;
@@ -155,8 +143,7 @@ export function Marquee({ items, label }: MarqueeProps) {
     grab.current = null;
     setGrabbing(false);
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-    // Moving with the hand when it let go: the drift's speed is SPEED px/s
-    // to the left, so a throw to the right is a negative rate.
+    // The drift runs left at SPEED px/s, so a throw to the right is a negative rate.
     const thrownAt = -(g.v * 1000) / SPEED;
     const r = Math.max(-FLING_MAX, Math.min(FLING_MAX, thrownAt));
     rate.current.value = r;

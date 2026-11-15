@@ -33,7 +33,7 @@ const detail: ProjectDetail = {
   learned: "Prisma migrations and schema design against a real system.",
 };
 
-/** What the list endpoint knows: the dialog opens with this, before the detail. */
+/** What the list endpoint knows: the dialog opens with this. */
 const summary: ProjectSummary = {
   slug: detail.slug,
   title: detail.title,
@@ -73,7 +73,7 @@ const renderModal = (props: ModalProps = {}) => {
   return { ...view, rerender, onClose: all.onClose };
 };
 
-/** The page around the dialog: a trigger that opens it and is handed back focus. */
+/** A page with a trigger that opens the dialog and gets focus back. */
 function Harness() {
   const [trigger, setTrigger] = useState<HTMLElement | null>(null);
   return (
@@ -119,7 +119,7 @@ describe("ProjectModal", () => {
 
     expect(screen.getByRole("heading", { level: 2, name: detail.title })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/loading the full case study/i);
-    // The summary already carries the problem and the outcomes.
+    // The summary already has the problem and outcomes.
     expect(screen.getByText("Problem")).toBeInTheDocument();
     expect(screen.queryByText("Scope")).not.toBeInTheDocument();
 
@@ -155,7 +155,7 @@ describe("ProjectModal", () => {
     ]) {
       expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
     }
-    // highlights and nextSteps are empty, so their headings must not appear.
+    // highlights and nextSteps are empty, so no headings.
     expect(screen.queryByRole("heading", { name: "Highlights" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Next steps" })).not.toBeInTheDocument();
   });
@@ -188,7 +188,7 @@ describe("ProjectModal", () => {
     const figure = dialog.querySelector(".dialog-figure") as HTMLElement;
     expect(figure.querySelector(".case-figure-num")).toHaveAttribute("data-number", projectNumber("dms"));
     expect(figure).toHaveTextContent(detail.subtitle);
-    // The plate says it, so the head does not say it again.
+    // The plate shows it, so the head doesn't repeat it.
     expect(screen.getAllByText(detail.subtitle)).toHaveLength(1);
   });
 
@@ -208,8 +208,7 @@ describe("ProjectModal", () => {
     const { rerender } = renderModal({ detail: null });
     const first = screen.getByRole("dialog");
 
-    // Close the first and open the second at once: the first stays mounted
-    // for its exit while the second mounts.
+    // Close the first and open the second at once: both are mounted during the exit.
     rerender({ project: other, detail: null });
     const second = screen.getByRole("dialog", { name: "Alice Bot" });
     expect(second).not.toBe(first);
@@ -217,8 +216,7 @@ describe("ProjectModal", () => {
     const ids = Array.from(document.querySelectorAll(".dialog-title")).map((h) => h.id);
     expect(new Set(ids).size).toBe(ids.length);
 
-    // Once the first has gone, its unmount must not have taken the second's
-    // panel with it: Tab still wraps inside the second.
+    // The first's unmount must not take the second's panel: Tab still wraps.
     await waitFor(() => expect(document.querySelectorAll(".dialog-root")).toHaveLength(1));
     const focusable = second.querySelectorAll<HTMLElement>("a[href], button");
     const last = focusable[focusable.length - 1];
@@ -228,8 +226,7 @@ describe("ProjectModal", () => {
   });
 
   it("treats a link with no url as unpublished rather than as a repository", () => {
-    // A placeholder has a label but no destination, so it cannot stand in for
-    // a repository: the note has to key off a real url, not off the count.
+    // Placeholders have no url, so the note checks for a real one.
     const pending = { ...detail, links: [{ label: "GitHub repository", url: "" }] };
     renderModal({ project: { ...summary, links: pending.links }, detail: pending });
 
@@ -252,7 +249,7 @@ describe("ProjectModal", () => {
     expect(root).not.toHaveAttribute("inert");
 
     rerender({ project: null, detail: null });
-    // Still on screen while it fades or shrinks back, but out of reach.
+    // Still visible while leaving, but unreachable.
     if (root.isConnected) expect(root).toHaveAttribute("inert");
     await waitFor(() => expect(document.querySelector(".dialog-root")).toBeNull());
   });
@@ -278,7 +275,7 @@ describe("ProjectModal", () => {
     expect(dialog.contains(document.activeElement)).toBe(true);
 
     fireEvent.keyDown(window, { key: "Escape" });
-    // Without the restore, a keyboard user is dumped at the top of the page.
+    // Otherwise keyboard users land at the top of the page.
     await waitFor(() => expect(document.activeElement).toBe(trigger));
   });
 

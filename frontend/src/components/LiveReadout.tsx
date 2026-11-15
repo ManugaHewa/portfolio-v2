@@ -2,18 +2,10 @@ import { Scramble } from "../motion";
 import { useProjectsTiming } from "../lib/liveStats";
 
 /**
- * Real numbers about the system the diagram above describes, measured on
- * this visit or stamped at build time; nothing here is typed in by hand.
- *
- * - How long this visit's GET /api/projects took, and how many projects it
- *   carried (lib/liveStats.ts, recorded by api.ts). The prerendered page
- *   cannot know either, so it shows a dash until the answer is in; a failed
- *   request says so in words.
- * - The commit the page was built from, with its date (vite.config.ts,
- *   buildStamp), left out when the build had no git.
- *
- * The measured values decode into place (Scramble), which under reduced
- * motion or "Pause motion" simply shows them.
+ * Real numbers about the system above: this visit's GET /api/projects time
+ * and project count (lib/liveStats.ts; a dash until known, words if it
+ * failed), and the build's commit and date (vite.config.ts; omitted without
+ * git). Measured values decode in (Scramble).
  */
 export function LiveReadout({ build = __BUILD__ }: { build?: typeof __BUILD__ }) {
   const timing = useProjectsTiming();

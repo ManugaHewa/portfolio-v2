@@ -1,9 +1,4 @@
-/*
- * The home page's stylesheet: the fonts, then every file in this folder.
- * Shared foundations first, so a section file can rely on them; the section
- * files after, in page order. The privacy page imports only the shared files
- * it needs (privacy-main.tsx).
- */
+/* Home page stylesheet: fonts, shared files, then sections in page order. The static pages import their own subset (privacy-main.tsx). */
 @import "./fonts.css";
 @import "./tokens.css";
 @import "./base.css";

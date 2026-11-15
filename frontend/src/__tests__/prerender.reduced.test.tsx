@@ -3,9 +3,7 @@ import { hydrateRoot } from "react-dom/client";
 import { act } from "@testing-library/react";
 import { it, expect, vi } from "vitest";
 
-// Before anything renders: framer-motion reads the reduced-motion preference
-// once, on first use, and keeps it for the life of the module. Its own file,
-// so no earlier test in the same module graph can have read it first.
+// Set before anything renders: framer-motion reads reduced motion once per module. Own file for that reason.
 window.matchMedia = ((query: string) => ({
   matches: query.includes("reduce"),
   media: query,
@@ -32,16 +30,13 @@ it("hydrates for a visitor who prefers reduced motion, then switches to the stat
   const { default: App } = await import("../App");
   const { renderHome } = await import("../entry-server");
 
-  // The build cannot know the visitor's setting, so it renders the animated
-  // version. The reduced one may only take over after hydration, or React
-  // would throw the server HTML away and render the page again.
-  // (The useLayoutEffect warning react-dom/server prints here is jsdom-only;
-  // see onServer in prerender.test.tsx.)
+  // The build renders the animated version; the reduced one takes over only
+  // after hydration. (The useLayoutEffect warning here is jsdom-only; see
+  // onServer in prerender.test.tsx.)
   const serverLog = vi.spyOn(console, "error").mockImplementation(() => {});
   const { html, projects } = renderHome();
   serverLog.mockRestore();
-  // The server HTML is the moving version's starting point: the tech band
-  // is a plain list until the browser says motion is allowed.
+  // Server HTML: the tech band is a plain list until motion is allowed.
   const serverDoc = new DOMParser().parseFromString(html, "text/html");
   expect(serverDoc.querySelector(".marquee")).not.toBeNull();
   expect(serverDoc.querySelector(".marquee.is-running")).toBeNull();
@@ -64,10 +59,7 @@ it("hydrates for a visitor who prefers reduced motion, then switches to the stat
 
   expect(recoverable).toEqual([]);
   expect(errors.mock.calls.map((c) => String(c[0])).filter((e) => /hydrat|did not match/i.test(e))).toEqual([]);
-  // After hydration the reduced preference holds: the tech band stays a
-  // static wrapped list with no copy and no pause control, the counts show
-  // their final digits without reels, and every hidden-until-revealed
-  // element has been shown in place.
+  // After hydration under reduce: static tech band, final digits, everything revealed in place.
   expect(container.querySelector(".marquee")).not.toBeNull();
   expect(container.querySelector(".marquee.is-running")).toBeNull();
   expect(container.querySelectorAll(".marquee-list")).toHaveLength(1);

@@ -14,10 +14,7 @@ import { mountScene } from "../lib/threeScene";
 import { Scene, failSoft } from "../components/Scene";
 import { MotionPauseContext } from "../motion/hooks";
 
-/*
- * jsdom has no WebGL, so Three's renderer is replaced with a recorder: the
- * point of these tests is when the harness draws, not what it draws.
- */
+/* jsdom has no WebGL: a recording renderer, since these tests check when the harness draws. */
 const three = vi.hoisted(() => ({ renderers: [] as Array<{ render: { mock: { calls: unknown[] } } }> }));
 
 vi.mock("three", () => {
@@ -41,8 +38,7 @@ vi.mock("three", () => {
   return { WebGLRenderer, Scene, PerspectiveCamera };
 });
 
-// The real Scene3D would need Three's geometry; the gate only needs to know
-// whether it was mounted, with what, and when it goes away.
+// A stand-in Scene3D: the gate only needs mount, props and unmount.
 vi.mock("../components/Scene3D", () => ({
   default: ({ variant, paused }: { variant: string; paused?: boolean }) => (
     <div data-testid="scene3d" data-variant={variant} data-paused={String(Boolean(paused))} />
@@ -53,10 +49,7 @@ const realMatchMedia = window.matchMedia;
 const realDpr = window.devicePixelRatio;
 const realIO = window.IntersectionObserver;
 
-/**
- * A matchMedia that answers each query from a predicate, so a test can describe
- * a device ("a phone that prefers motion") rather than a single boolean.
- */
+/** matchMedia answering from a predicate, so a test describes a device. */
 function stubMatchMedia(matcher: (query: string) => boolean) {
   const listeners = new Map<string, Set<() => void>>();
 
@@ -109,7 +102,7 @@ class ManualIO {
   takeRecords() {
     return [];
   }
-  /** Reports every observed element as in (or out of) this observer's zone. */
+  /** Reports every observed element as in (or out of) the zone. */
   fire(isIntersecting: boolean) {
     const entries = this.targets.map(
       (target) => ({ target, isIntersecting, intersectionRatio: isIntersecting ? 1 : 0 }) as IntersectionObserverEntry
@@ -243,16 +236,14 @@ describe("the render budget", () => {
     stubMatchMedia(desktop);
     const large = sceneBudget();
     expect(small.detail).toBeLessThan(large.detail);
-    // The hero wheel's metalwork keeps antialiasing on a phone; the
-    // line scenes drop it.
+    // The wheel keeps antialiasing on phones; line scenes drop it.
     expect(small.antialias).toBe(true);
     expect(smallLines.antialias).toBe(false);
     expect(large.antialias).toBe(true);
   });
 
   it("keeps a shape readable rather than scaling it into nothing", () => {
-    // A ring with three segments is a triangle and a scatter with two points is
-    // not a scatter, so every count carries its own floor.
+    // Every count has a floor where its shape still reads.
     expect(scaled(96, 0.45, 48)).toBe(48);
     expect(scaled(160, 0.45, 70)).toBe(72);
     expect(scaled(160, 1, 70)).toBe(160);
@@ -268,7 +259,7 @@ describe("mounting a section scene on approach", () => {
     stubMatchMedia(desktop);
     const { container } = render(<Scene variant="field" className="scene-layer scene-field" />);
 
-    // The host exists to be watched; the scene itself waits.
+    // The host exists to be observed; the scene waits.
     expect(container.querySelector(".scene-3d.scene-layer.scene-field")).not.toBeNull();
     expect(screen.queryByTestId("scene3d")).toBeNull();
 
@@ -324,7 +315,7 @@ describe("mounting a section scene on approach", () => {
   });
 
   it("renders nothing and reports the scene dead when its chunk fails to load", async () => {
-    // A tab left open across a deploy asks for a chunk that no longer exists.
+    // A tab open across a deploy asks for a deleted chunk.
     const { default: Fallback } = await failSoft(() => Promise.reject(new Error("404")));
     const onLive = vi.fn();
     const { container } = render(<Fallback variant="field" onLive={onLive} />);
@@ -375,7 +366,7 @@ describe("the render loop", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
-    // Back to jsdom's own getter on the prototype.
+    // Back to jsdom's prototype getter.
     delete (document as unknown as Record<string, unknown>).visibilityState;
   });
 
@@ -442,7 +433,7 @@ describe("the render loop", () => {
     c.setPaused(false);
     frame();
     expect(renders()).toBe(before + 1);
-    // Still the one renderer: nothing was torn down and rebuilt.
+    // Still one renderer: nothing rebuilt.
     expect(three.renderers).toHaveLength(1);
   });
 
@@ -458,7 +449,7 @@ describe("the render loop", () => {
     const { io } = mount({ budget: budget({ maxFps: 30 }) });
     io.fire(true);
     for (let i = 0; i < 60; i++) frame();
-    // One second of 60Hz display frames: the resting frame plus about 30.
+    // One second at 60 Hz: the resting frame plus about 30.
     expect(renders()).toBeGreaterThanOrEqual(29);
     expect(renders()).toBeLessThanOrEqual(32);
   });
@@ -481,7 +472,7 @@ describe("the render loop", () => {
     expect(onLive).toHaveBeenLastCalledWith(false);
     expect(canvas.style.visibility).toBe("hidden");
 
-    // Lost is final: coming back on screen must not restart the loop on it.
+    // Lost is final: back on screen must not restart the loop.
     const before = renders();
     io.fire(false);
     io.fire(true);

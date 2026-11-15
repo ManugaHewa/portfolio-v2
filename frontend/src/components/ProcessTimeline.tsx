@@ -4,14 +4,14 @@ import type { Variants } from "../motion/m";
 import { useMotionAllowed, useReplayInView } from "../motion";
 
 interface ProcessTimelineProps {
-  /** How the project was delivered, step by step. */
+  /** Delivery steps, in order. */
   steps: string[];
-  /** What came of it: the timeline's last stop. */
+  /** Results: the timeline's last stop. */
   outcomes: string[];
 }
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
-// Seconds between one step arriving and the next.
+// Delay between steps, s.
 const STEP = 0.14;
 
 const ITEM: Variants = {
@@ -25,17 +25,10 @@ const ITEM_INSTANT: Variants = {
 };
 
 /**
- * A case study's delivery, told as a line: each step a stop on a rail that
- * draws itself down the dialog as the visitor reaches it, and the rail ends
- * in an ember stop holding the outcomes, so the process visibly leads to
- * what came of it. The outcomes are said here and nowhere else in the
- * dialog.
- *
- * Real list markup throughout (one ordered list, the outcomes a list inside
- * its last item), so a screen reader hears the steps in order and the
- * outcomes as their end. Without motion (reduced, paused, not yet hydrated)
- * the whole line is simply there; with it, the line replays each time it is
- * scrolled down to inside the dialog (useReplayInView).
+ * A case study's delivery as a line: steps on a rail that draws itself down
+ * the dialog, ending in an ember stop holding the outcomes (said only here).
+ * One ordered list, the outcomes a list in its last item. Without motion
+ * the line is just there; with it, it replays on each scroll down.
  */
 export function ProcessTimeline({ steps, outcomes }: ProcessTimelineProps) {
   const ref = useRef<HTMLDivElement>(null);

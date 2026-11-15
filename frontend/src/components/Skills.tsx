@@ -10,32 +10,23 @@ import { caseStudyPath } from "../lib/paths";
 import { CATEGORIES, skillsIn } from "../skills";
 import { PROJECT_INDEX, STATS, projectNumber } from "../stats";
 
-// Evidence written as something other than the project's title. The DMS
-// entries name the project without the "(DMS)" its title carries.
+// Evidence that names a project other than by its title.
 const ALIASES: Record<string, string> = {
   "Exercise Prescription App": "exercise",
   "This portfolio": "portfolio-v2",
   "Donation Management System": "dms",
 };
 
-/**
- * The project a skill's evidence names, or undefined when the evidence is
- * not a project ("Coursework", "Self-directed study" and the like). Matched
- * by title, plus the two aliases above.
- */
+/** The project a skill's evidence names (title or alias), or undefined for non-project evidence. */
 export function evidenceProject(evidence: string) {
   const slug = ALIASES[evidence];
   return PROJECT_INDEX.find((p) => (slug ? p.slug === slug : p.title === evidence));
 }
 
-// A count as a project number, padded the way projectNumber pads them.
+// A count padded like projectNumber.
 const asNumber = (n: number) => String(n).padStart(2, "0");
 
-/**
- * How the numbers are split, from the data: the case studies come first,
- * then the other work, so the ranges move when a project is added or
- * re-tiered.
- */
+/** The numbering note, from the data, so the ranges follow added or re-tiered projects. */
 export const NUMBERING =
   STATS.otherProjects > 0
     ? `Numbers are the projects above: 01 to ${asNumber(STATS.caseStudies)} the case studies, ` +
@@ -43,12 +34,9 @@ export const NUMBERING =
     : `Numbers are the projects above, 01 to ${asNumber(STATS.caseStudies)}.`;
 
 /*
- * The groups' entrance. The columns arrive as one set, triggered by the
- * whole block coming into view (again on every scroll down, useReplayInView), each group 50ms after the one before it.
- * Watching each group on its own left a hole: a group starting a little
- * lower than its neighbours could sit unrevealed in the middle column while
- * the groups beside it had shown. Each group still carries data-reveal, so
- * the reduced-motion, no-JavaScript and focus rules show it in place.
+ * Group entrance: the columns arrive together when the block comes into
+ * view, 50ms apart (watching each group alone left unrevealed holes). Each
+ * group keeps data-reveal for the reduced-motion, no-JS and focus rules.
  */
 const GROUP_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -57,48 +45,31 @@ const GROUP: Variants = {
   shown: (i: number) => ({ opacity: 1, y: 0, transition: { duration: 0.6, ease: GROUP_EASE, delay: i * 0.05 } }),
 };
 
-// Reduced motion or "Pause motion": the same entrance, landing at once.
+// Reduced motion or "Pause motion": lands at once.
 const GROUP_INSTANT: Variants = {
   hidden: { opacity: 0, y: 16 },
   shown: { opacity: 1, y: 0, transition: { duration: 0 } },
 };
 
-/**
- * The project a pointer or focus event happened in, read from the nearest
- * row's data-project, or null outside a row tied to a project.
- */
+/** The project of the nearest row with data-project, or null. */
 export function rowProject(target: EventTarget | null): string | null {
   if (!(target instanceof Element)) return null;
   return target.closest<HTMLElement>("[data-project]")?.dataset.project ?? null;
 }
 
-/**
- * A skill's project number, followed: with a plain click, the page scrolls
- * up to the deck and the deck deals that project's card (lib/dealRequest.ts).
- * The link itself goes to the project's own page, which is where a new tab,
- * a middle click or a visitor without JavaScript ends up.
- */
+/** A skill's project number, clicked: deals that card in the deck (followDeal). */
 export function dealFromSkill(e: ReactMouseEvent<HTMLAnchorElement>, slug: string): void {
   followDeal(e, slug);
 }
 
 /**
- * Skills grouped by where they sit in a project, each with the project it was
- * used in (redesign SPEC.md, section 5.6).
- *
- * A row is a name and a project number, the same number the project carries
- * in the work above, linked to it; nothing is rated. The groups run in CSS
- * columns (skills.css) so the seven of them pack without a lone straggler,
- * and each arrives with a short stagger; the rows inside them do not move.
- *
- * Pointing at a row, or tabbing to its number, lights up every row that
- * names the same project, across all the columns, so one hover shows
- * everything that project used (skills.css, [data-hot]). Following the
- * number deals that project's card in the deck (dealFromSkill).
+ * Skills grouped by where they sit in a project, each linked to the number
+ * of the project it was used in; nothing is rated. Groups flow in CSS
+ * columns (skills.css). Hovering a row, or focusing its number, lights
+ * every row of that project ([data-hot]); following the number deals its card.
  */
 export function Skills() {
-  // Before hydration this is false as well, which is harmless: the entrance
-  // only starts once the block is in view, after hydration.
+  // Also false before hydration, which is fine: the entrance waits for the view.
   const animate = useMotionAllowed();
   const groupsRef = useRef<HTMLDivElement>(null);
   const shown = useReplayInView(groupsRef, 0.1);
@@ -106,8 +77,7 @@ export function Skills() {
   const point = (e: ReactPointerEvent | FocusEvent) => setHot(rowProject(e.target));
   const clear = () => setHot(null);
 
-  // The sky draws the lit project as a constellation, one star per
-  // technology it used (lib/constellation.ts, the starfield in Scene3D).
+  // The starfield draws the lit project as a constellation (lib/constellation.ts).
   useEffect(() => {
     const project = hot ? PROJECT_INDEX.find((p) => p.slug === hot) : undefined;
     if (!project) return;

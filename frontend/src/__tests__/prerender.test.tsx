@@ -25,11 +25,8 @@ afterEach(() => {
 });
 
 /**
- * Runs a server render and fails on anything it logs, except one warning that
- * only exists here: jsdom provides a `window`, so useIsomorphicLayoutEffect
- * (and framer-motion's own) pick useLayoutEffect, which react-dom/server warns
- * about. The real build renders in Node, where there is no window and no
- * warning.
+ * Server render that fails on any log, except the useLayoutEffect warning,
+ * which only appears because jsdom provides a window.
  */
 function onServer<T>(render: () => T): T {
   const logged = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -44,7 +41,7 @@ function onServer<T>(render: () => T): T {
   }
 }
 
-/** Puts server HTML in the page, hydrates it, and returns every console.error React raised. */
+/** Puts server HTML in the page, hydrates, and returns React's console.errors. */
 async function hydrate(html: string, element: React.ReactElement) {
   const container = document.createElement("div");
   container.innerHTML = html;
@@ -64,24 +61,20 @@ describe("the prerendered home page", () => {
     const doc = new DOMParser().parseFromString(onServer(renderHome).html, "text/html");
     const text = doc.body.textContent ?? "";
 
-    // The name is the only h1. HeroName splits it into word spans with real
-    // spaces between them, so its text still reads as the name.
+    // One h1, the name; HeroName's word spans keep real spaces.
     expect(doc.querySelectorAll("h1")).toHaveLength(1);
     expect(doc.querySelector("h1")?.textContent).toBe("Manuga Hewa Pathirana");
     for (const project of PROJECTS) {
       expect(text, project.slug).toContain(project.title);
     }
-    // Every project is named in the deck's list, linked to its own page,
-    // where the whole case study is (caseStudyPages.test.tsx); the card face
-    // up on the table says what the first one is.
+    // Every project is linked from the deck's list; the face-up card names the first.
     for (const project of PROJECTS) {
       const link = doc.querySelector(`.deck-list a[href="/work/${project.slug}/"]`);
       expect(link?.textContent, project.slug).toContain(project.title);
     }
     const first = PROJECTS.find((p) => p.tier === 1)!;
     expect(doc.querySelector(".pcard.is-up")?.textContent).toContain(first.subtitle);
-    // The work index's counts are in the HTML as the real numbers, both as
-    // the visible digits and as the screen reader copy.
+    // Counts are real numbers in the HTML, visible and for screen readers.
     const readouts = [...doc.querySelectorAll("#work-index .odometer")];
     expect(readouts.map((o) => o.querySelector(".visually-hidden")?.textContent)).toEqual([
       String(STATS.projects),
@@ -106,14 +99,12 @@ describe("the prerendered home page", () => {
 
     expect(recoverable).toEqual([]);
     expect(errors.filter((e) => /hydrat|did not match/i.test(e))).toEqual([]);
-    // The deck was in the HTML and is still there after hydration: the
-    // face-up card, the rest of the deck face down, and the list of all.
+    // The deck survives hydration: face-up card, face-down deck, full list.
     const first = PROJECTS.find((p) => p.tier === 1)!;
     expect(container.querySelector(`.pcard.is-up[id="case-${first.slug}"]`)).not.toBeNull();
     expect(container.querySelectorAll(".deck-pile .pcard")).toHaveLength(PROJECTS.length - 1);
     expect(container.querySelectorAll(".deck-list ol a")).toHaveLength(PROJECTS.length);
-    // Motion is allowed here (jsdom's matchMedia matches nothing), so the
-    // animated versions took over after hydration: the tech band runs.
+    // Motion is allowed here, so the tech band runs after hydration.
     expect(container.querySelector(".marquee.is-running")).not.toBeNull();
   });
 });

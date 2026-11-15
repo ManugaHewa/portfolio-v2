@@ -13,28 +13,24 @@ export interface SplitTitleProps {
   text: string;
 }
 
-// Seconds between one word starting and the next.
+// Delay between words, s.
 const STAGGER = 0.07;
 
 /**
- * A heading split into words, each in a mask, so the words slide up into
- * place each time the heading is scrolled down to (reset out of sight when
- * the visitor scrolls back above it). The spaces stay real text nodes between
- * the masks, so the heading's text and accessible name are the sentence and
- * a long title still wraps between words.
+ * A heading whose words slide up from masks each time it is scrolled to
+ * (reset out of sight above). Spaces stay real text, so the accessible name
+ * is the sentence and long titles still wrap.
  *
- * The words start below their masks in the prerendered HTML (Motion writes
- * the hidden variant as inline styles), so each carries data-reveal: the
- * <noscript> block and the reduced-motion rule in base.css show them in
- * place. Under reduced motion or "Pause motion" the slide still happens, with
- * duration 0, so the words are never left hidden.
+ * Words start hidden in the prerendered HTML, so each carries data-reveal
+ * (undone by <noscript> and base.css's reduced-motion rule). Reduced motion
+ * or "Pause motion" runs the slide with duration 0.
  */
 export function SplitTitle({ as = "h2", id, className, text }: SplitTitleProps) {
   const words = text.split(/\s+/).filter(Boolean);
   const instant = useInstantMotion();
   const ref = useRef<HTMLHeadingElement>(null);
   const shown = useReplayInView(ref, 0.6);
-  // m.h1 / m.h2 / m.h3 share one props shape; the cast only names one of them.
+  // m.h1/h2/h3 share one props shape; the cast names one.
   const Tag = m[as] as typeof m.h2;
 
   const word = useMemo<Variants>(

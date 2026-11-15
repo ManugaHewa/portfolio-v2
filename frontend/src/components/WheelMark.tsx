@@ -8,7 +8,7 @@ const R_OUT = 37;
 const f = (n: number) => Number(n.toFixed(2));
 const at = (r: number, a: number) => `${f(r * Math.cos(a))} ${f(r * Math.sin(a))}`;
 
-// One wedge a pocket, in wheel order, the zero at the top.
+// One wedge per pocket, in wheel order, zero at the top.
 const SECTORS = WHEEL.map((n, i) => {
   const a0 = -Math.PI / 2 + ((i - 0.5) * 2 * Math.PI) / POCKETS;
   const a1 = a0 + (2 * Math.PI) / POCKETS;
@@ -20,13 +20,10 @@ const SECTORS = WHEEL.map((n, i) => {
 });
 
 /**
- * The roulette wheel as a small mark, in SVG, drawn face on: the bowl, the
- * pockets in wheel order in the hero wheel's colours (rouletteScene.ts), the
- * cone with its inlay, the turret, and the ball at rest in the zero. The
- * head turns slowly (chrome.css). It sits beside the name in the header and
- * is what the hero's wheel shrinks into as the page scrolls past it
- * (Hero.tsx). Decoration only. Under reduced motion or "Pause motion" it
- * stands still.
+ * The wheel as a small SVG mark: bowl, pockets in the hero wheel's colours,
+ * cone, turret and the ball in the zero. The head turns slowly (chrome.css)
+ * and stops under reduced motion or "Pause motion". It sits by the name in
+ * the header, where the hero wheel docks (Hero.tsx). Decorative.
  */
 export function WheelMark({ className }: { className?: string }) {
   const { paused } = useContext(MotionPauseContext);

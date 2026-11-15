@@ -23,9 +23,7 @@ beforeEach(() => {
 
 describe("GET /api/projects", () => {
   it("returns the fields the cards are built from", async () => {
-    // The card grid splits on tier and prints category and status as pills, so
-    // these have to be on the *list* payload. Leaving them to the detail route
-    // would mean a card could not render until its modal had been opened.
+    // Cards need tier, category and status on the list payload, not just the detail route.
     vi.mocked(prisma.project.findMany).mockResolvedValue([
       {
         slug: "dms",
@@ -83,9 +81,7 @@ describe("GET /api/projects/:slug", () => {
   });
 
   it("asks for the public fields by name and nothing else", async () => {
-    // This route used `include`, which returns every column, so anything added
-    // to the table went public with the migration. The exact list is pinned
-    // here: publishing a new field means changing this test on purpose.
+    // The list's fields are pinned here, so publishing a new column means changing this test.
     findUnique.mockResolvedValue(null);
 
     await request(app).get("/api/projects/dms");

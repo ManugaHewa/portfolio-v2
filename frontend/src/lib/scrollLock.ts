@@ -1,17 +1,13 @@
 /**
- * Holds the page still behind the dialog. With Lenis gone the browser does
- * all the scrolling, so hiding overflow on <html> is the whole lock. <html>
- * rather than <body>: overflow set on body is passed up to the viewport only
- * while html's own is visible, which made the body version easy to defeat.
- * base.css gives html `scrollbar-gutter: stable`, so the page does not shift
- * sideways when its scrollbar goes away.
+ * Locks page scroll behind the dialog by hiding overflow on <html> (body's
+ * overflow only reaches the viewport while html's is visible). base.css sets
+ * `scrollbar-gutter: stable`, so the page does not shift.
  */
 let locks = 0;
 let restoreOverflow = "";
 
 export function lockScroll() {
-  // Counted rather than boolean: if two overlays were ever open at once,
-  // closing the first must not unlock the page underneath the second.
+  // Counted, so closing one of two overlays keeps the page locked.
   locks += 1;
   if (locks > 1) return;
   const html = document.documentElement;

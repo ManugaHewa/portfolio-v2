@@ -1,15 +1,14 @@
 /*
- * The page's chrome: the sticky header and its nav, the pause toggle, the
- * scroll progress hairline, the index rail and the footer. The privacy page
- * and the 404 use the header and footer rules too.
+ * Page chrome: header and nav, pause toggle, scroll progress, index rail,
+ * footer. The static pages reuse the header and footer.
  */
 
 /* --------------------------------------------------------------- header */
 
-/* Teal, not the old navy, and no blur: the header is a band of the page's
-   own ink with a hairline under it once the page has moved. Over the hero
-   it can let the stars through; once the page moves, text scrolls under it,
-   so it is near solid then and nothing behind the nav can be read. */
+/*
+ * The header: page ink, no blur, a hairline once scrolled. Translucent over
+ * the hero, near solid once content scrolls under it.
+ */
 .site-header {
   position: sticky;
   top: 0;
@@ -50,9 +49,10 @@
   color: var(--text);
 }
 
-/* The docked wheel beside the name (WheelMark.tsx). --dock-mark is 0
-   while the hero's own wheel is still in view and flying here
-   (Hero.tsx); everywhere else it is unset and the mark shows. */
+/*
+ * The docked wheel mark (WheelMark.tsx). --dock-mark is 0 while the hero
+ * wheel is in view or flying (Hero.tsx); unset elsewhere, so it shows.
+ */
 .brand {
   position: relative;
   display: inline-flex;
@@ -60,8 +60,7 @@
   gap: 10px;
 }
 
-/* The empty socket the wheel docks into: a dashed ring in the mark's
-   place while it is still in the hero, gone once it has landed. */
+/* The empty socket: a dashed ring until the wheel lands. */
 .brand::before {
   content: "";
   position: absolute;
@@ -83,9 +82,10 @@
   opacity: var(--dock-mark, 1);
 }
 
-/* The wheel mark (WheelMark.tsx). Its lines are in screen pixels at any
-   size, so the mark in flight (several hundred px wide) and docked (26px)
-   draw the same weight of line; its pockets are fills, and scale. */
+/*
+ * Wheel mark (WheelMark.tsx): screen-pixel strokes, so it draws the same line
+ * weight in flight and docked.
+ */
 .wheel-mark {
   overflow: visible;
 }
@@ -147,7 +147,7 @@
   fill: #f6f3ec;
 }
 
-/* The head turns slowly, the ball riding in its pocket. */
+/* The head turns slowly, with the ball in its pocket. */
 @media (prefers-reduced-motion: no-preference) {
   .wheel-mark-head {
     animation: wheel-turn 16s linear infinite;
@@ -179,8 +179,7 @@
   list-style: none;
 }
 
-/* Navigation, so no underline at rest: position says what these are. The
-   current section gets the text colour and a 2px ember rule 6px below. */
+/* Nav links: no underline; the current one gets text colour and a 2px ember rule. */
 .nav-link {
   position: relative;
   display: inline-block;
@@ -195,9 +194,7 @@
   color: var(--text);
 }
 
-/* The text roll: the label slides up out of a one-line window and the same
-   word follows it in from below. The window clips; the copy is ::after,
-   one line under the label, so the two move together. */
+/* Text roll: the label slides up out of its window as the ::after copy follows. */
 .nav-roll {
   display: inline-block;
   overflow: hidden;
@@ -290,8 +287,7 @@
   border-color: var(--sky-line);
 }
 
-/* Two bars while motion runs; a play triangle once paused, saying what a
-   second press does. Drawn in CSS, aria-hidden: the label carries it. */
+/* Two bars while running, a play triangle when paused (aria-hidden; the label speaks). */
 .pause-toggle-glyph {
   flex: none;
   box-sizing: border-box;
@@ -320,8 +316,7 @@
     display: none;
   }
 
-  /* A full-width panel under the header. Nav.tsx closes it on Escape, on a
-     click outside, and when a link is chosen. */
+  /* Full-width panel under the header; Nav.tsx closes it on Escape, outside click or link. */
   .nav-panel.is-open {
     position: absolute;
     top: var(--header-h);
@@ -349,7 +344,7 @@
 
 /* ---------------------------------------------------- scroll progress */
 
-/* motion/ScrollProgress.tsx sets scaleX from the scroll position. */
+/* motion/ScrollProgress.tsx sets scaleX. */
 .scroll-progress {
   position: fixed;
   top: 0;
@@ -365,12 +360,9 @@
 /* --------------------------------------------------------- index rail */
 
 /*
- * Wide screens only, set in from the window's edge so it reads as a ball
- * track on the page, not a scrollbar. motion/IndexRail.tsx sets --pos (0 to
- * 1) on each item; the server's even spacing is the no-JavaScript layout.
- * The ball, when rendered, is placed by the component along the track and
- * into the pockets, and the component fades the whole rail out while the
- * hero is pinned, where it would crowd the wheel.
+ * Wide screens only, inset from the edge so it reads as a ball track, not a
+ * scrollbar. IndexRail.tsx sets --pos per item (even spacing without JS),
+ * places the ball, and hides the rail while the hero pins.
  */
 .index-rail {
   display: none;
@@ -389,8 +381,7 @@
   }
 }
 
-/* Faded out, it still takes keyboard focus: it shows the moment it does.
-   !important to beat the component's inline opacity. */
+/* Still focusable while faded: shows on focus. !important beats the inline opacity. */
 .index-rail:focus-within {
   opacity: 1 !important;
 }
@@ -403,7 +394,7 @@
   list-style: none;
 }
 
-/* The scale's hairline. */
+/* The track hairline. */
 .index-rail-track::before {
   content: "";
   position: absolute;
@@ -421,9 +412,7 @@
   transform: translateY(-50%);
 }
 
-/* A 24px target around a pocket: a cup off the track's left side, open to
-   the track, that the ball drops into. The current section's is ember,
-   with its label shown beside it. */
+/* A 24px pocket target: a cup off the track's left side. The current one is ember, labelled. */
 .index-rail-tick {
   position: relative;
   display: flex;
@@ -454,8 +443,7 @@
   border-color: var(--ember);
 }
 
-/* The tick's accessible name, shown on hover and focus. On the page's own
-   ink, since it can sit over the content's right edge. */
+/* The tick's accessible name, shown on hover and focus, on page ink. */
 .index-rail-label {
   position: absolute;
   right: calc(100% + 6px);
@@ -474,11 +462,10 @@
   transition: opacity var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out);
 }
 
-/* The current section's label stays up only where the margin can hold it:
-   the widest ("How it's built", about 130px) clears the 1240px column from
-   about 1660px. Narrower, it would cover the column's right edge (the
-   pipeline's counter, card text), so there the ember tick alone marks the
-   section, as the header's nav already does. */
+/*
+ * The current label stays up only where the margin fits it (from about
+ * 1660px); narrower, the ember tick alone marks the section.
+ */
 @media (min-width: 1680px) {
   .index-rail-tick[aria-current="location"] .index-rail-label {
     opacity: 1;
@@ -491,9 +478,7 @@
   color: var(--text);
 }
 
-/* The ball: the wheel's, in ivory, centred on the hairline (and moved off
-   it into the pockets by the component). The fleck on it turns as it
-   rolls. */
+/* The ivory ball on the hairline (the component moves it into pockets); its fleck turns as it rolls. */
 .index-rail-marker {
   position: absolute;
   top: 0;
@@ -524,8 +509,7 @@
   padding-block: var(--block-gap) var(--s7);
 }
 
-/* The engraved wordmark (Footer.tsx): the name in the display face, filled a
-   step above the page and outlined in a hairline, fitted to the column. */
+/* The engraved wordmark (Footer.tsx), fitted to the column. */
 .site-footer-mark {
   display: block;
   width: 100%;

@@ -1,16 +1,9 @@
 /*
- * The case-study dialog (redesign SPEC.md, section 5.3). Portalled to
- * <body>, outside #app-shell, above everything including the header.
- *
- * Desktop: a panel placed by a grid whose first row is never shorter than
- * the header, so the panel clears it, and which otherwise sits a little
- * above centre, where the eye lands. Phone: a sheet from the bottom edge.
- *
- * The panel does not scroll; the part under its figure does. Its look (fill,
- * hairline, corners, shadow) is a separate layer under everything else, so
- * while the figure grows out of its card the surface can open around it
- * without fading the figure too. Nothing here sets a transform on the panel
- * or the figure: Motion owns both during the morph.
+ * The case-study dialog, portalled to <body> above everything. Desktop: a
+ * grid places the panel below the header, a little above centre. Phone: a
+ * bottom sheet. Only the part under the figure scrolls. The surface is its
+ * own layer so it can open round the morphing figure. No transforms here:
+ * Motion owns them.
  */
 
 .dialog-root {
@@ -19,23 +12,19 @@
   z-index: 200;
 }
 
-/* The exiting layer: inert from the first frame of its exit, and clicks go
-   straight through to the page coming back underneath. */
+/* The exiting layer: inert, clicks pass through. */
 .dialog-root[inert] {
   pointer-events: none;
 }
 
-/* The page's own ink, not a neutral black: the scheme stays teal. Dark
-   enough that nothing behind it, the header included, reads as competing
-   with the panel. */
+/* Page ink, dark enough that nothing behind competes. */
 .dialog-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(8, 9, 11, 0.84);
 }
 
-/* Covers the backdrop but lets clicks through to it, so a click anywhere
-   outside the panel closes the dialog. */
+/* Covers the backdrop but passes clicks, so clicking outside closes. */
 .dialog-viewport {
   position: absolute;
   inset: 0;
@@ -46,8 +35,7 @@
   pointer-events: none;
 }
 
-/* --pad is the panel's one inset: the figure's drawing, the text and the
-   section rows all start on it. */
+/* --pad: the panel's one inset. */
 .dialog-panel {
   --pad: clamp(20px, 4vw, 48px);
   position: relative;
@@ -60,8 +48,7 @@
   pointer-events: auto;
 }
 
-/* The panel takes focus when it opens so a screen reader starts at the top;
-   it is not a control, so it shows no ring for that. */
+/* Focused on open for screen readers; not a control, so no ring. */
 .dialog-panel:focus {
   outline: none;
 }
@@ -75,8 +62,7 @@
   box-shadow: var(--shadow-dialog);
 }
 
-/* The card's figure, inside the surface's hairline, with a hairline under
-   it as in the card. Its top corners are set in style (FIGURE_RADIUS). */
+/* The figure inside the surface hairline; top corners set inline (FIGURE_RADIUS). */
 .dialog-figure {
   flex: none;
   height: clamp(176px, 27svh, 248px);
@@ -84,19 +70,17 @@
   border-bottom: 1px solid var(--line);
 }
 
-/* Less air above and below than in a card: here the figure shares the
-   height with the text it heads. */
+/* Less vertical air than in a card. */
 .dialog-figure > .case-figure-inner {
   padding-block: var(--s5);
 }
 
-/* Close sits where the card's scale is drawn, so the dialog leaves it out. */
+/* Close sits where the scale would, so hide it. */
 .dialog-figure .case-scale {
   display: none;
 }
 
-/* Everything under the figure, the part that scrolls. Its lower corners
-   follow the surface's, so the scrollbar does not cut across them. */
+/* The scrolling part; its lower corners follow the surface's. */
 .dialog-scroll {
   position: relative;
   flex: 1;
@@ -106,8 +90,7 @@
   border-radius: 0 0 calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px);
 }
 
-/* Phone: a sheet. Full width, square at the bottom, no side or bottom
-   border against the screen's edge. */
+/* Phone: a full-width sheet, square at the bottom, no edge borders. */
 @media (max-width: 719px) {
   .dialog-viewport {
     grid-template-rows: minmax(calc(var(--header-h) + var(--s4)), 1fr) auto;
@@ -138,9 +121,7 @@
 
 /* ------------------------------------------------------------- close */
 
-/* Over the figure's top right corner, outside the part that scrolls, so it
-   is always in reach. A solid fill, so it reads on a screenshot as well as
-   on the plate. */
+/* Over the figure's top right, outside the scroll, always in reach. Solid fill. */
 .dialog-close {
   position: absolute;
   top: var(--s3);
@@ -167,7 +148,7 @@
   background: var(--surface-2);
 }
 
-/* A cross, two hairlines. */
+/* A cross of two hairlines. */
 .dialog-close-x {
   position: relative;
   width: 12px;
@@ -217,7 +198,7 @@
   color: var(--ember);
 }
 
-/* A step above the case cards' titles. */
+/* A step above the card titles. */
 .dialog-title {
   font-size: clamp(1.9rem, 1.35rem + 1.9vw, 2.75rem);
   font-weight: 700;
@@ -290,8 +271,7 @@
   color: var(--text-2);
 }
 
-/* The stack: one name per item, never broken across a line, a small dot
-   after each but the last, so a wrapped line never starts with one. */
+/* Stack: one unbroken name per item, dots between, never at a line start. */
 .dialog-stack {
   display: flex;
   flex-wrap: wrap;
@@ -326,8 +306,7 @@
 
 /* ------------------------------------------------------------ sections */
 
-/* A spec sheet: each heading in a narrow left column, its content beside
-   it, a hairline between sections. One column on a phone. */
+/* A spec sheet: headings in a narrow left column, hairlines between sections. One column on phones. */
 .dialog-sections {
   display: grid;
 }
@@ -374,7 +353,7 @@
   list-style: none;
 }
 
-/* A short hairline tick for each item, the scale's mark rather than a dot. */
+/* A hairline tick per item. */
 .dialog-list li {
   position: relative;
   padding-left: var(--s5);
@@ -463,9 +442,7 @@
 
 /* ------------------------------------------------------ process timeline */
 
-/* A case study's delivery as a line (ProcessTimeline.tsx): a rail down the
-   left that draws itself, a tick of the rail for each step, and an ember
-   stop at the end holding the outcomes. */
+/* Delivery timeline (ProcessTimeline.tsx): a self-drawing rail, a tick per step, an ember stop for the outcomes. */
 .process {
   position: relative;
   max-width: 64ch;
@@ -534,7 +511,7 @@
   list-style: none;
 }
 
-/* The case study's own page, at the foot of the dialog. */
+/* Link to the case study's own page. */
 .dialog-permalink {
   padding-top: var(--s5);
   border-top: 1px solid var(--line-soft);

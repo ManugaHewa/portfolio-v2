@@ -2,31 +2,27 @@ import { Footer } from "./Footer";
 import { RETENTION, SITE } from "../site";
 
 /**
- * What the site does with people's data, in plain words. Every sentence here
- * has to stay true of the code and the server, so the dependencies are listed:
+ * The privacy page. Every sentence must stay true of the code and server:
  *
- * - Fields stored: backend/prisma/schema.prisma (ContactMessage) and the
- *   strict schema in backend/src/routes/contact.ts.
- * - Retention: RETENTION in site.ts, enforced by `npm run contact:prune` on a
- *   daily cron (docs/manual-steps.md).
- * - No analytics: Cloudflare Web Analytics switched off in the dashboard; the
- *   CSP in deploy/nginx/portfolio.conf would block it anyway.
- * - Logs: the anonymised access-log format in deploy/nginx/portfolio.conf,
- *   and Ubuntu's 14-day rotation for Nginx.
+ * - Fields stored: backend/prisma/schema.prisma (ContactMessage) and
+ *   backend/src/routes/contact.ts.
+ * - Retention: RETENTION in site.ts, pruned by a daily cron
+ *   (`npm run contact:prune`, docs/manual-steps.md).
+ * - No analytics: Cloudflare Web Analytics off; the CSP in
+ *   deploy/nginx/portfolio.conf would block it anyway.
+ * - Logs: the anonymised format in deploy/nginx/portfolio.conf; Nginx logs
+ *   rotate after 14 days.
  * - Rate limiting: the 15-minute in-memory window in backend/src/app.ts.
- * - Credits: what ships to the browser, from frontend/package.json. GSAP and
- *   Lenis left with the redesign; the two typefaces arrived with it.
+ * - Credits: what ships to the browser (frontend/package.json).
  *
- * No cookies and no browser storage: measured, not assumed (docs/audit-2026-10.md).
- *
- * The page has its own entry (privacy-main.tsx) and loads none of the home
- * page's animation code, so nothing here imports from src/motion.
+ * No cookies or browser storage (measured: docs/audit-2026-10.md). Own entry
+ * (privacy-main.tsx), so nothing here imports from src/motion.
  */
 const UPDATED = "10 November 2026";
 
 interface Credit {
   name: string;
-  /** The npm package, where it differs from the name people know it by. */
+  /** npm package, where it differs from the name. */
   pkg?: string;
   use: string;
   licence: string;
@@ -70,9 +66,8 @@ function CreditList({ items }: { items: Credit[] }) {
 }
 
 /**
- * The header the privacy page and the 404 share: the name, home, and a way
- * back. No section nav and no pause toggle, since neither page has sections
- * or motion. id="top" is where the footer's "Back to top" lands.
+ * Header for the static pages (privacy, 404, case studies): no section nav
+ * or pause toggle. id="top" is the footer's "Back to top" target.
  */
 export function LegalHeader() {
   return (

@@ -5,10 +5,7 @@ import { MotionPauseProvider } from "../../motion";
 export const REDUCED = "(prefers-reduced-motion: reduce)";
 export const FINE = "(pointer: fine) and (hover: hover)";
 
-/**
- * The app's own wrapper around the primitives: Motion's features loaded
- * once (strict, as in App.tsx) and the pause state.
- */
+/** Motion features loaded once (strict, as in App.tsx) plus the pause state. */
 export function Wrap({ children }: { children: ReactNode }) {
   return (
     <LazyMotion features={domMax} strict>
@@ -18,9 +15,8 @@ export function Wrap({ children }: { children: ReactNode }) {
 }
 
 /**
- * A matchMedia whose answers a test controls, and which tells subscribers
- * when they change, the way the browser does when a setting flips. The
- * setup file's stub answers "no" to everything and never fires.
+ * A test-controlled matchMedia that notifies subscribers on change. The setup
+ * file's stub matches nothing and never fires.
  */
 export function installMatchMedia(matching: string[] = []) {
   const original = window.matchMedia;
@@ -52,7 +48,7 @@ export function installMatchMedia(matching: string[] = []) {
   };
 }
 
-/** querySelector that fails the test, with the selector, when nothing matches. */
+/** querySelector that fails the test, naming the selector, when nothing matches. */
 export function find(root: ParentNode, selector: string): HTMLElement {
   const el = root.querySelector<HTMLElement>(selector);
   if (!el) throw new Error(`Nothing matches ${selector}`);

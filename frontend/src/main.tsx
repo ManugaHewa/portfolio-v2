@@ -6,8 +6,7 @@ import "./styles/index.css";
 
 const root = document.getElementById("root")!;
 
-// The project list the build prerendered with, written into the page beside
-// the HTML. Hydration has to start from exactly the same data.
+// The list the prerender used, embedded in the page, so hydration starts from the same data.
 function prerenderedProjects(): ProjectSummary[] | undefined {
   const data = document.getElementById("initial-projects")?.textContent;
   if (!data) return undefined;
@@ -24,13 +23,10 @@ const app = (
   </React.StrictMode>
 );
 
-// The bundle is running: switch off base.css's fail-safe, which shows every
-// [data-reveal] entrance after three seconds in case it never did. Before
-// hydrating, so the fail-safe cannot fire under Motion's own entrances.
+// JS is running: disable base.css's 3 s [data-reveal] fail-safe before hydrating.
 document.documentElement.classList.add("js");
 
-// Built pages arrive prerendered (scripts/prerender.mjs) and are hydrated in
-// place; the dev server serves an empty root, which is rendered from scratch.
+// Built pages are prerendered and hydrated; the dev server renders an empty root.
 if (root.hasChildNodes()) {
   ReactDOM.hydrateRoot(root, app);
 } else {

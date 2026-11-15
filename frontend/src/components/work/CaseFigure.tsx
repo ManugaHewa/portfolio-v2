@@ -6,25 +6,16 @@ import type { ProjectSummary } from "../../types";
 interface FigureContentsProps {
   project: ProjectSummary;
   shot: Screenshot | undefined;
-  /** In the dialog the image is wanted at once; in a card it can wait for the scroll. */
+  /** Load at once (the dialog); a card can wait for the scroll. */
   eager?: boolean;
-  /**
-   * Hold each piece at its own size while the figure around it is scaled
-   * during the morph, so the number and the line move with the figure
-   * instead of stretching with it.
-   */
+  /** Keep the pieces at their own size while the figure scales in the morph. */
   holdShape: boolean;
 }
 
 /**
- * What a case study's figure shows (redesign SPEC.md, section 5.3), at the
- * head of its dialog, where the deck's face-up card grows into it.
- *
- * A screenshot when there is one. Otherwise a plate drawn from the project's
- * own data: its number, large, as decoration (generated content on an empty
- * element, so it is not text and is not read twice), and its subtitle, which
- * says what the thing is. The outcome and the stack are left to the text
- * beside it, so the card says each of them once.
+ * A case study's figure at the head of its dialog (the face-up card grows
+ * into it): a screenshot, or else a plate with the project's number
+ * (decorative generated content) and its subtitle.
  */
 export function FigureContents({ project: p, shot, eager = false, holdShape }: FigureContentsProps) {
   const hold = holdShape ? "position" : undefined;

@@ -1,11 +1,7 @@
 /**
- * Screenshots for the case studies, by project slug. Empty until you supply
- * them; a case study without one shows a labelled slot instead.
- *
- * To add one: save it as frontend/public/work/<slug>/<slug>-1.webp (1600px
- * wide, under 200 kB), then add an entry here. The alt text says what the
- * screenshot shows, for someone who cannot see it; the caption says why it
- * is there.
+ * Case study screenshots by slug; without one, the figure shows a plate.
+ * Add frontend/public/work/<slug>/<slug>-1.webp (1600px wide, under 200 kB)
+ * and an entry: alt says what it shows, caption why it is there.
  *
  *   exercise: [
  *     {

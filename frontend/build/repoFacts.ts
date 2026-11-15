@@ -5,24 +5,17 @@ import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 
 /*
- * Facts about this repository, read at build time and served to the page
- * as virtual modules, so what the page shows about its own code is the code
- * itself, as it stood when the page was built:
- *
- * - virtual:code-peeks: the lines behind each step of the pipeline diagram,
- *   tokenised for highlighting.
- * - virtual:commit-log: how many commits landed on each day.
+ * Repo facts read at build time, as virtual modules:
+ * - virtual:code-peeks: source lines behind each pipeline step, tokenised.
+ * - virtual:commit-log: commits per day.
  */
 
-// From the module's own path rather than `new URL()`, which jsdom's URL
-// (in the tests) cannot resolve against a file: URL.
+// From the module path, not `new URL()`, which jsdom cannot resolve against file: URLs.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
- * The excerpt each pipeline step opens, keyed by the step's cited source.
- * `find` is a line the excerpt starts from (or `before` lines above it); a
- * build fails if it is no longer in the file, so the excerpt cannot drift
- * away from the code without someone noticing.
+ * Excerpt per pipeline step, keyed by cited source. It starts at the line
+ * containing `find` (or `before` lines above); the build fails if it is gone.
  */
 export const PEEKS: Array<{ file: string; find: string; before?: number; lines: number }> = [
   { file: "content/projects.ts", find: "export const PROJECTS", lines: 9 },
@@ -39,11 +32,7 @@ const KEYWORDS = new Set([
   "new", "type", "interface", "model", "true", "false", "null", "undefined", "set", "then", "catch",
 ]);
 
-/**
- * One line split into highlighted pieces: comments (// and #), strings,
- * numbers, keywords, and names called as functions. Small on purpose: it
- * only has to make an excerpt read like code, not parse it.
- */
+/** Splits a line into highlight tokens (comments, strings, numbers, keywords, calls). Deliberately simple. */
 export function tokenize(line: string): Array<[TokenKind, string]> {
   const out: Array<[TokenKind, string]> = [];
   const push = (kind: TokenKind, text: string) => {
@@ -85,7 +74,7 @@ export function tokenize(line: string): Array<[TokenKind, string]> {
   return out;
 }
 
-/** The excerpt for one peek: the first line's number and its tokenised lines, common indent removed. */
+/** One peek's excerpt: start line and tokenised lines, common indent removed. */
 export function excerpt(source: string, peek: (typeof PEEKS)[number]) {
   const all = source.split(/\r?\n/);
   const at = all.findIndex((l) => l.includes(peek.find));
@@ -96,7 +85,7 @@ export function excerpt(source: string, peek: (typeof PEEKS)[number]) {
   return { file: peek.file, start: start + 1, lines: lines.map((l) => tokenize(l.slice(indent))) };
 }
 
-/** Commits per day, from the dates the committer wrote (their own calendar day). */
+/** Commits per day, by the committer's own calendar date. */
 export function commitDays(): Array<[string, number]> {
   try {
     const out = execFileSync("git", ["log", "--format=%cI"], {

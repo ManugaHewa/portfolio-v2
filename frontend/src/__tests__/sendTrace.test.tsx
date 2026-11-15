@@ -3,8 +3,7 @@ import { describe, it, expect } from "vitest";
 import { LazyMotion, domMax } from "../motion/m";
 import { SendTrace, TRACE_STEPS } from "../components/SendTrace";
 
-// The app renders everything inside LazyMotion strict; so do these, so a
-// stray `motion.*` import would throw here as it would in the page.
+// Inside LazyMotion strict, as in the app, so a stray `motion.*` would throw.
 const renderTrace = (stage: number) =>
   render(
     <LazyMotion features={domMax} strict>
@@ -32,8 +31,7 @@ describe("SendTrace", () => {
   });
 
   it("keeps the drawn trace out of the accessibility tree", () => {
-    // The status line already says where the message is; the hop labels
-    // read aloud as well would say it twice.
+    // The status line speaks; reading the hop labels too would repeat it.
     const { container } = renderTrace(0);
     expect(container.querySelector(".send-trace-list")).toHaveAttribute("aria-hidden", "true");
   });

@@ -1,12 +1,12 @@
 import { useSyncExternalStore } from "react";
 
-/** This visit's GET /api/projects, as measured by the api client. */
+/** This visit's GET /api/projects timing, measured in api.ts. */
 export type ProjectsTiming = { ok: true; ms: number; count: number } | { ok: false };
 
 let current: ProjectsTiming | null = null;
 const listeners = new Set<() => void>();
 
-/** Called by api.ts once the request has answered or failed. */
+/** Set by api.ts when the request settles. */
 export function recordProjectsTiming(timing: ProjectsTiming): void {
   current = timing;
   for (const listener of listeners) listener();
@@ -17,11 +17,7 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 
-/**
- * The measurement, live. Null on the server and while hydrating (the
- * prerendered page cannot know how this visit's request went, so it shows a
- * placeholder), and until the request has finished.
- */
+/** The timing, live. Null on the server, while hydrating and until the request settles. */
 export function useProjectsTiming(): ProjectsTiming | null {
   return useSyncExternalStore(
     subscribe,
@@ -30,7 +26,7 @@ export function useProjectsTiming(): ProjectsTiming | null {
   );
 }
 
-/** For tests: forget the last measurement. */
+/** Test helper: forgets the last timing. */
 export function resetProjectsTiming(): void {
   current = null;
 }

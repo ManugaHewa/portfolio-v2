@@ -1,16 +1,8 @@
 /*
- * How it's built (redesign SPEC.md, section 5.5). Pipeline.tsx.
- *
- * Two layouts from one piece of markup, switched here and never in script:
- * - everywhere by default, a finished list: the nodes stacked down the left
- *   with a connector between each, the second route and the CI check as
- *   notes beside or under them;
- * - under the pin query (wide, tall enough, motion allowed), a stage that
- *   sticks under the header while its 200svh track scrolls past, with the
- *   nodes in five equal columns joined at mid-height by one rail, and the
- *   second route arching over them.
- * Pipeline.tsx only drives the pinned drawing; the prerendered HTML is laid
- * out correctly for every visitor before any script runs.
+ * Pipeline.tsx. Two layouts from one markup, switched in CSS: by default a
+ * finished list (nodes down the left, notes beside); under the pin query a
+ * sticky stage over a 200svh track, five columns joined by a rail, the
+ * second route arching above. Script only drives the pinned drawing.
  */
 
 .pipeline-inner {
@@ -18,8 +10,7 @@
   z-index: 1;
 }
 
-/* The stage hosts the corridor scene, so the tunnel is centred on what the
-   visitor is looking at rather than on the whole 200svh track. */
+/* The stage hosts the corridor scene, centring it on the view, not the whole track. */
 .pipeline-stage {
   position: relative;
 }
@@ -54,15 +45,13 @@
   border-color: var(--sky-line);
 }
 
-/* Not reached yet: the box is there, but dim. Only the pinned drawing ever
-   has unlit nodes. text-3 stays on the plain surface-1 ramp. */
+/* Not reached yet: dim (pinned drawing only). */
 .pl-node[data-on="false"] .pl-node-label,
 .pl-node[data-on="false"] .pl-node-text {
   color: var(--text-3);
 }
 
-/* Each node's citation: the file that makes it true. A path breaks after a
-   slash and nowhere else: each piece is kept whole, with a <wbr> between. */
+/* Each node's citation; paths break only after slashes. */
 .pl-cite {
   display: block;
   color: var(--text-3);
@@ -73,7 +62,7 @@
   white-space: nowrap;
 }
 
-/* The step counter beside the heading belongs to the pinned drawing only. */
+/* Step counter: pinned drawing only. */
 .pl-counter {
   display: none;
 }
@@ -89,8 +78,7 @@
   color: var(--text-2);
 }
 
-/* "content/projects.ts -> This page", only in the list layout, where there is
-   no drawn line to say where the second route runs. */
+/* "content/projects.ts -> This page": list layout only, where no line is drawn. */
 .pl-route-path {
   display: flex;
   flex-wrap: wrap;
@@ -100,7 +88,7 @@
   color: var(--sky);
 }
 
-/* A drawn arrow, so it is the same hairline as the connectors. */
+/* A drawn arrow, matching the connectors. */
 .pl-arrow {
   position: relative;
   display: inline-block;
@@ -140,8 +128,7 @@
   padding-left: var(--s4);
 }
 
-/* The connector between two nodes: a short sky hairline, indented to sit
-   under the labels' first letters. Only the list layout draws it. */
+/* Connector between nodes: a short sky hairline under the labels (list layout). */
 .pl-stem {
   display: block;
   width: 1px;
@@ -163,8 +150,7 @@
   order: 2;
 }
 
-/* The second route and the check, as inset notes: a sky hairline on the
-   left says they belong to the drawing without boxing them in. */
+/* Route and check as inset notes with a sky left hairline. */
 .pl-route-copy,
 .pl-ci {
   display: grid;
@@ -178,7 +164,7 @@
   border-left-color: var(--line-strong);
 }
 
-/* Wide enough for two columns: the list on the left, the notes beside it. */
+/* Two columns: list left, notes right. */
 @media (min-width: 900px) {
   .pl-diagram {
     grid-template-columns: minmax(0, 600px) minmax(0, 460px);
@@ -225,10 +211,7 @@
     padding-block: var(--s6);
   }
 
-  /* The head as an instrument panel: the title and intro on the left, the
-     step the drawing has reached on the right, on the intro's baseline. The
-     title steps down a size here so the diagram, not the heading, is what
-     fills the stage. */
+  /* Head as an instrument panel: title and intro left, step counter right on the baseline. Title a size down. */
   .pipeline .section-head {
     grid-template-columns: minmax(0, 1fr) auto;
     column-gap: var(--s8);
@@ -260,8 +243,7 @@
     white-space: nowrap;
   }
 
-  /* Ember: the count is the drawing's progress, the one thing in the head
-     that is doing something. */
+  /* Ember: the progress count. */
   .pl-counter-step {
     color: var(--ember);
   }
@@ -271,12 +253,9 @@
   }
 
   /*
-   * The geometry. Five equal columns, --g apart. --col is one column's
-   * width and --c1 half of it: the distance from the diagram's edge to the
-   * centre of the first (and last) column, where the second route starts
-   * and ends. Percentages resolve against the diagram's width at the point
-   * of use. The route is drawn in the --band above the row: its line runs
-   * at --line-y, its copy sits above the line and the CI check below it.
+   * Geometry: five columns --g apart; --col is a column, --c1 half of one
+   * (where the route starts and ends). The route runs at --line-y in --band
+   * above the row, copy above it, CI check below.
    */
   .pl-diagram {
     --g: 32px;
@@ -320,7 +299,7 @@
     fill: var(--sky);
   }
 
-  /* The copy rides on the line, just past the first bend. */
+  /* Route copy rides the line past the first bend. */
   .pl-route-copy {
     position: absolute;
     left: calc(var(--c1) + var(--s6));
@@ -399,8 +378,7 @@
     display: none;
   }
 
-  /* The ports where the rail meets each box: in on the left edge, out on the
-     right, at mid-height. They light with their node. */
+  /* Ports where the rail meets each box, lit with the node. */
   .pl-node:not(.is-first)::before,
   .pl-node:not(.is-last)::after {
     content: "";
@@ -430,10 +408,10 @@
     background: var(--sky);
   }
 
-  /* One rail from the first box's right edge to the last box's left edge,
-     behind the boxes, so it shows only in the gaps: a connector from each
-     box to the next. Percentage margins on a grid item resolve against its
-     grid area, which spans the full row. */
+  /*
+   * One rail behind the boxes, from the first's right edge to the last's
+   * left, visible only in the gaps.
+   */
   .pl-rail {
     position: relative;
     z-index: 0;
@@ -446,7 +424,7 @@
     background: var(--line-strong);
   }
 
-  /* The filled part: sky only, scaled from the left. */
+  /* The fill: sky, scaled from the left. */
   .pl-rail-fill {
     position: absolute;
     inset: 0;
@@ -456,10 +434,10 @@
     transform-origin: left center;
   }
 
-  /* A full-width track whose right end is the token: moving the track by
-     (fill - 1) x 100% of its own width keeps the token on the fill's front
-     edge with nothing but a transform. The boxes sit above the rail, so the
-     token passes behind each one it reaches. */
+  /*
+   * A full-width track whose right end is the token: translating it by
+   * (fill - 1) x 100% keeps the token on the fill's edge. It passes behind boxes.
+   */
   .pl-token-track {
     position: absolute;
     inset: 0;
@@ -467,7 +445,7 @@
     display: block;
   }
 
-  /* The one warm element in the drawing. */
+  /* The one warm element. */
   .pl-token {
     position: absolute;
     right: 0;
@@ -489,7 +467,7 @@
   }
 }
 
-/* A wider gap, and descriptions at body size, once there is room. */
+/* Wider gap and body-size text when there is room. */
 @media (min-width: 1280px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
   .pl-diagram {
     --g: 48px;
@@ -502,12 +480,8 @@
 
 /* --------------------------------------------------------- live readout */
 
-/* Real numbers about the system above (LiveReadout.tsx): gauges in the
-   site's readout style, a numeral over its label, under a hairline that
-   continues the diagram's. */
-/* The readout and the commit history share one row under the diagram
-   (Pipeline.tsx, .pipeline-panel): the measured numbers on the left, the
-   repository's history on the right; stacked below 1100px. */
+/* Live readout (LiveReadout.tsx): numeral-over-label gauges under a hairline. */
+/* Readout and commit history share a row below the diagram; stacked below 1100px. */
 .pipeline-panel {
   position: relative;
   z-index: 1;
@@ -577,8 +551,7 @@
 
 /* ------------------------------------------------------------ code peek */
 
-/* The nodes are buttons (they open their code): the box keeps its look,
-   with the button's own defaults taken off. */
+/* Nodes are buttons: keep the box look, drop button defaults. */
 button.pl-node {
   width: 100%;
   font: inherit;
@@ -596,8 +569,7 @@ button.pl-node.is-open .pl-node-label {
   color: var(--sky);
 }
 
-/* The excerpt (CodePeek.tsx). In the list layout it opens in place, under
-   its node. */
+/* The excerpt (CodePeek.tsx); in the list layout it opens under its node. */
 .pl-peek {
   margin-top: var(--s3);
 }
@@ -671,8 +643,7 @@ button.pl-node.is-open .pl-node-label {
   color: var(--sky);
 }
 
-/* On the pinned layout it opens above the row of nodes, over the space the
-   route arcs through, centred on its node and kept inside the row. */
+/* Pinned: it opens above the row, centred on its node, inside the row. */
 @media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
   .pl-peek {
     position: absolute;
@@ -742,7 +713,7 @@ button.pl-node.is-open .pl-node-label {
   background: var(--ember);
 }
 
-/* Waiting below the fold to fill in: the reset is instant. */
+/* Waiting below the fold: instant reset. */
 .commit-grid.is-armed .commit-cell {
   opacity: 0;
   transform: scale(0.4);
@@ -754,8 +725,7 @@ button.pl-node.is-open .pl-node-label {
   color: var(--text-2);
 }
 
-/* The history's title takes the same hairline as the readout beside it, so
-   the two read as one instrument row. */
+/* History title shares the readout's hairline. */
 .commit-strip > .live-readout-title {
   margin-bottom: var(--s5);
   padding-bottom: var(--s4);

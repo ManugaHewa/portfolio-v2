@@ -1,7 +1,4 @@
-/*
- * The privacy page and the 404: one reading column in the site's type and
- * colours, with no scenes and no motion.
- */
+/* Static pages (privacy, 404, case studies): one reading column, no scenes or motion. */
 
 .legal {
   max-width: calc(72ch + 2 * var(--gutter));
@@ -63,10 +60,7 @@
 
 /* ------------------------------------------------------- case study pages */
 
-/* The title is where the card from the deck, the dialog's figure or the
-   link lands when the page is arrived at from the home page
-   (lib/caseTransition.ts; the transition itself is in base.css, and only
-   runs where motion is welcome). */
+/* Arriving from home, the card, figure or link morphs into this title (lib/caseTransition.ts; transition in base.css). */
 .case-page-title {
   view-transition-name: case-page-title;
 }
@@ -78,9 +72,7 @@
   }
 }
 
-/* A project's own page (CaseStudyPage.tsx): the same reading column, with
-   the facts as a row of mono labels over values, lists marked by the scale's
-   hairline tick, and the neighbouring projects at the foot. */
+/* A project page (CaseStudyPage.tsx): facts row, hairline-ticked lists, neighbour links. */
 .case-page-index {
   display: flex;
   align-items: center;
@@ -194,19 +186,18 @@
   font-weight: 500;
 }
 
-/* The header these pages share has no script to tell it the page has
-   scrolled, so it starts as opaque as the home page's becomes. */
+/* No script tracks scrolling here, so the header starts opaque. */
 .site-header.legal-header {
   background: rgba(8, 9, 11, 0.96);
 }
 
 /* --------------------------------------------------------- the lost card */
 
-/* The 404's card (NotFoundPage.tsx): the deck's engraved back (cards.css),
-   leaning on the page and drifting a little, as if dropped. Pointing at it
-   or focusing it turns it over to its face: not in this deck. CSS alone, as
-   this page loads no script; under reduced motion it neither drifts nor
-   turns, it just shows its face. */
+/*
+ * The 404's lost card (NotFoundPage.tsx): the deck's back, leaning and
+ * drifting; hover or focus turns it over. CSS only; under reduced motion it
+ * shows its face, still.
+ */
 .lost-card {
   --card-w: 180px;
   position: relative;
@@ -309,7 +300,7 @@
   }
 }
 
-/* No turn to watch: the face is simply up. */
+/* No turn: face up. */
 @media (prefers-reduced-motion: reduce) {
   .lost-card-inner {
     transform: rotateY(180deg);

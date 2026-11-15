@@ -2,21 +2,13 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 
 /*
- * `vite preview` serves the built site, and proxies /api to the Express API
- * on :4000 (vite.config.ts, server.proxy). That API needs Postgres, so a
- * preview on a machine without the backend running showed the prerendered
- * page fine but failed every case study ("couldn't load").
- *
- * This middleware, for the preview server only, checks whether the API is
- * up. If it is, the request goes on to the proxy as before. If it is not, the
- * read-only project routes are answered from content/projects.ts, the same
- * source the API is seeded from (a CI test checks the two agree), and a
- * contact message gets an honest 503: nothing pretends a message was sent.
+ * `vite preview` only: when the API on :4000 is down, answer the read-only
+ * project routes from content/projects.ts, and contact posts with 503.
+ * When it is up, requests go to the proxy as usual.
  */
 
 const API = "http://localhost:4000";
-// Fields the API sends as lists; absent in the content they come back empty,
-// the way Prisma returns them.
+// List fields; missing ones come back [] as Prisma returns them.
 const LISTS = [
   "scope",
   "stakeholders",
@@ -37,7 +29,7 @@ interface Content {
 
 let apiUp: { at: number; up: boolean } | null = null;
 
-/** Whether the API answers, remembered for a few seconds. */
+/** Whether the API answers, cached for 5 s. */
 async function apiAnswers(): Promise<boolean> {
   if (apiUp && Date.now() - apiUp.at < 5000) return apiUp.up;
   let up = false;

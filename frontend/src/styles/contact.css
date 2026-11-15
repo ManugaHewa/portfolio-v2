@@ -1,28 +1,21 @@
 /*
- * Contact (redesign SPEC.md, section 5.7): the direct routes on the left with
- * no panel, the form on an opaque panel on the right, the signal scene in the
- * lower half of the section behind both. Form chrome after Origin UI / coss
- * (research-ui.json 9-11), redrawn in the site's tokens.
+ * Contact: direct routes on the left, the form on an opaque panel on the
+ * right, the signal scene behind. Form chrome adapted from Origin UI / coss.
  */
 
-/* A block more room under the columns than other sections get, so the
-   signal scene has somewhere to show below the form rather than only
-   behind it. */
+/* Extra room below, so the signal scene shows under the form. */
 .contact {
   padding-bottom: calc(var(--section-pad) + var(--block-gap) * 0.5);
 }
 
-/* The last heading on the page, set a size up from the others: a closing
-   line rather than one more section label. */
+/* The last heading, a size up: a closing line. */
 .contact .section-title {
   font-size: clamp(2.75rem, 1.2rem + 6.2vw, 6.5rem);
   line-height: 0.94;
   letter-spacing: -0.035em;
 }
 
-/* The reply-time readout under the intro: a calibration tick, then the
-   reading. Static on purpose; a pulsing "online" dot would be a claim the
-   page cannot keep. */
+/* Reply-time readout: a tick, then the reading. Static; a pulsing dot would overclaim. */
 .contact-reply {
   display: inline-flex;
   align-items: center;
@@ -51,8 +44,7 @@
     column-gap: var(--s6);
   }
 
-  /* No top padding: the routes' first hairline sits level with the panel's
-     top edge. */
+  /* No top padding: the first hairline aligns with the panel top. */
   .contact-direct {
     grid-column: 1 / span 5;
   }
@@ -84,8 +76,7 @@
   min-width: 0;
 }
 
-/* All three routes in one face: mono, sky, underlined, the address as
-   written (sentence case is for labels, never for an address). */
+/* Routes in mono sky, underlined, addresses as written. */
 .contact-profile,
 .copy-email-address {
   font-family: var(--font-mono);
@@ -103,7 +94,7 @@
   gap: var(--s3);
 }
 
-/* An arrow out, drawn in CSS: the corner of a box plus its diagonal. */
+/* Outbound arrow in CSS: a box corner plus its diagonal. */
 .contact-profile-arrow {
   position: relative;
   flex: none;
@@ -140,9 +131,7 @@
   gap: var(--s3) var(--s4);
 }
 
-/* Copy is a quiet text button beside the address: no box, text-2 with a
-   dotted underline, so it reads as an action that belongs to the link
-   without competing with it. It still has a 32px target. */
+/* Copy: a quiet text button (text-2, dotted underline) with a 32px target. */
 .copy-email-btn {
   display: inline-flex;
   align-items: center;
@@ -169,8 +158,7 @@
   display: inline-flex;
 }
 
-/* Wider than the word "Copy" needs, so "Copied" fits without the button
-   (and the address beside it) changing size. */
+/* Wide enough for "Copied", so nothing shifts. */
 .copy-email-label {
   min-width: 6ch;
   text-align: left;
@@ -202,8 +190,7 @@
 
 /* ---------------------------------------------------------------- panel */
 
-/* Opaque on purpose: the signal scene runs behind the lower half of the
-   section, and nothing should move under text being typed. */
+/* Opaque, so the scene never moves under typed text. */
 .contact-panel {
   width: 100%;
   max-width: 620px;
@@ -277,7 +264,7 @@
   border-radius: var(--r-md);
   background: var(--surface-2);
   color: var(--text);
-  /* 16px or more, or iOS Safari zooms the page on focus. */
+  /* At least 16px, or iOS Safari zooms on focus. */
   font-size: 1rem;
   line-height: 1.5;
   appearance: none;
@@ -291,13 +278,11 @@
   padding-block: var(--s3);
   line-height: 1.55;
   resize: vertical;
-  /* Six rows, for browsers without the lh unit or field-sizing. */
+  /* Six rows without lh or field-sizing support. */
   min-height: 10.75rem;
 }
 
-/* Grows with what is typed, from six lines to sixteen, then scrolls. Pure
-   CSS where supported, so there is no measuring script and nothing to
-   disagree with the prerendered HTML. */
+/* Grows from six to sixteen lines, then scrolls. CSS only. */
 @supports (field-sizing: content) {
   .contact-form textarea {
     field-sizing: content;
@@ -319,8 +304,7 @@
   border-color: var(--text-3);
 }
 
-/* Focus is the site's one ring (base.css); the border follows it in sky so
-   the field itself reads as active, not just its outline. */
+/* The site's focus ring, plus a sky border. */
 .contact-form input:focus-visible,
 .contact-form textarea:focus-visible {
   border-color: var(--sky);
@@ -337,9 +321,10 @@
   cursor: not-allowed;
 }
 
-/* Chrome paints autofilled fields pale yellow-blue, which on this ink reads
-   as a bug. A long background transition means its paint never arrives; the
-   inset fill (surface-3, a step up) keeps autofilled fields recognisable. */
+/*
+ * Hides Chrome's autofill tint (a long background transition); the inset
+ * surface-3 fill keeps autofilled fields recognisable.
+ */
 .contact-form input:-webkit-autofill,
 .contact-form input:-webkit-autofill:hover,
 .contact-form input:-webkit-autofill:focus {
@@ -376,9 +361,7 @@
   color: var(--ember-hover);
 }
 
-/* The honeypot: moved off screen rather than display:none, because some form
-   bots skip fields that are not rendered at all. aria-hidden and
-   tabindex="-1" in the markup keep people from ever meeting it. */
+/* Honeypot: off screen, not display:none (some bots skip unrendered fields). */
 .hp-field {
   position: absolute;
   left: -10000px;
@@ -411,10 +394,10 @@
   opacity: 0;
 }
 
-/* The stake (ChipStack.tsx): a short stack of chips, seen from the side,
-   pushed out beside the button while the message is out. Ember chips with
-   ivory spots on their edges and a sky one among them; the one the server's
-   yes drops on top is sky. */
+/*
+ * The stake (ChipStack.tsx): a side view of ember chips with ivory edge spots
+ * and one sky chip; the chip added on success is sky.
+ */
 .chip-stack {
   position: absolute;
   top: 50%;
@@ -457,8 +440,7 @@
   opacity: 0.85;
 }
 
-/* Sending is still the ember button, not a greyed-out one: the state is in
-   the label and the trace below, and the button stays focusable. */
+/* Sending keeps the ember button and focus; the label and trace show the state. */
 .contact-submit[aria-disabled="true"] {
   opacity: 1;
   cursor: progress;
@@ -468,8 +450,7 @@
   cursor: default;
 }
 
-/* The label's box: its width is sprung by Motion between label lengths, and
-   it clips the letters as they roll in from below and out at the top. */
+/* Label box: Motion springs its width, and it clips the rolling letters. */
 .submit-label {
   position: relative;
   display: inline-block;
@@ -540,8 +521,7 @@
     box-shadow var(--dur-2) var(--ease-out);
 }
 
-/* Sky for the hops already made; ember for the one in flight, the same
-   travelling token the pipeline diagram uses. */
+/* Sky for done hops, ember for the one in flight (the pipeline's token). */
 .trace-step.is-done .trace-dot {
   background: var(--sky);
 }
@@ -569,8 +549,7 @@
   transform-origin: left center;
 }
 
-/* Too narrow for four hops in a row (they need about 510px in Martian
-   Mono): the trace runs down instead. */
+/* Too narrow for four hops in a row (about 510px): stack them. */
 @container (max-width: 509px) {
   .send-trace-list {
     flex-direction: column;
@@ -596,8 +575,7 @@
 
 /* --------------------------------------------------------------- success */
 
-/* Keeps roughly the form's footprint, so the panel does not collapse to a
-   line and pull the section up under the reader. */
+/* Keeps about the form's height, so the section doesn't collapse. */
 .contact-success {
   display: grid;
   justify-items: start;
@@ -625,8 +603,7 @@
   letter-spacing: -0.02em;
 }
 
-/* Focus moves here after a send (the button that had it is gone). It is a
-   heading, not a control, so it takes focus without drawing the ring. */
+/* Focus lands here after a send; a heading, so no ring. */
 .contact-success-title:focus {
   outline: none;
 }
@@ -636,7 +613,7 @@
   margin-bottom: var(--s3);
 }
 
-/* The server's own answer to the send, as it came back. */
+/* The server's answer, as received. */
 .contact-success-code {
   margin-top: calc(-1 * var(--s2));
   margin-bottom: var(--s3);

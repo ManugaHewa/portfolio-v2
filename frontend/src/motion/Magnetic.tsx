@@ -6,27 +6,22 @@ import { clamp } from "./internal";
 import { cx } from "../lib/cx";
 
 export interface MagneticProps {
-  /** Share of the cursor's offset the child follows. */
+  /** Share of the cursor offset the child follows. */
   strength?: number;
-  /** Pixels, at most. */
+  /** Max offset, px. */
   maxOffset?: number;
   className?: string;
   children: ReactNode;
 }
 
-// Quick and slightly lively, but settled well inside a quarter second.
+// Quick, slightly lively, settled within a quarter second.
 const PULL = { stiffness: 320, damping: 22, mass: 0.5 };
 
 /**
- * Draws its child a few pixels toward the cursor (the primary button, on fine
- * pointers, while motion is allowed).
- *
- * The outer span is the hit area and never moves; it reaches 12px past the
- * child on every side (motion.css) so the pull starts just before the cursor
- * arrives. Only the inner span is transformed, and by at most maxOffset, so
- * the target stays under a cursor aimed at its edge. The child is a real link
- * or button and works the same without any of this. Keyboard focus gets the
- * normal focus ring and no movement.
+ * Pulls its child a few px toward the cursor (fine pointers, motion
+ * allowed). The outer span is the hit area, 12px larger (motion.css), and
+ * never moves; only the inner span shifts, by at most maxOffset, so the
+ * target stays under the cursor. Keyboard focus gets no movement.
  */
 export function Magnetic({ strength = 0.25, maxOffset = 6, className, children }: MagneticProps) {
   const allowed = useMotionAllowed();

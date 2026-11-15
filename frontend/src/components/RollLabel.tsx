@@ -1,9 +1,7 @@
 /**
- * A button's or link's label that rolls up on hover and keyboard focus to
- * reveal the same words rolling in from below (base.css, .roll), the same
- * movement as the header's nav links. The copy is generated content with
- * empty alt text, so the control is still named once. Still under reduced
- * motion.
+ * A label that rolls up on hover and focus, revealing a copy from below
+ * (base.css .roll), like the nav links. The copy has empty alt text. Still
+ * under reduced motion.
  */
 export function RollLabel({ children }: { children: string }) {
   return (

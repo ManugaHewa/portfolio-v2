@@ -3,14 +3,9 @@ import { LegalHeader } from "./PrivacyPage";
 import { CardBack } from "./deck/PlayingCard";
 
 /**
- * Rendered once at build time into dist/404.html, which Nginx serves with a
- * real 404 status. Static HTML with no script: there is nothing to hydrate.
- * It borrows the privacy page's stylesheet (scripts/prerender.mjs), which
- * covers the header, the footer, this column and the card's back.
- *
- * A lost card from the deck lies on the page, back up. Pointing at it or
- * tabbing to it turns it over (CSS alone, legal.css): it is not one of the
- * thirteen. It is a link back to the deck.
+ * Prerendered to dist/404.html (Nginx serves it with a 404 status). Static,
+ * no script; uses the privacy page's stylesheet. A lost card lies back up;
+ * hover or focus turns it over (legal.css). It links back to the deck.
  */
 export function NotFoundPage() {
   return (

@@ -1,24 +1,13 @@
 /*
- * The hero, the work index that rises over it, and the tech band (redesign
- * SPEC.md, sections 5.2 and 5.4).
- *
- * Every layout decision here is CSS, under media queries alone, so the
- * prerendered HTML is laid out right for every visitor before a script runs:
- * - below 1100px: one stack (copy, the wheel, the work index);
- * - from 1100px: the stage in two columns, copy on the left (columns 1-7)
- *   and the wheel on the right (8-12);
- * - under the pin query (the same string as PIN_QUERY in motion/hooks.ts):
- *   the stage sticks under the header and the work index, in the same
- *   twelve columns, rises over the copy while the wheel stays beside it.
- *   The pin lasts exactly as long as the work index is tall.
- * Hero.tsx only adds the scroll-linked hand-off (the copy's drift and fade,
- * the wheel's scale, its flight to the header) on top of the pinned layout.
+ * The hero, the rising work index and the tech band. Layout is CSS only,
+ * so the prerender is right: one stack below 1100px; two columns (copy 1-7,
+ * wheel 8-12) above; under PIN_QUERY the stage sticks and the work index
+ * rises over the copy. Hero.tsx adds only the scroll-linked hand-off.
  */
 
 /* ------------------------------------------------------------ the hero */
 
-/* clip, not hidden: hidden would make #top a scroll container and the
-   sticky stage would stop sticking to the page. */
+/* clip, not hidden: hidden would make #top a scroll container and break sticky. */
 .hero {
   position: relative;
   overflow: clip;
@@ -38,17 +27,14 @@
   padding-block: var(--s8) var(--s6);
 }
 
-/* The copy column is the container the name is sized against (13cqi), so
-   the name fills the column it is given rather than the window. */
+/* The copy column is the size container for the name (13cqi). */
 .hero-copy {
   grid-column: 1 / -1;
   min-width: 0;
   container-type: inline-size;
 }
 
-/* A keyboard user's focus in the copy holds it at full strength whatever
-   the hand-off has done to it (Hero.tsx scrolls it back into view as
-   well). !important to beat Motion's inline opacity. */
+/* Keyboard focus keeps the copy opaque. !important beats Motion's inline opacity. */
 .hero-copy.is-focused {
   opacity: 1 !important;
 }
@@ -59,10 +45,8 @@
 }
 
 /*
- * The name. Flex rather than inline flow so the last word can take a line
- * of its own ("Manuga Hewa" / "Pathirana") at every width the first two
- * words fit on one; on a narrow phone they wrap as they need to. The spaces
- * stay in the DOM as text, so the name still reads and copies as one line.
+ * The name. Flex, so the last word can take its own line; spaces stay as
+ * text, so it reads and copies as one line.
  */
 .hero-name {
   display: flex;
@@ -87,9 +71,7 @@
   color: var(--text-2);
 }
 
-/* The rotating word has a line of its own, a step larger and in full
-   white, with the sky underline on the word itself (the slot is as wide as
-   the longest item, so an underline on the slot would overhang). */
+/* The rotating word: its own line, larger, white, underlined on the word (not the wider slot). */
 .hero-lede .text-loop {
   display: block;
   margin-top: var(--s1);
@@ -141,8 +123,7 @@
   min-width: 0;
 }
 
-/* A square with no frame and no border: the wheel stands on the page
-   itself. The scene host inside it is absolute, inset 0 (scenes.css). */
+/* A frameless square; the scene host fills it (scenes.css). */
 .hero-wheel-stage {
   position: relative;
   width: min(100%, 420px);
@@ -150,8 +131,7 @@
   transform-origin: 50% 50%;
 }
 
-/* The still: what the hero shows under reduced motion, on weak devices,
-   without WebGL, and until the live scene has drawn its first frame. */
+/* The still: shown under reduced motion, on weak devices, without WebGL, and until the first frame. */
 .hero-still {
   position: absolute;
   inset: 0;
@@ -166,10 +146,9 @@
 /* ------------------------------------------------------ the spin plate */
 
 /*
- * Spin, on the wheel's front rim (SpinPlaque.tsx): a plate centred on the
- * stage's bottom edge, half over the rim, on a surface of its own so the
- * wheel never runs under its words. Its width is fixed and the button sits
- * at its right end, so nothing in it or round it moves as its words change.
+ * Spin plate (SpinPlaque.tsx): centred on the stage's bottom edge, over the
+ * rim, on its own surface. Fixed width, button at the right, so nothing
+ * shifts as the words change.
  */
 .spin-plaque {
   position: absolute;
@@ -208,8 +187,7 @@
   letter-spacing: 0.02em;
 }
 
-/* The number as the wheel prints it: on its pocket's colour, ember for red,
-   the near-black for black, sky for the zero. */
+/* The number on its pocket colour: ember red, near-black, sky zero. */
 .spin-pocket {
   flex: none;
   display: grid;
@@ -241,8 +219,7 @@
   color: var(--on-ember);
 }
 
-/* Where it landed: the project's name over a note of where it is dealt,
-   the name cut short with an ellipsis on a narrow plate. */
+/* Result: project name over the note, name ellipsised when narrow. */
 .spin-landed {
   display: grid;
   min-width: 0;
@@ -288,8 +265,7 @@
   cursor: progress;
 }
 
-/* The ball, in ivory. While the wheel answers it runs round a small track
-   of its own. */
+/* The ivory ball; orbits while waiting for the wheel. */
 .spin-ball {
   width: 9px;
   height: 9px;
@@ -303,7 +279,7 @@
   }
 }
 
-/* "Pause motion" mid-throw: the wheel holds its frame, and so does this. */
+/* "Pause motion" mid-throw freezes it too. */
 .spin-plaque.is-paused .spin-ball {
   animation-play-state: paused;
 }
@@ -317,10 +293,10 @@
   }
 }
 
-/* The wheel in flight to the header (Hero.tsx): fixed, above the work index
-   and the header, placed and sized from script on each scroll change. It
-   leaves seen at the live wheel's angle (--tilt, its height over its width)
-   and turns to face the page on the way. */
+/*
+ * The wheel in flight (Hero.tsx): fixed, above everything, placed by script.
+ * Starts at the live wheel's angle (--tilt) and turns face on.
+ */
 .wheel-flight {
   position: fixed;
   top: 0;
@@ -361,8 +337,7 @@
   margin-bottom: var(--s6);
 }
 
-/* Three gauges under the heading, each a numeral over its label, read
-   left to right like an instrument panel. */
+/* Three readings under the heading, numeral over label. */
 .work-index-readout {
   display: flex;
   flex-wrap: wrap;
@@ -387,8 +362,7 @@
   font-size: 0.75rem;
 }
 
-/* On a phone the three share the row in equal columns and the labels wrap
-   under their numerals, rather than one gauge dropping to a line alone. */
+/* Phones: equal columns, labels wrap. */
 @media (max-width: 719.98px) {
   .work-index-readout {
     display: grid;
@@ -426,8 +400,7 @@
     grid-column: 8 / span 5;
   }
 
-  /* As large as the column allows, up to 560px, and never taller than the
-     stage leaves room for. */
+  /* As large as the column allows, up to 560px, never taller than the stage. */
   .hero-wheel-stage {
     width: min(100%, 560px, calc(100svh - var(--header-h) - 2 * var(--s8)));
   }
@@ -440,9 +413,9 @@
 
 /* ------------------------------------------------------------- the pin */
 
-/* PIN_QUERY (motion/hooks.ts). Keep the two strings identical. */
+/* PIN_QUERY (motion/hooks.ts). Keep identical. */
 @media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
-  /* Pinned just under the sticky header, one visible screen tall. */
+  /* Pinned under the header, one screen tall. */
   .hero-stage {
     position: sticky;
     top: var(--header-h);
@@ -455,12 +428,9 @@
   }
 
   /*
-   * The sheet that rises: one visible screen tall at least, on the page's own
-   * background so the copy it passes over goes under it. The fill reaches
-   * left to the window's edge (the hero clips it), so it reads as a sheet
-   * sliding up the page rather than a box. The hairline on its top edge
-   * stays in the grid, from the first column to the seventh, with a short
-   * tick where the sheet ends beside the wheel.
+   * The rising sheet: at least a screen tall, on the page background so the
+   * copy passes under it. The fill runs to the window edge; the top hairline
+   * spans columns 1-7 with a tick at the end.
    */
   .work-index-sheet {
     position: relative;
@@ -495,10 +465,8 @@
 /* ------------------------------------------------------------ tech band */
 
 /*
- * Full-bleed: the moving row runs edge to edge, faded at both ends
- * (motion.css), with its pause toggle in the right-hand gutter. Paused,
- * under reduced motion or without JavaScript, it is a static list that
- * wraps, set smaller and inside the page's column.
+ * Full-bleed moving row, faded at the ends, pause toggle in the right
+ * gutter. Paused, reduced or without JS: a smaller static wrapping list.
  */
 .tech-band {
   position: relative;

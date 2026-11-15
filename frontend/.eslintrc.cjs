@@ -1,7 +1,4 @@
-/* ESLint 8 flat-config is opt-in; this project stays on the .eslintrc format
-   the installed version reads by default. CI runs `npm run lint` in both
-   workspaces, so this file is what makes that step meaningful rather than a
-   command that exits 2 because it found no configuration. */
+/* ESLint 8 reads .eslintrc by default; CI's `npm run lint` needs this config. */
 module.exports = {
   root: true,
   env: { browser: true, es2022: true },
@@ -15,8 +12,7 @@ module.exports = {
   ],
   ignorePatterns: ["dist", "node_modules", "*.cjs"],
   rules: {
-    // A few refs and lookups legitimately need non-null assertions after
-    // their own guards; flag them as warnings, not errors.
+    // Some guarded lookups need non-null assertions: warn, don't fail.
     "@typescript-eslint/no-non-null-assertion": "warn",
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
   },

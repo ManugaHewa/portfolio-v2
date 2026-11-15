@@ -18,11 +18,7 @@ import {
 } from "../../motion";
 import { Wrap, find } from "./helpers";
 
-/*
- * The page is prerendered, so what the server writes is what crawlers, link
- * previews and visitors without JavaScript read, and React's hydration
- * expects the browser's first render to match it exactly.
- */
+/* Server output is what crawlers and no-JS visitors read, and hydration must match it exactly. */
 
 const BUILDS = ["web apps", "mobile apps", "APIs", "machine-learning tools"];
 const SR = "web apps, mobile apps, APIs and machine-learning tools.";
@@ -45,8 +41,7 @@ describe("server output carries the finished text", () => {
     expect(h2.textContent).toBe("How the projects reach this page");
     const words = h2.querySelectorAll(".split-mask > .split-word[data-reveal]");
     expect(words).toHaveLength(6);
-    // Hidden below the mask until in view; data-reveal is what un-hides it
-    // without JavaScript and under reduced motion.
+    // Hidden below the mask until in view; data-reveal un-hides it without JS and under reduced motion.
     expect((words[0] as HTMLElement).style.transform).toContain("translateY(120%)");
   });
 
@@ -88,7 +83,7 @@ describe("server output carries the finished text", () => {
     expect(find(dom, ".text-loop-word").textContent).toBe("web apps");
     expect(find(dom, ".visually-hidden").textContent).toBe(SR);
     expect(find(dom, ".text-loop-stage").getAttribute("aria-hidden")).toBe("true");
-    // The width-holding ghosts carry their words in attributes, not text.
+    // Width-holding ghosts carry words in attributes, not text.
     expect(dom.textContent).toBe("web apps" + SR);
   });
 

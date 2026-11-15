@@ -17,7 +17,7 @@ const label = (day: string) => {
 };
 
 export interface CommitGrid {
-  /** One entry per day from the Sunday before the first commit to the last commit's day. */
+  /** One entry per day, from the Sunday before the first commit to the last commit. */
   cells: Array<{ day: string; count: number; level: 0 | 1 | 2 | 3 | 4; week: number; weekday: number }>;
   weeks: number;
   total: number;
@@ -27,10 +27,9 @@ export interface CommitGrid {
 }
 
 /**
- * The calendar grid from commits per day: a column per week, a row per
- * weekday, and each day's shade one of four steps of the busiest day.
- * Pure, from the build-time log, so the server and the browser draw the
- * same grid.
+ * Calendar grid of commits per day: a column per week, a row per weekday,
+ * shaded in four steps of the busiest day. Pure, from the build-time log,
+ * so server and browser match.
  */
 export function commitGrid(days: ReadonlyArray<readonly [string, number]>): CommitGrid | null {
   if (days.length === 0) return null;
@@ -60,14 +59,10 @@ export function commitGrid(days: ReadonlyArray<readonly [string, number]>): Comm
 const GRID = commitGrid(COMMIT_DAYS);
 
 /**
- * This repository's history as a heatmap, under the pipeline: every
- * commit that went into the page you are reading, by day, from git at
- * build time (frontend/build/repoFacts.ts). The numbers in the caption are
- * counted from the same log.
- *
- * The prerendered grid is complete. With motion allowed it fills in a week
- * at a time each time it is scrolled down to (useReplayInView); otherwise it
- * is simply there. One image to assistive technology, named by the caption.
+ * This repository's commits as a heatmap under the pipeline, from git at
+ * build time (frontend/build/repoFacts.ts). Prerendered complete; with
+ * motion allowed it fills in week by week on each scroll down. One image
+ * to assistive tech, named by the caption.
  */
 export function CommitStrip({ grid = GRID }: { grid?: CommitGrid | null }) {
   const ref = useRef<HTMLDivElement>(null);

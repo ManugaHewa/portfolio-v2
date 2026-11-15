@@ -21,8 +21,7 @@ function Harness() {
 
 const click = (el: Element, init: MouseEventInit = {}) => {
   const e = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ...init });
-  // The browser would navigate; a test page must not. On the window, which
-  // hears the click after the document's listener has had it.
+  // Stop the navigation on window, after the document listener has run.
   window.addEventListener("click", (ev) => ev.preventDefault(), { once: true });
   el.dispatchEvent(e);
   return e;

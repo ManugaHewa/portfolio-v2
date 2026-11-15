@@ -9,7 +9,7 @@ import { signalSend } from "../lib/sendSignal";
 import { Turnstile, TURNSTILE_SITE_KEY } from "./Turnstile";
 import { RETENTION, SITE } from "../site";
 
-// The reason phrases for the answers the contact route gives.
+// Reason phrases for the contact route's status codes.
 const STATUS_TEXT: Record<number, string> = {
   200: "OK",
   201: "Created",
@@ -22,14 +22,11 @@ const STATUS_TEXT: Record<number, string> = {
 
 type Status = "idle" | "sending" | "sent" | "error";
 
-// Mirrors the Zod schema the API enforces in backend/src/routes/contact.ts.
-// Checking here too is not duplication for its own sake: it turns a 400 that
-// costs a round trip into an inline message the moment the field is left.
+// Mirrors the API's Zod schema (backend/src/routes/contact.ts), for inline errors without a round trip.
 export const LIMITS = { name: 120, message: 2000, messageMin: 10 };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// The counter speaks only when the message crosses one of these, never per
-// keystroke: a live region that changes on every key talks over the typing.
+// The counter is announced only when crossing these, never per keystroke.
 const COUNT_THRESHOLDS = [200, 50] as const;
 
 interface Fields {
@@ -59,7 +56,7 @@ function validate(values: Fields): Partial<Record<keyof Fields, string>> {
   return errors;
 }
 
-/** Which threshold bucket a remaining count sits in: "over", 50, 200, or none. */
+/** Threshold bucket for a remaining count: "over", 50, 200, or null. */
 export function countBucket(remaining: number): "over" | 50 | 200 | null {
   if (remaining < 0) return "over";
   for (const t of [...COUNT_THRESHOLDS].reverse()) if (remaining <= t) return t;
@@ -100,14 +97,10 @@ const letters = (text: string) =>
   ));
 
 /**
- * The submit button's label: the old word rolls up and out letter by letter,
- * the new one rolls in from below, and the label's width springs between the
- * two lengths so the button never jumps. The width is read from an invisible
- * copy set the same way (letter by letter), because a whole word is kerned
- * and can measure narrower than its letters laid side by side.
- *
- * The state is not announced from here: SendTrace's status region already
- * says what is happening, and two live regions would talk over each other.
+ * Submit label: the old word rolls out letter by letter, the new one rolls
+ * in, and the width springs between them. Width comes from a hidden copy
+ * set letter by letter (a kerned word measures narrower). Not announced
+ * here; SendTrace's status region speaks.
  */
 function SubmitLabel({ label }: { label: string }) {
   const animate = useMotionAllowed();
@@ -146,41 +139,35 @@ function SubmitLabel({ label }: { label: string }) {
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
-  // The HTTP status the server answered the last send with, shown as is.
+  // HTTP status of the last send.
   const [httpCode, setHttpCode] = useState<number | null>(null);
   const [values, setValues] = useState<Fields>(EMPTY);
-  // Errors surface once a field has been left or a submit has been attempted,
-  // rather than shouting at someone who has only just started typing.
+  // Errors show once a field is left or a submit is tried.
   const [touched, setTouched] = useState<Partial<Record<keyof Fields, boolean>>>({});
   const [submitted, setSubmitted] = useState(false);
-  // Which hop of the send trace is in flight. -1 when idle.
+  // Send trace hop in flight; -1 when idle.
   const [stage, setStage] = useState(-1);
-  // True from the moment the API answers until the success panel replaces
-  // the form, so the button can say "Sent" while the trace finishes.
+  // From the API's answer until the success view, so the button says "Sent".
   const [delivered, setDelivered] = useState(false);
-  // The honeypot's value. Kept out of `values` because it is not a field
-  // anyone is meant to fill in, validate, or see.
+  // Honeypot value, kept out of `values`.
   const [website, setWebsite] = useState("");
-  // When the form appeared. The API drops anything sent within a few seconds
-  // of that, which no person typing a message manages.
+  // The API drops sends made within seconds of this.
   const shownAt = useRef(Date.now());
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  // Bumped to remount the widget, because each token is good for one send.
+  // Bumped to remount the widget: one token per send.
   const [turnstileRound, setTurnstileRound] = useState(0);
   const [turnstileMissing, setTurnstileMissing] = useState(false);
-  // The counter's announcement, set only when a threshold is crossed.
+  // Counter announcement, set on threshold crossings.
   const [countNote, setCountNote] = useState("");
   const lastBucket = useRef<ReturnType<typeof countBucket>>(null);
 
   const motionAllowed = useMotionAllowed();
   const nameRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  // The form's height when it was sent. The success view keeps it as a
-  // minimum, so swapping views does not pull the page up under the reader.
+  // Form height at send; the success view keeps it as a minimum so the page doesn't jump.
   const [sentHeight, setSentHeight] = useState<number | null>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
-  // Where focus goes when the view swaps: the success heading after a send
-  // (the button that had focus is gone), the name field on "Send another".
+  // Focus target after a view swap: success heading, or the name field on "Send another".
   const focusNext = useRef<"success" | "name" | null>(null);
 
   const errors = validate(values);
@@ -193,8 +180,7 @@ export function ContactForm() {
   useEffect(() => {
     const bucket = countBucket(remaining);
     if (bucket !== lastBucket.current) {
-      // Said on the way down (200 left, 50 left, over), silent on the way
-      // back up so deleting text does not trigger a commentary.
+      // Announced on the way down only, not while deleting.
       const worse =
         bucket !== null &&
         (lastBucket.current === null ||
@@ -219,13 +205,11 @@ export function ContactForm() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // The button stays focusable while sending (aria-disabled rather than
-    // disabled, so a keyboard user's focus is not dropped to the page), so a
-    // second press is ignored here instead.
+    // aria-disabled keeps focus while sending, so repeat presses are ignored here.
     if (sending) return;
     setSubmitted(true);
     if (Object.keys(errors).length > 0) {
-      // The first field in error takes focus, which says where to look.
+      // Focus the first invalid field.
       const first = (["name", "email", "message"] as const).find((f) => errors[f]);
       if (first) document.getElementById(first)?.focus();
       return;
@@ -240,18 +224,15 @@ export function ContactForm() {
     setHttpCode(null);
     // The contact scene launches its packet (lib/sendSignal.ts).
     signalSend({ kind: "launch" });
-    // Validation has genuinely already passed at this point, so the first
-    // step is shown as complete rather than pending.
+    // Validation has passed, so the first step shows as done.
     setStage(0);
     try {
-      // The trace advances to the network hop on the next frame, so the
-      // first segment is visibly drawn even on a fast local response. Only
-      // from step 0: if the answer (or a failure) lands before that frame,
-      // the trace has already moved on and must not step back to 1.
+      // Advance to the network hop next frame, so the first segment draws
+      // even on a fast answer; only from 0, never stepping back.
       requestAnimationFrame(() => setStage((s) => (s === 0 ? 1 : s)));
       const token = turnstileToken;
       if (TURNSTILE_SITE_KEY) {
-        // Spent by this send either way, so ask the widget for a new one now.
+        // This send spends the token; get a new one now.
         setTurnstileToken(null);
         setTurnstileRound((round) => round + 1);
       }
@@ -261,8 +242,7 @@ export function ContactForm() {
         elapsedMs: Date.now() - shownAt.current,
         ...(token ? { turnstileToken: token } : {}),
       });
-      // The server answered, which means it parsed and persisted. Walk the
-      // last two hops at a readable pace before switching to the success view.
+      // Answered means parsed and stored; walk the last two hops before the success view.
       const code = answer.httpStatus ?? null;
       setHttpCode(code);
       signalSend({ kind: "land", ok: true, code });
@@ -346,8 +326,7 @@ export function ContactForm() {
         <h3 className="subsection-title" id="contact-form-title">
           Send a message
         </h3>
-        {/* The endpoint the form posts to, set as a label like every other
-            file and route name on the page. */}
+        {/* The endpoint, labelled like other routes on the page. */}
         <Scramble text="POST /api/contact" trigger="inView" className="mono contact-endpoint" />
       </div>
 
@@ -431,9 +410,7 @@ export function ContactForm() {
         </span>
       </div>
 
-      {/* The honeypot. Off screen, out of the tab order and hidden from
-          assistive tech, so nobody using the form ever meets it; the API
-          quietly drops anything that arrives with it filled in. */}
+      {/* Honeypot: off screen, untabbable, hidden from assistive tech; the API drops filled ones. */}
       <div className="hp-field" aria-hidden="true">
         <label htmlFor="website">Leave this field empty</label>
         <input
@@ -467,7 +444,7 @@ export function ContactForm() {
             <SubmitLabel label={label} />
           </button>
         </Magnetic>
-        {/* The note steps aside for the stake while the message is out. */}
+        {/* The note hides behind the chips while sending. */}
         <span className="contact-actions-side">
           <span className={`contact-actions-note small${sending ? " is-covered" : ""}`}>
             Validated with Zod. No third-party form service.
@@ -486,8 +463,7 @@ export function ContactForm() {
         </p>
       )}
 
-      {/* What happens to the message, said where the decision to send is
-          made. No checkbox: there is nothing optional to consent to. */}
+      {/* Data use, stated at the point of sending; nothing optional, so no checkbox. */}
       <p className="contact-privacy-note small">
         I use your name, email and message only to reply to you, and delete them after{" "}
         {RETENTION.label}. <a href="/privacy">How your message is handled</a>.

@@ -1,7 +1,6 @@
 /**
- * The motion primitives (redesign SPEC.md, section 7). Every one is safe to
- * prerender: the server's output equals the browser's first render, and the
- * finished text is in the HTML. Import Motion itself from ./m.
+ * Motion primitives, all prerender-safe: server output equals the first
+ * client render, with the finished text in the HTML. Import Motion from ./m.
  */
 export * from "./hooks";
 export { morphId } from "./morph";

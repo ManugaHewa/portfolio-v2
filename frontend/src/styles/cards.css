@@ -1,8 +1,6 @@
 /*
- * The playing card's shared parts (components/deck/PlayingCard.tsx): the
- * box both faces share and the engraved back. The home page's deck
- * (deck.css) and the 404's lost card (legal.css) both draw them, so this
- * file is in both stylesheets (index.css, privacy-main.tsx).
+ * Shared playing card parts (deck/PlayingCard.tsx): the face box and the
+ * back. Used by the deck (deck.css) and the 404's lost card (legal.css).
  */
 
 .pcard-face,
@@ -19,8 +17,7 @@
 
 /* ---------------------------------------------------------------- back */
 
-/* Engraved: a fine two-way hatch in the two accents at a whisper, the
-   wheel's rosette round the monogram, a printed double frame. */
+/* Engraved: a faint two-way hatch, the wheel rosette round the monogram, a double frame. */
 .pcard-back {
   background:
     repeating-linear-gradient(45deg, rgba(106, 185, 231, 0.06) 0 1px, transparent 1px 7px),
@@ -63,7 +60,7 @@
   opacity: 0.35;
 }
 
-/* Over the rosette's own circle rule. */
+/* Over the rosette's circle. */
 .pcard-back-wheel .pcard-back-core {
   fill: var(--surface-2);
   stroke: var(--line-strong);
@@ -71,7 +68,7 @@
   opacity: 1;
 }
 
-/* The monogram, on the core at the middle of the rosette. */
+/* The monogram, at the rosette's centre. */
 .pcard-back::after {
   content: "MH";
   position: absolute;

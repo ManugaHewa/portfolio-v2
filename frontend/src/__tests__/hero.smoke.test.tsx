@@ -25,8 +25,7 @@ afterEach(() => {
 
 describe("Hero", () => {
   it("makes the name the page's one h1", () => {
-    // What people type to find this page. The h1 used to be the tagline,
-    // which did not contain the name at all.
+    // The h1 is the name, which people search for.
     renderHero();
     const headings = screen.getAllByRole("heading", { level: 1 });
     expect(headings).toHaveLength(1);
@@ -57,8 +56,7 @@ describe("Hero", () => {
     expect(lede.querySelector(".visually-hidden")).toHaveTextContent(
       "web apps, mobile apps, APIs and machine-learning tools.",
     );
-    // What a screen reader hears for the line: the visible lead-in, then the
-    // hidden sentence, with nothing from the rotating word in between.
+    // Screen readers hear the lead-in and the hidden sentence, nothing from the rotating word.
     const heard = Array.from(lede.childNodes)
       .map((n) => (n instanceof Element ? n.querySelector(".visually-hidden")?.textContent : n.textContent))
       .join("")
@@ -68,8 +66,7 @@ describe("Hero", () => {
   });
 
   it("claims self-hosting for this site only", () => {
-    // The Superhero API ran on AWS, and RxFlow runs on phones: the line
-    // under the loop names the languages, then scopes the server to the site.
+    // The second line scopes self-hosting to this site.
     const { container } = renderHero();
     expect(container.querySelector(".hero-lede-2")).toHaveTextContent(
       "Mostly in TypeScript, React, Node.js and Python. I host this site on my own server.",
@@ -77,8 +74,7 @@ describe("Hero", () => {
   });
 
   it("prerenders the copy at rest, with the place label's final text", () => {
-    // Nothing in the hero waits on JavaScript to be readable: no opacity 0
-    // and no offset in the server's HTML.
+    // Nothing in the hero's server HTML is hidden or offset.
     const html = renderToString(
       <Wrap>
         <Hero projects={projects} onOpen={() => {}} />
@@ -94,8 +90,7 @@ describe("Hero", () => {
     const { container } = renderHero();
     const wheel = container.querySelector(".hero-wheel")!;
     expect(wheel.querySelector(".hero-still")).toHaveAttribute("aria-hidden", "true");
-    // The plate is in the prerendered page, where the wheel is, and is the
-    // one thing in the column a screen reader meets.
+    // The plate is prerendered, and is the column's only thing a screen reader meets.
     expect(wheel.querySelector(".spin-plaque")).toHaveTextContent("Place your bets");
     expect(screen.getByRole("button", { name: "Spin the wheel" })).toBeInTheDocument();
   });
@@ -108,8 +103,7 @@ describe("Hero", () => {
       const { container } = renderHero();
       const copy = container.querySelector<HTMLElement>(".hero-copy")!;
       const link = screen.getByRole("link", { name: "Get in touch" });
-      // jsdom has no layout, so the hand-off's progress stays at 0: focus
-      // there must not move the page, but must still hold the copy visible.
+      // jsdom keeps the hand-off at 0: focus must not move the page, but must hold the copy visible.
       act(() => link.focus());
       expect(copy).toHaveClass("is-focused");
       expect(scrollTo).not.toHaveBeenCalled();

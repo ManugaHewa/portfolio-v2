@@ -655,7 +655,7 @@ export interface ProjectSummaryContent {
   category: string | null;
   status: string | null;
   tier: number;
-  /** Shown beside each case study, so it travels with the list. */
+  /** Shown with each case study, so it comes with the list. */
   problem: string | null;
   outcomes: string[];
   links: ProjectLinkContent[];

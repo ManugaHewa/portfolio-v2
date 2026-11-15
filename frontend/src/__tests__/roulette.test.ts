@@ -15,7 +15,7 @@ import {
 } from "../lib/roulette";
 import type { Ball, BallPhase } from "../lib/roulette";
 
-/** A repeatable source of chance (an LCG), so each run is the same run. */
+/** A seeded LCG, so every run is the same. */
 function seeded(seed: number) {
   let s = seed >>> 0;
   return () => {
@@ -24,7 +24,7 @@ function seeded(seed: number) {
   };
 }
 
-/** Plays the wheel at 60 frames a second, the head turning at `speed`. */
+/** Plays the wheel at 60 fps, the head turning at `speed`. */
 function play(seconds: number, seed: number, speed = 0.5) {
   const random = seeded(seed);
   const frames: Array<{ ball: Ball; x: number; y: number; z: number; scale: number }> = [];
@@ -117,7 +117,7 @@ describe("a spin asked for", () => {
   const ASK = 7;
   const TOP = 13;
 
-  /** Plays the wheel with a spin asked for `askAt` seconds in. */
+  /** Plays the wheel with a spin called `askAt` seconds in. */
   function playAsked(seconds: number, seed: number, askAt: number, speed = 0.5) {
     const random = seeded(seed);
     const frames: Array<{ t: number; ball: Ball; x: number; y: number; z: number; scale: number }> = [];
@@ -155,7 +155,7 @@ describe("a spin asked for", () => {
         expect(answer).toBeDefined();
         if (!answer) continue;
         expect(WHEEL[answer.ball.pocket]).toBeLessThanOrEqual(TOP);
-        // Picked up, thrown softly, and in its pocket within six seconds.
+        // Picked up, thrown softly, in its pocket within six seconds.
         expect(answer.t - askAt).toBeLessThan(6.5);
       }
     }

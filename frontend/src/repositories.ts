@@ -1,13 +1,4 @@
-/**
- * Smaller public repositories that are not projects in their own right. They
- * share the Other work list with the projects that did not earn a case study:
- * two kinds of row at one visual weight, since a second heading for two links
- * was more structure than the content justified.
- *
- * Two entries left when the project list took them over: portfolio-v2 is a
- * project of its own now, and AI-Product-Recommendation is the repository
- * behind ShopSense. Listing either twice would read as padding.
- */
+/** Smaller public repositories that are not projects, listed under "Also on GitHub". */
 export interface Repository {
   name: string;
   note: string;
@@ -28,6 +19,5 @@ export const ALSO_ON_GITHUB: Repository[] = [
     year: 2024,
     url: "https://github.com/ManugaHewa/Calculators",
   },
-  // Newest first. Sorted here rather than trusted to the order above, so
-  // adding an entry in the wrong place cannot quietly break the sequence.
+  // Newest first, whatever the order above.
 ].sort((a, b) => b.year - a.year);

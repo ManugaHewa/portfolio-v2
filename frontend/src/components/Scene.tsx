@@ -9,9 +9,9 @@ import type { Scene3DProps } from "./Scene3D";
 
 export type { SceneVariant };
 
-/** What a scene renders when its chunk could not be fetched: nothing. */
+/** Rendered when the scene chunk fails to load: nothing. */
 function SceneUnavailable({ onLive }: Scene3DProps) {
-  // The hero keeps (or brings back) its still.
+  // The hero keeps (or restores) its still.
   useEffect(() => {
     onLive?.(false);
   }, [onLive]);
@@ -19,12 +19,8 @@ function SceneUnavailable({ onLive }: Scene3DProps) {
 }
 
 /**
- * Loads the scene module, failing soft. There is no error boundary on the
- * page, so a rejected lazy import would take the whole root down with it, and
- * a section scene's chunk is fetched only when its section comes near, which
- * can be long after load: a tab left open across a deploy asks for a hashed
- * file the deploy has since deleted. A failed fetch leaves the CSS layer and
- * the hero's still where they are instead.
+ * Loads the scene module, failing soft: there is no error boundary, and a
+ * tab open across a deploy can ask for a chunk that no longer exists.
  */
 export function failSoft(
   load: () => Promise<{ default: ComponentType<Scene3DProps> }>
@@ -32,34 +28,22 @@ export function failSoft(
   return load().catch(() => ({ default: SceneUnavailable }));
 }
 
-/**
- * One lazy import for the whole site, declared here instead of separately in
- * each section that wants a backdrop. It is one chunk either way, but this
- * way it is also one place that decides whether to load it at all.
- */
+/** The one lazy import for every scene, so one place decides whether to load it. */
 const Scene3D = lazy(() => failSoft(() => import("./Scene3D")));
 
 export interface SceneProps {
   variant: SceneVariant;
-  /** Placement classes from styles/scenes.css: scene-layer or scene-sticky, plus scene-<variant>. */
+  /** Placement classes from styles/scenes.css. */
   className?: string;
-  /** True once the first frame is drawn; false when the scene goes away or its context is lost. */
+  /** true after the first frame; false when the scene goes or its context is lost. */
   onLive?: (live: boolean) => void;
 }
 
 /**
- * A WebGL backdrop, when the device and the visitor's settings allow one
- * (useSceneEnabled).
- *
- * The host element is rendered here, before Three has loaded, so it can be
- * watched: a section scene is only built once its host comes within half a
- * viewport of the screen, and is torn down again when it leaves that zone.
- * That also keeps the Three chunk off the wire until the first scene is
- * actually wanted. The hero's wheel and the starfield are on screen from
- * the start and mount straight away.
- *
- * The header's "Pause motion" toggle reaches the scene as a prop, which stops
- * its render loop on the frame it is showing without rebuilding anything.
+ * A WebGL backdrop, when allowed (useSceneEnabled). The host renders before
+ * Three loads, so section scenes are built only within half a viewport and
+ * torn down after; the Three chunk loads when first needed. "Pause motion"
+ * stops the loop without rebuilding.
  */
 export function Scene({ variant, className, onLive }: SceneProps) {
   const enabled = useSceneEnabled(variant);
@@ -88,8 +72,7 @@ export function Scene({ variant, className, onLive }: SceneProps) {
     return () => io.disconnect();
   }, [enabled, approach]);
 
-  // Nothing on the server or during hydration (useSceneEnabled is false
-  // until then), so the prerendered HTML carries no empty scene boxes.
+  // Nothing on the server or while hydrating, so the HTML has no empty boxes.
   if (!enabled) return null;
 
   return (

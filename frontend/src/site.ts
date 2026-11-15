@@ -1,8 +1,4 @@
-/**
- * Facts about the person behind the site, in one place. The email address
- * used to be typed out in three components, and the privacy page and footer
- * would have made five; a change of address should be one edit.
- */
+/** Facts about the site's owner, in one place. */
 export const SITE = {
   name: "Manuga Hewa Pathirana",
   origin: "https://manugahewa.dev",
@@ -13,8 +9,7 @@ export const SITE = {
 } as const;
 
 /**
- * How long contact messages are kept. The privacy page and the line under the
- * form both quote it, and `npm run contact:prune` enforces the same number
- * (CONTACT_RETENTION_DAYS, default 365), so change them together.
+ * Contact message retention, quoted by the privacy page and the form. Keep
+ * in step with `npm run contact:prune` (CONTACT_RETENTION_DAYS, default 365).
  */
 export const RETENTION = { months: 12, label: "12 months" } as const;

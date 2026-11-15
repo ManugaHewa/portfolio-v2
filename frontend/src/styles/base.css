@@ -1,8 +1,6 @@
 /*
- * Shared foundations: the reset, the type every page uses, links, the one
- * focus ring, layout helpers and the classes more than one section relies on
- * (buttons, mono labels, readouts, section headings). Section-specific rules
- * live in their own files; nothing here knows about a particular section.
+ * Shared foundations: reset, type, links, focus ring, helpers, and classes
+ * several sections use. Section rules live in their own files.
  */
 
 *,
@@ -12,27 +10,22 @@
 }
 
 html {
-  /* The scrollbar's space is always reserved, so locking scroll for the
-     dialog (overflow: hidden on html, lib/scrollLock.ts) does not shift the
-     page sideways when the scrollbar disappears. */
+  /* Reserve the scrollbar, so the dialog's scroll lock (lib/scrollLock.ts) doesn't shift the page. */
   scrollbar-gutter: stable;
-  /* The page's own scrollbar: a hairline thumb on the ink, not the system's
-     grey trough cutting down the right edge. */
+  /* A hairline scrollbar thumb on the page ink. */
   scrollbar-color: var(--line-strong) var(--bg);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
 
-/* Selected text in the action colour, at a strength the text stays legible
-   on. */
+/* Selection in the action colour, still legible. */
 ::selection {
   background: rgba(233, 142, 73, 0.32);
   color: var(--text);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  /* In-page jumps (nav, rail, work index rows) glide rather than cut. Left
-     off under reduced motion, where a jump should be a jump. */
+  /* Smooth in-page jumps, except under reduced motion. */
   html {
     scroll-behavior: smooth;
   }
@@ -51,13 +44,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  /* A safety net against one wide element giving the whole page a sideways
-     scroll. clip, not hidden: hidden would make body a scroll container and
-     break every position: sticky on the page. */
+  /*
+   * Stops wide elements causing sideways scroll. clip, not hidden: hidden
+   * would make body a scroll container and break position: sticky.
+   */
   overflow-x: clip;
 }
 
-/* Content sits above the page-wide starfield, which is fixed behind it. */
+/* Content sits above the fixed starfield. */
 #main,
 .site-footer {
   position: relative;
@@ -115,16 +109,17 @@ button {
   cursor: pointer;
 }
 
-/* Every in-page target leaves room for the sticky header above it. */
+/* Room for the sticky header above in-page targets. */
 [id] {
   scroll-margin-top: 80px;
 }
 
 /* ---------------------------------------------------------------- links */
 
-/* Links are sky and always underlined: colour alone is not enough to tell a
-   link from text. Navigation-style links (header, rail, rows) opt out in
-   their own rules, where position and context say what they are. */
+/*
+ * Links are sky and underlined (colour alone is not enough). Nav-style
+ * links opt out in their own rules.
+ */
 a {
   color: var(--sky);
   text-decoration: underline;
@@ -139,7 +134,7 @@ a:hover {
 
 /* ---------------------------------------------------------------- focus */
 
-/* One focus language everywhere, form controls included. */
+/* One focus ring everywhere, form controls included. */
 :focus-visible {
   outline: 2px solid var(--sky);
   outline-offset: 3px;
@@ -191,10 +186,8 @@ a:hover {
 }
 
 /*
- * Sections clip what spills out of them (scenes, transforms) with
- * overflow: clip, never hidden or auto. Those two create a scroll container,
- * and a scroll container stops position: sticky inside it from sticking to
- * the page. Anything else holding sticky children takes .overflow-clip.
+ * Sections clip overflow with overflow: clip, never hidden or auto, which
+ * create scroll containers and stop position: sticky.
  */
 .section {
   position: relative;
@@ -254,7 +247,7 @@ a:hover {
   line-height: 1.5;
 }
 
-/* Labels, file names and endpoint names. Sentence case, never uppercase. */
+/* Labels, file and endpoint names. Sentence case. */
 .mono {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -263,7 +256,7 @@ a:hover {
   letter-spacing: 0.02em;
 }
 
-/* A line of instrument readings: mono, quiet, numerals in sky. */
+/* Instrument readings: mono, quiet, sky numerals. */
 .readout {
   font-family: var(--font-mono);
   font-size: var(--fs-label);
@@ -286,9 +279,10 @@ a:hover {
 
 /* ------------------------------------------------------------ buttons */
 
-/* The label roll (RollLabel.tsx): the words slide up out of a one-line
-   window and the same words follow them in from below. A sliver of padding
-   keeps descenders inside the window. */
+/*
+ * Label roll (RollLabel.tsx): words slide up out of a one-line window as a
+ * copy follows from below. Padding keeps descenders inside.
+ */
 .roll {
   display: inline-block;
   overflow: hidden;
@@ -353,8 +347,7 @@ a:hover {
   opacity: 0.6;
 }
 
-/* The one ember button: the thing to press. Its ring is one of only two
-   shadows on the site. */
+/* The one ember button. Its ring is one of two shadows on the site. */
 .btn-primary {
   background: var(--ember);
   border-color: var(--ember);
@@ -382,11 +375,8 @@ a:hover {
 /* ------------------------------------------------------ reveal fallback */
 
 /*
- * Entrances that start hidden in the prerendered HTML carry data-reveal.
- * Under reduced motion they show in place; the <noscript> block in
- * index.html does the same without JavaScript. Nothing else is targeted:
- * the old attribute-sniffing selectors un-hid things that were meant to be
- * hidden.
+ * Entrances hidden in the prerendered HTML carry data-reveal: shown in place
+ * under reduced motion, and by index.html's <noscript> block without JS.
  */
 @media (prefers-reduced-motion: reduce) {
   [data-reveal] {
@@ -396,20 +386,14 @@ a:hover {
 }
 
 /*
- * And if JavaScript is on but the bundle never runs (a chunk that fails to
- * load, a browser too old for it), the same finished state after three
- * seconds. An animation rather than a rule, because an animation outranks
- * Motion's inline style without !important and needs no script to start.
- * main.tsx puts .js on <html> before it hydrates, which turns this off and
- * leaves the entrances to Motion.
+ * Fail-safe if the bundle never runs: show them after 3 s. An animation, so
+ * it beats Motion's inline style without !important. main.tsx adds .js to
+ * <html> to turn it off.
  */
 /*
- * Page transitions between the home page and /privacy: cross-document View
- * Transitions, CSS only, so the privacy page still loads no script for it.
- * The page being left lifts away and dims while the next one is uncovered
- * from the bottom up; the header carries its own name, so it holds still
- * across the change. Browsers without support simply navigate, and under
- * reduced motion there is no transition at all.
+ * Cross-document view transitions between pages, CSS only: the old page
+ * lifts and dims, the new one is uncovered; the header holds still. None
+ * under reduced motion.
  */
 @media (prefers-reduced-motion: no-preference) {
   @view-transition {
@@ -458,9 +442,10 @@ html:not(.js) [data-reveal] {
 
 /* ---------------------------------------------------------------- suits */
 
-/* A project's suit (deck/PlayingCard.tsx): an ember diamond for a case
-   study, a sky ring for the other work. Here rather than in deck.css because
-   the case study pages, on the privacy stylesheet, show it too. */
+/*
+ * Project suits (deck/PlayingCard.tsx): ember diamond for case studies, sky
+ * ring for other work. Here because the case study pages show them too.
+ */
 .pcard-suit {
   display: inline-block;
   flex: none;

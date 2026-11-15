@@ -1,11 +1,5 @@
-// Checks the built pages load only the code they need. Run by CI after
-// `npm run build`; not part of the build itself, so a failure here turns CI
-// red without stopping a deploy.
-//
-// The privacy page renders no animation, but twice now a bundler change has
-// put React into the animation chunk and made every page download it: first
-// React's JSX runtime under Rollup's manualChunks, then all of React under
-// Rolldown's dependency-capturing groups (see vite.config.ts).
+// CI check (not part of the build): each built page loads only the code it
+// needs; the privacy page gets no animation or WebGL code.
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,7 +9,7 @@ const DIST = resolve(dirname(fileURLToPath(import.meta.url)), "../dist");
 const assets = (page) =>
   [...readFileSync(resolve(DIST, page), "utf8").matchAll(/(?:src|href)="\/assets\/([^"]+)"/g)].map((m) => m[1]);
 
-// What each chunk imports, so a chunk pulled in indirectly is caught too.
+// Chunk imports, so indirect loads are caught too.
 const imports = (file) =>
   [...readFileSync(resolve(DIST, "assets", file), "utf8").matchAll(/from"\.\/([^"]+\.js)"/g)].map((m) => m[1]);
 
@@ -31,10 +25,7 @@ function reachable(page) {
   return [...seen];
 }
 
-// Fingerprints of the two libraries, for a library that lands in a chunk the
-// names below do not expect (a bundler change could fold framer-motion into
-// the page's own chunk, and the name check alone would pass). Each string is
-// in that library's code and in nothing else this site ships.
+// Library fingerprints, in case a library lands in an unexpectedly named chunk.
 const FRAMER_MOTION = "framerAppearId";
 const THREE = "WebGLRenderer";
 const contains = (file, text) => readFileSync(resolve(DIST, "assets", file), "utf8").includes(text);

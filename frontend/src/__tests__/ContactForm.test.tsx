@@ -28,7 +28,7 @@ describe("ContactForm", () => {
     expect(await screen.findByText(/tell me who you are/i)).toBeInTheDocument();
     expect(screen.getByText(/address to reply to/i)).toBeInTheDocument();
     expect(screen.getByText(/at least 10 characters/i)).toBeInTheDocument();
-    // The invalid submit must not cost a round trip to the API.
+    // An invalid submit makes no API call.
     expect(sendMock).not.toHaveBeenCalled();
   });
 
@@ -42,9 +42,7 @@ describe("ContactForm", () => {
   });
 
   it("shows the success state after a successful send", async () => {
-    // Regression guard: the old version read e.currentTarget after awaiting,
-    // which React has already nulled. That threw inside the try block and
-    // flipped a genuinely successful send to the error state.
+    // Regression: reading e.currentTarget after await threw and turned a success into an error.
     sendMock.mockResolvedValue({ status: "received" });
     render(<ContactForm />);
     fillValid();
@@ -62,8 +60,7 @@ describe("ContactForm", () => {
   });
 
   it("sends the empty honeypot and how long the form was open", async () => {
-    // The API refuses a send without the timing field and silently drops one
-    // that arrives too fast or with the honeypot filled, so both always travel.
+    // The API needs the timing and honeypot fields on every send.
     sendMock.mockResolvedValue({ status: "received" });
     render(<ContactForm />);
     fillValid();
@@ -85,7 +82,7 @@ describe("ContactForm", () => {
     expect(trap).not.toBeNull();
     expect(trap).toHaveAttribute("tabindex", "-1");
     expect(trap?.closest('[aria-hidden="true"]')).not.toBeNull();
-    // And it is not one of the labelled fields a person fills in.
+    // And it is not a labelled field.
     expect(screen.queryByRole("textbox", { name: /leave this field empty/i })).not.toBeInTheDocument();
   });
 
@@ -97,7 +94,7 @@ describe("ContactForm", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /send another message/i }));
 
-    // Fields come back empty rather than holding the message already sent.
+    // Fields are cleared after a send.
     expect(await screen.findByLabelText(/^name$/i)).toHaveValue("");
     expect(screen.getByLabelText(/^message$/i)).toHaveValue("");
   });
@@ -142,14 +139,14 @@ describe("ContactForm", () => {
     expect(note()).toBe("");
     fill(/^message$/i, "a".repeat(1800));
     expect(note()).toBe("200 characters left");
-    // Typing on inside the same bucket stays quiet.
+    // Typing within a bucket stays quiet.
     fill(/^message$/i, "a".repeat(1810));
     expect(note()).toBe("200 characters left");
     fill(/^message$/i, "a".repeat(1960));
     expect(note()).toBe("40 characters left");
     fill(/^message$/i, "a".repeat(2003));
     expect(note()).toBe("3 characters over the limit");
-    // Deleting back under the limit is not narrated.
+    // Deleting back under the limit is silent.
     fill(/^message$/i, "a".repeat(1500));
     expect(note()).toBe("");
   });
@@ -195,7 +192,7 @@ describe("ContactForm", () => {
     const stack = container.querySelector(".chip-stack") as HTMLElement;
     expect(stack).toHaveAttribute("aria-hidden", "true");
     expect(stack.querySelectorAll(".chip-band")).toHaveLength(5);
-    // The note beside the button steps aside for it.
+    // The note beside the button gives way.
     expect(container.querySelector(".contact-actions-note")).toHaveClass("is-covered");
 
     await act(async () => resolve({ status: "received" }));
@@ -218,8 +215,7 @@ describe("ContactForm", () => {
   });
 
   it("never steps the trace back when the answer beats the next frame", async () => {
-    // Hold every frame, so the server's answer lands before the frame that
-    // was meant to move the trace from validate to the network hop.
+    // Hold frames, so the answer lands before the trace's first step to the network hop.
     const frames: FrameRequestCallback[] = [];
     const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
       frames.push(cb);

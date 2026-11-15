@@ -50,20 +50,14 @@ import {
 import type { PocketInk } from "../lib/roulette";
 import { answerSpin, readSpin } from "../lib/spin";
 
-/*
- * The wheel's inks. The page's two accents stand in for the felt's red and
- * green: ember for the red numbers, sky for the zero, the near-black ink for
- * the black ones, and steel for the metalwork.
- */
+/* Inks: ember stands in for red, sky for the zero's green; steel for metal. */
 const INK: Record<PocketInk, string> = { red: "#e98e49", black: "#16181c", zero: "#6ab9e7" };
 const POCKET_INK: Record<PocketInk, string> = { red: "#5a3418", black: "#0c0d0f", zero: "#24485c" };
 const NUMERAL = "#f6f4ef";
 const STEEL = "#c4c9cf";
 const IVORY = "#f6f3ec";
 
-// The bowl and the head, one colour per point of their cross-sections
-// (lib/roulette.ts): darker where a surface faces away, lighter on the rims
-// and on the ball track, so the eye reads the shape without a texture.
+// One colour per profile point (lib/roulette.ts): lighter rims and track give shape without a texture.
 const BOWL_INKS = [
   "#0b0c0e",
   "#17191c",
@@ -91,25 +85,15 @@ const HEAD_INKS = [
   "#2e3135",
 ];
 
-/** Height of the camera above the wheel's plane, in degrees. */
+/** Camera elevation above the wheel's plane, degrees. */
 const ELEVATION = 64;
 
 /**
- * Hero: a roulette wheel. The bowl stands still, with its ball track and
- * eight diamonds; the wheel head turns in it, its numbers in wheel order
- * round the rim, frets between the pockets, a cone and a four-armed turret
- * in the middle. A ball is thrown round the track against the head's turn,
- * slows, leaves the wall, runs down the slope (knocked up by a diamond if it
- * meets one), skips across the frets and settles in a pocket, rides there a
- * few seconds, and is picked out and thrown again (lib/roulette.ts runs it).
- *
- * Scrolling spins the head up (lib/scrollVelocity.ts); a mouse in the hero
- * tilts the table a few degrees toward it. On first appearing the head spins
- * up from rest and the first ball is thrown. The hero's Spin button asks for
- * a throw of its own (lib/spin.ts): the head is pushed, the ball is picked
- * up and thrown again, and where it settles (always a number in the deck, or
- * the zero) is the answer. Never under reduced motion (no scene runs then:
- * the hero shows its still, and answers a spin itself).
+ * Hero roulette wheel: a fixed bowl with track and diamonds, a turning head
+ * with numbers, frets, cone and turret, and a ball run by lib/roulette.ts.
+ * Scrolling spins the head up; a mouse tilts the table toward it. The Spin
+ * button (lib/spin.ts) pushes the head and rethrows the ball; where it
+ * rests is the answer. No scene under reduced motion (the hero answers itself).
  */
 export function rouletteScene(detail: number): SceneDef {
   const t = makeTracker();
@@ -125,8 +109,7 @@ export function rouletteScene(detail: number): SceneDef {
       camera.lookAt(0, -0.02, 0);
       scene.fog = new Fog(new Color("#08090b"), 7.2, 12);
 
-      // A cool key light from the upper left and a warm one low on the
-      // right: the rims catch one, the turret and the ball both.
+      // Cool key light upper left, warm fill low right.
       scene.add(new AmbientLight(0xffffff, 0.55));
       const key = new DirectionalLight(0xeef5ff, 1.25);
       key.position.set(-2.5, 6, 3.5);
@@ -145,9 +128,7 @@ export function rouletteScene(detail: number): SceneDef {
         new Mesh(t.track(lathe(BOWL_PROFILE, BOWL_INKS, ROUND)), t.track(new MeshLambertMaterial({ vertexColors: true }))),
       );
 
-      // Fine steel lines where the rim meets the wall, round the inside of the
-      // ball track, and round the head's rim: they draw each edge crisply
-      // where the soft shading alone would blur it.
+      // Fine steel lines that keep the rim and track edges crisp.
       const line = t.track(new MeshLambertMaterial({ color: new Color("#80868d") }));
       for (const [r, y, tube] of [
         [1.655, 0.21, 0.006],
@@ -159,9 +140,7 @@ export function rouletteScene(detail: number): SceneDef {
         table.add(edge);
       }
 
-      // The diamonds: on the slope, lying along it, upright and crosswise in
-      // turn, in a duller steel than the turret so they read as fittings, not
-      // as glints.
+      // Diamonds on the slope, alternating upright and crosswise, in duller steel.
       const diamond = t.track(new OctahedronGeometry(1, 0));
       const fitting = t.track(new MeshPhongMaterial({ color: new Color("#8d939a"), specular: 0x555555, shininess: 40 }));
       const slope = surfaceAt(DIAMOND_R);
@@ -190,8 +169,7 @@ export function rouletteScene(detail: number): SceneDef {
         ),
       );
 
-      // The number ring, lying on the head's rim, and the pockets' floors in
-      // a darker shade of each pocket's colour.
+      // Number ring on the rim; pocket floors in darker shades.
       const numbers = numbersTexture(renderer.capabilities.getMaxAnisotropy());
       if (numbers) {
         t.track(numbers.texture);
@@ -242,7 +220,7 @@ export function rouletteScene(detail: number): SceneDef {
       inlay.position.y = 0.067;
       head.add(inlay);
 
-      // The turret: a stem, a collar, four arms with a knob on each, a finial.
+      // Turret: stem, collar, four knobbed arms, finial.
       const turret = new Group();
       const SIDES = scaled(18, detail, 10);
       const stem = new Mesh(t.track(new CylinderGeometry(0.038, 0.05, 0.28, SIDES)), steel);
@@ -269,7 +247,7 @@ export function rouletteScene(detail: number): SceneDef {
       turret.add(finial);
       head.add(turret);
 
-      // The ball, and the soft dark spot under it that keeps it on the wheel.
+      // The ball and its contact shadow.
       const ball = new Mesh(
         t.track(new SphereGeometry(BALL_R, 24, 16)),
         t.track(new MeshPhongMaterial({ color: new Color(IVORY), specular: 0xffffff, shininess: 120 })),
@@ -291,7 +269,7 @@ export function rouletteScene(detail: number): SceneDef {
       const shadow = new Mesh(t.track(new CircleGeometry(BALL_R * 1.7, 24)), shadowInk);
       table.add(shadow);
 
-      // The table leans a few degrees toward a mouse anywhere in the hero.
+      // The table leans toward a mouse in the hero.
       const lean = { x: 0, y: 0, tx: 0, ty: 0 };
       const area = renderer.domElement.closest("section, .hero");
       const mouse = window.matchMedia?.("(pointer: fine) and (hover: hover)").matches ?? false;
@@ -319,28 +297,25 @@ export function rouletteScene(detail: number): SceneDef {
 
       let wheel = 0;
       let boost = 0;
-      // The croupier's push on the head when a spin is asked for.
+      // The push on the head when a spin is called.
       let kick = 0;
       let run = newBall(0.6);
-      // A spin asked for before this scene was built was not its to answer
-      // (the hero answered it itself), nor is one it has answered already.
+      // Spins asked before this scene existed were answered by the hero.
       let seen = readSpin()?.id ?? 0;
       let answered = 0;
       const up = new Vector3();
       const FACE = new Vector3(0, 0, 1);
 
       return (time, dt) => {
-        // A push from the page: spins up quickly, runs down slowly.
+        // Scroll boost: quick up, slow down.
         const target = Math.min(1, Math.abs(readScrollVelocity()) / 2400);
         boost += (target - boost) * (1 - Math.exp(-dt * (target > boost ? 5 : 1.2)));
         kick *= Math.exp(-dt / 1.6);
-        // From rest when it first appears, to about a turn every twelve
-        // seconds, and up to two a second on a fast scroll.
+        // Spins up from rest to about a turn per 12 s; up to two a second on fast scrolls.
         const spinUp = 1 - (1 - Math.min(1, time / 1.8)) ** 3;
         const speed = (0.52 + 2.6 * boost + 1.3 * kick) * spinUp;
 
-        // The Spin button (Hero.tsx): the ball is taken up and thrown
-        // again, and the head is given a push.
+        // Spin button: rethrow the ball and push the head.
         const asked = readSpin();
         if (asked && asked.id !== seen) {
           seen = asked.id;
@@ -361,7 +336,7 @@ export function rouletteScene(detail: number): SceneDef {
         const z = p.r * Math.sin(p.angle);
         ball.visible = p.scale > 0.001;
         ball.position.set(x, p.y, z);
-        // Fast, the ball draws out along its path, as the eye sees it.
+        // Motion blur: stretch along the path when fast.
         const blur = 1 + Math.min(2, ((Math.abs(p.speed) * p.r) / 60 / (2 * BALL_R)) * 0.5);
         ball.scale.set(p.scale * blur, p.scale, p.scale);
         ball.rotation.y = -(p.angle + Math.PI / 2);
@@ -393,7 +368,7 @@ function lathe(profile: ReadonlyArray<readonly [number, number]>, inks: string[]
   );
   const colours: number[] = [];
   const c = new Color();
-  // Three lays the vertices out a meridian at a time, point by point.
+  // Three orders vertices meridian by meridian.
   for (let i = 0; i <= segments; i++) {
     for (let j = 0; j < profile.length; j++) {
       c.set(inks[j] ?? inks[inks.length - 1]);
@@ -405,10 +380,8 @@ function lathe(profile: ReadonlyArray<readonly [number, number]>, inks: string[]
 }
 
 /**
- * A flat ring facing up, from (r0, y0) to (r1, y1) in cross-section, mapped
- * so a texture runs once round it (u) and across it from the inside out (v).
- * Its angle runs the same way as lib/roulette.ts's, so pocket i of a texture
- * lies over pocket i of the wheel.
+ * An upward ring from (r0, y0) to (r1, y1): u runs round, v inside out, in
+ * lib/roulette.ts's angle direction, so texture pocket i sits on pocket i.
  */
 function ring(r0: number, y0: number, r1: number, y1: number, segments: number): BufferGeometry {
   const position: number[] = [];
@@ -423,7 +396,7 @@ function ring(r0: number, y0: number, r1: number, y1: number, segments: number):
   }
   for (let i = 0; i < segments; i++) {
     const inner = i * 2;
-    // Inner, next inner, outer; then outer, next inner, next outer: both face up.
+    // Two up-facing triangles per segment.
     index.push(inner, inner + 2, inner + 1, inner + 1, inner + 2, inner + 3);
   }
   const geo = new BufferGeometry();
@@ -435,10 +408,9 @@ function ring(r0: number, y0: number, r1: number, y1: number, segments: number):
 }
 
 /**
- * The numbers, one cell a pocket in wheel order, each upright with its top
- * toward the rim, in the page's mono face. Cells are as wide as they are on
- * the ring (86 by 64 maps onto about 0.2 by 0.15 units), so the digits are
- * not stretched. Drawn again once the web font has loaded.
+ * Number ring texture: one cell per pocket in the mono face, proportioned
+ * like the ring (86x64 ~ 0.2x0.15 units) so digits aren't stretched.
+ * Redrawn once the web font loads.
  */
 function numbersTexture(anisotropy: number): { texture: CanvasTexture } | null {
   const cell = 86;
@@ -460,7 +432,7 @@ function numbersTexture(anisotropy: number): { texture: CanvasTexture } | null {
       g.textBaseline = "middle";
       g.fillText(String(n), i * cell + cell / 2, height / 2 + 1);
     });
-    // A hairline between each number and the next.
+    // Hairlines between numbers.
     g.fillStyle = "rgba(8, 9, 11, 0.6)";
     for (let i = 0; i <= POCKETS; i++) g.fillRect(i * cell - 1, 0, 2, height);
   };
@@ -478,7 +450,7 @@ function numbersTexture(anisotropy: number): { texture: CanvasTexture } | null {
   return { texture };
 }
 
-/** The pockets' floors: one texel a pocket, unfiltered, so each edge is sharp under its fret. */
+/** Pocket floors: one unfiltered texel per pocket, for sharp edges. */
 function floorsTexture(): CanvasTexture | null {
   const canvas = document.createElement("canvas");
   canvas.width = POCKETS;
@@ -497,7 +469,7 @@ function floorsTexture(): CanvasTexture | null {
   return texture;
 }
 
-/** A soft round spot, dark in the middle and gone at the edge. */
+/** Soft radial spot, opaque centre fading out. */
 function softSpot(): CanvasTexture | null {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 64;

@@ -1,5 +1,4 @@
-// The modules frontend/build/repoFacts.ts generates from this repository at
-// build time.
+// Modules generated at build time by frontend/build/repoFacts.ts.
 declare module "virtual:code-peeks" {
   export type TokenKind = "kw" | "str" | "com" | "num" | "fn" | "txt";
   export interface Peek {

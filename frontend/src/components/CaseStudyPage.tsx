@@ -6,7 +6,7 @@ import { caseStudyPath } from "../lib/paths";
 
 interface CaseStudyPageProps {
   project: ProjectContent;
-  /** Its neighbours in page order, for the links at the foot. */
+  /** Neighbours in page order, for the links at the foot. */
   previous?: ProjectContent;
   next?: ProjectContent;
 }
@@ -29,11 +29,9 @@ const LIST_SECTIONS: Array<[keyof ProjectContent, string]> = [
 ];
 
 /**
- * One case study as a page of its own, written at build time (prerender.mjs)
- * and served as plain HTML with no script: the same sections the dialog
- * shows, from the same content, so each project has an address that can be
- * shared and that a search engine can read in full. It borrows the privacy
- * page's stylesheet and header, like the 404.
+ * A case study as its own static page (prerender.mjs, no script): the
+ * dialog's sections from the same content, shareable and crawlable. Uses
+ * the privacy page's stylesheet and header, like the 404.
  */
 export function CaseStudyPage({ project: p, previous, next }: CaseStudyPageProps) {
   const facts: Array<[string, string | undefined]> = [

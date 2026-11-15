@@ -6,11 +6,9 @@ import type { ProjectSummary } from "../../types";
 import { MORPH_SPRING } from "../work/workUtils";
 
 /**
- * A project as a playing card (deck.css). The corner index is the
- * project's number over its suit: an ember diamond for a case study, a sky
- * ring for the other work, the same two colours the page uses for doing and
- * for structure. The index repeats upside down in the opposite corner, the
- * way a card's does, and is decoration: the title says which project it is.
+ * A project as a playing card (deck.css). The corner index is the project's
+ * number over its suit (ember diamond: case study; sky ring: other work),
+ * repeated upside down opposite. Decorative; the title names the project.
  */
 export function Suit({ tier }: { tier: number }) {
   return <span className={tier === 1 ? "pcard-suit is-case" : "pcard-suit is-other"} aria-hidden="true" />;
@@ -27,23 +25,15 @@ function CornerIndex({ project, flipped = false }: { project: ProjectSummary; fl
 
 interface CardFaceProps {
   project: ProjectSummary;
-  /** Opens the case study; the button is handed over so focus can return to it. */
+  /** Opens the case study; gets the button so focus can return to it. */
   onOpen?: (button: HTMLButtonElement) => void;
-  /** A card under the face-up one: drawn, but no longer the one in play. */
+  /** Under the face-up card: drawn, no longer in play. */
   resting?: boolean;
-  /**
-   * The face-up card's face carries the shared layoutId of the dialog's
-   * figure (ProjectModal.tsx), so opening the case study grows the card
-   * into the head of the dialog, and closing shrinks it back.
-   */
+  /** Shared layoutId with the dialog's figure (ProjectModal.tsx), for the morph. */
   layoutId?: string;
 }
 
-/**
- * The corner of a card's face, as it shows on the underside of a lifted
- * corner (the squeeze, DeckTable.tsx): the face's surface, its frame and
- * its corner index, laid out as on the face itself (deck.css turns it).
- */
+/** The face corner shown under a lifted corner (the squeeze, DeckTable.tsx); deck.css turns it. */
 export function PeelCorner({ project }: { project: ProjectSummary }) {
   return (
     <span className="pcard-peel-face" data-tier={project.tier === 1 ? "case" : "other"}>
@@ -52,10 +42,7 @@ export function PeelCorner({ project }: { project: ProjectSummary }) {
   );
 }
 
-/**
- * The face: the corner indices, the title, what the project is, its
- * category and status, and the way into its case study.
- */
+/** The face: indices, title, subtitle, category and status, and the case study button. */
 export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function CardFace(
   { project: p, onOpen, resting = false, layoutId },
   ref,
@@ -85,12 +72,7 @@ export const CardFace = forwardRef<HTMLButtonElement, CardFaceProps>(function Ca
   );
 });
 
-/**
- * The joker: what the empty deck leaves on the table once all thirteen have
- * been drawn. Its index is a J over both suits, and it says the deck is done
- * and where to go from here. DRAFT copy, for the owner to approve, in one
- * place (JOKER).
- */
+/** The joker, left once every card is drawn: J over both suits. DRAFT copy for approval. */
 export const JOKER = {
   title: "That's the deck",
   line: "All thirteen, face up. If one of them is close to what you need, tell me about it.",
@@ -121,7 +103,7 @@ export function JokerFace() {
 const f = (n: number) => Number(n.toFixed(2));
 const BACK_IN = 21;
 const BACK_OUT = 30;
-// The rosette's frets, one between each pocket, the zero's at the top.
+// Rosette frets between the pockets, zero at the top.
 const FRETS = Array.from({ length: POCKETS }, (_, i) => {
   const a = -Math.PI / 2 + ((i + 0.5) * 2 * Math.PI) / POCKETS;
   return { key: i, x1: f(BACK_IN * Math.cos(a)), y1: f(BACK_IN * Math.sin(a)), x2: f(BACK_OUT * Math.cos(a)), y2: f(BACK_OUT * Math.sin(a)) };
@@ -133,12 +115,9 @@ const ZERO = (() => {
 })();
 
 /**
- * The back, engraved: a fine cross-hatch, the hero's roulette wheel as a
- * rosette (its rim, a fret between each of the 37 pockets, the zero picked
- * out in sky) around the monogram, and a frame inset from the edge the way a
- * printed card's is. One drawing for every card. The monogram is generated
- * content (cards.css), not text, so a page holding a dozen card backs does
- * not read "MH" a dozen times.
+ * The card back: cross-hatch, the wheel as a rosette (zero in sky) around
+ * the monogram, and an inset frame. The monogram is generated content
+ * (cards.css), so it is not read once per card.
  */
 export function CardBack() {
   return (

@@ -1,32 +1,24 @@
 /*
- * Design tokens for every page, the privacy page and the 404 included.
- *
- * The ink is a neutral near-black (the owner asked for black over the old
- * blue-teal); the two accents are the old site's. Each accent has a fixed
- * job (redesign SPEC.md, section 3), and the jobs matter more than the
- * values. Ember marks the one thing to press and a
- * few live indicators; sky marks links, focus, labels and linework. Depth
- * comes from the ink ramp, not from shadows.
+ * Design tokens for every page. Near-black ink; two accents with fixed jobs:
+ * ember for the one thing to press and live indicators, sky for links,
+ * focus, labels and linework. Depth comes from the ink ramp, not shadows.
  */
 :root {
   color-scheme: dark;
 
-  /* Ink. Each surface is a measured step brighter than the one under it. */
+  /* Ink: each surface a measured step brighter. */
   --bg: #08090b;
   --surface-1: #0f1113;
   --surface-2: #16181b;
   --surface-3: #1e2124;
 
-  /* Hairlines on the same ink. --line-control is the one new value: form
-     controls need a 3:1 border (3.61:1 on surface-2, 3.84:1 on surface-1),
-     which none of the decorative hairlines reach. */
+  /* Hairlines. --line-control meets 3:1 for form borders (3.61:1 on surface-2, 3.84:1 on surface-1). */
   --line-soft: #17191c;
   --line: #24272b;
   --line-strong: #363a3f;
   --line-control: #6b7178;
 
-  /* --text-3 is 5.29:1 at worst (on surface-3), so it is only ever used on
-     the plain ink ramp, never on a tinted surface. */
+  /* --text-3 is 5.29:1 at worst (surface-3): plain ink ramp only. */
   --text: #edeeef;
   --text-2: #b1b5ba;
   --text-3: #8f949a;
@@ -42,14 +34,14 @@
   --sky-soft: rgba(106, 185, 231, 0.13);
   --sky-line: rgba(106, 185, 231, 0.38);
 
-  /* Radii and the only two shadows on the site. */
+  /* Radii and the site's only two shadows. */
   --r-sm: 8px;
   --r-md: 12px;
   --r-lg: 20px;
   --shadow-dialog: 0 24px 64px rgba(0, 0, 0, 0.45);
   --shadow-ember: 0 0 0 1px rgba(233, 142, 73, 0.35), 0 6px 22px rgba(233, 142, 73, 0.18);
 
-  /* One spacing scale, in 4px steps, so gaps across sections agree. */
+  /* Spacing scale in 4px steps. */
   --s1: 4px;
   --s2: 8px;
   --s3: 12px;
@@ -63,16 +55,13 @@
 
   --container: 1240px;
   --gutter: clamp(16px, 4vw, 48px);
-  /* The page's vertical rhythm, three steps and nothing else: a section's
-     own padding, its heading to its content, and one block to the next
-     inside a section. */
+  /* Vertical rhythm: section padding, heading to content, block to block. */
   --section-pad: clamp(80px, 8vw, 128px);
   --head-gap: clamp(40px, 4.5vw, 64px);
   --block-gap: clamp(56px, 6vw, 96px);
   --header-h: 64px;
 
-  /* Type. "Mona Sans Fallback" is Arial resized to Mona Sans's proportions
-     (fonts.css), so the swap when the real font lands barely moves a line. */
+  /* Type. "Mona Sans Fallback" is Arial resized to Mona Sans (fonts.css). */
   --font-sans: "Mona Sans Variable", "Mona Sans Fallback", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Martian Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace;
 

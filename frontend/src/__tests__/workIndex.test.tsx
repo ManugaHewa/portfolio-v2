@@ -25,7 +25,7 @@ import type { ProjectSummary } from "../types";
 import { Wrap } from "./motion/helpers";
 
 const all = projectSummaries() as ProjectSummary[];
-// Page order: the case studies first, then the other work.
+// Page order: case studies, then other work.
 const projects = [...all.filter((p) => p.tier === 1), ...all.filter((p) => p.tier !== 1)];
 
 const renderIndex = (onOpen = vi.fn()) => ({
@@ -66,7 +66,7 @@ describe("the deck", () => {
     const host = document.createElement("div");
     host.innerHTML = html;
     expect(host.querySelector(".pcard.is-up .pcard-title")?.textContent).toBe(projects[0].title);
-    // Every project is in the page as a link, for crawlers and for no-JS visitors.
+    // Every project is a link, for crawlers and no-JS visitors.
     const links = host.querySelectorAll(".deck-list ol a");
     expect(links).toHaveLength(projects.length);
   });
@@ -76,7 +76,7 @@ describe("the deck", () => {
     const shoe = container.querySelector(".deck-pile > .deck-shoe");
     expect(shoe).not.toBeNull();
     expect(shoe).toHaveAttribute("aria-hidden", "true");
-    // First in the pile, so every card lies over it.
+    // First in the pile, under every card.
     expect(container.querySelector(".deck-pile")?.firstElementChild).toBe(shoe);
   });
 
@@ -122,7 +122,7 @@ describe("the deck", () => {
         fireEvent.click(draw);
       });
     }
-    // The joker turns up where the deck was, pointing to the contact form.
+    // The joker appears where the deck was, linking to contact.
     expect(screen.getByRole("heading", { level: 3, name: "That's the deck" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Get in touch" })).toHaveAttribute("href", "#contact");
     const again = screen.getByRole("button", { name: "Shuffle and deal again" });
@@ -148,7 +148,7 @@ describe("the deck", () => {
 describe("deck interactions", () => {
   it("spreads the deck into cards to pick, and gathers it again", () => {
     const { container } = renderIndex();
-    // jsdom lays nothing out, so the table is measured at a made-up size.
+    // jsdom has no layout, so the table gets a made-up size.
     const spread = screen.getByRole("button", { name: "Spread the deck" });
     act(() => {
       fireEvent.click(spread);
@@ -178,7 +178,7 @@ describe("deck interactions", () => {
       act(() => {
         fireEvent.click(screen.getByRole("button", { name: "Shuffle" }));
       });
-      // Every card back in the deck, nothing dealt, while it is riffled.
+      // All cards back in the deck, none dealt, while riffling.
       expect(container.querySelector(".deck-count")).toHaveTextContent(`00 / ${projects.length}`);
       expect(container.querySelectorAll(".deck-pile .pcard")).toHaveLength(projects.length);
       act(() => {
@@ -381,7 +381,7 @@ describe("the cut", () => {
     expect(cutDeck(s, 3)).toBe(s);
     const riffling = { ...s, riffling: true };
     expect(cutDeck(riffling, 1)).toBe(riffling);
-    // A cut on its way that cannot be made simply ends.
+    // A cut in progress that can't be made just ends.
     expect(cutDeck({ ...s, cutting: 5 }, 5)).toMatchObject({ order: [0, 1, 2, 3], cutting: 0 });
   });
 
@@ -411,7 +411,7 @@ describe("the cut", () => {
       act(() => {
         fireEvent.keyDown(section, { key: "c" });
       });
-      // The packet is out: the deck has not changed order yet.
+      // Packet out: order not changed yet.
       expect(container.querySelector("[aria-live='polite']")?.textContent).toBe("");
       act(() => {
         vi.advanceTimersByTime(CUT_MS + 10);
@@ -420,7 +420,7 @@ describe("the cut", () => {
       act(() => {
         fireEvent.keyDown(section, { key: "d" });
       });
-      // The card that would have come next did not.
+      // The next card didn't come.
       expect(faceUp(container)).not.toBe(projects[1].title);
     } finally {
       vi.useRealTimers();
@@ -434,7 +434,7 @@ describe("the squeeze", () => {
     try {
       const { container } = renderIndex();
       const top = container.querySelector(".deck-pile .pcard.is-top") as HTMLElement;
-      // The corner shows the next card's own index.
+      // The corner shows the next card's index.
       expect(top.querySelector(".pcard-peel .pcard-rank")?.textContent).toBe(projectNumber(projects[1].slug));
       act(() => {
         fireEvent.pointerDown(top, { button: 0, clientX: 10, clientY: 10 });
@@ -482,7 +482,7 @@ describe("the win", () => {
       }
       f = next;
     }
-    // The first few bounces, while they are still bounces worth the name.
+    // The first few bounces.
     expect(peaks.length).toBeGreaterThan(3);
     for (let i = 1; i < 4; i++) expect(peaks[i]).toBeGreaterThan(peaks[i - 1]);
     expect(gone({ x: 1500, y: 0, vx: 1, vy: 0 }, 200, 1440)).toBe(true);

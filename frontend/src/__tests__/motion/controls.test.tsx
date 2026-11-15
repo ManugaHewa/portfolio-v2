@@ -142,8 +142,7 @@ describe("Marquee", () => {
     fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
     expect(find(container, ".marquee").className).not.toContain("is-running");
     expect(container.querySelectorAll("ul")).toHaveLength(1);
-    // Its own toggle goes with it: a "not paused" button on a still strip
-    // would tell a screen reader the wrong thing.
+    // Its toggle goes too: a "not paused" button on a still strip would mislead.
     expect(screen.queryByRole("button", { name: "Pause" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Pause motion" }));
@@ -159,8 +158,7 @@ describe("IndexRail", () => {
   ];
 
   beforeEach(() => {
-    // A page much taller than the viewport, scrolled to the top: jsdom
-    // reports a scrollHeight of 0, which reads as "at the very bottom".
+    // A tall page scrolled to the top (jsdom's scrollHeight 0 reads as the bottom).
     Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: 6000 });
   });
 
@@ -176,7 +174,7 @@ describe("IndexRail", () => {
   }
 
   it("marks the section that has crossed the reading line with aria-current", () => {
-    // The line sits a third of the way down a 768px viewport.
+    // The line is 34% down a 768px viewport.
     placeSection("work-index", -600);
     placeSection("pipeline", 120);
     placeSection("skills", 900);
@@ -209,8 +207,7 @@ describe("IndexRail", () => {
   });
 
   it("is faded out at the top of the page while the hero pins, and only then", async () => {
-    // A hero 3000px tall at the top of the page: pinned from 0 until its end
-    // meets the window's, so at scroll 0 the rail is not shown.
+    // A 3000px hero at the top pins from 0, so at scroll 0 the rail is hidden.
     const hero = document.createElement("div");
     hero.id = "top";
     hero.getBoundingClientRect = () => ({ top: 0, bottom: 3000, left: 0, right: 0, width: 0, height: 3000, x: 0, y: 0, toJSON() {} }) as DOMRect;
@@ -226,7 +223,7 @@ describe("IndexRail", () => {
     await waitFor(() => expect(nav.style.opacity).toBe("0"));
     unmount();
 
-    // Without the pin (a short window, reduced motion) the rail just shows.
+    // Without the pin, the rail shows.
     media.set([]);
     render(
       <Wrap>

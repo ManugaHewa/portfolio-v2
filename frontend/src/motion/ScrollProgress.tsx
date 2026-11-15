@@ -2,13 +2,9 @@ import { m, useScroll } from "./m";
 import { useHydrated } from "./hooks";
 
 /**
- * A 2px ember hairline along the header's top edge, as long as the share of
- * the page read. Decoration only (aria-hidden). Nothing is rendered until the
- * page has hydrated: without JavaScript nothing would move it, and a bar
- * stuck at full or zero width says something untrue.
- *
- * scaleX follows the scroll position directly, frame by frame, with no easing
- * of its own, so it is not an animation reduced motion needs to stop.
+ * 2px ember hairline on the header's top edge: how much of the page is
+ * read. aria-hidden; rendered only after hydration (without JS it would be
+ * wrong). Follows the scroll directly, so reduced motion needs no change.
  */
 export function ScrollProgress() {
   const hydrated = useHydrated();

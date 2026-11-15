@@ -15,12 +15,7 @@ import { useCaseTransition } from "./lib/caseTransition";
 import type { OpenProject, ProjectDetail, ProjectSummary } from "./types";
 
 interface AppProps {
-  /**
-   * The project summaries the build-time prerender wrote into the page, so
-   * the first render shows the projects instead of skeletons, and matches the
-   * HTML React is hydrating. Absent in development, where nothing is
-   * prerendered and the list arrives from the API alone.
-   */
+  /** Summaries the prerender wrote into the page, so hydration matches. Absent in dev. */
   initialProjects?: ProjectSummary[];
 }
 
@@ -29,25 +24,20 @@ export default function App({ initialProjects }: AppProps) {
   const [loadError, setLoadError] = useState(false);
   const [loadingProjects, setLoadingProjects] = useState(!initialProjects);
 
-  // The dialog: the summary it opened with, the full case study once it
-  // arrives, and the control to hand focus back to.
+  // Dialog state: summary, full case study, and the focus return target.
   const [openProject, setOpenProject] = useState<ProjectSummary | null>(null);
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [detailError, setDetailError] = useState(false);
   const [returnFocusTo, setReturnFocusTo] = useState<HTMLElement | null>(null);
-  // The slug of the latest request, so a slow answer for a project that has
-  // since been closed or swapped cannot land in the dialog.
+  // Latest requested slug, so a stale answer never lands in the dialog.
   const requested = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
-  // A link to a project's own page carries its card into that page's title.
+  // Project links morph their card into the page title.
   useCaseTransition();
 
   useEffect(() => {
-    // Still asked for with prerendered projects on screen: the data lives in
-    // Postgres, and this is the live read. CI checks the API returns exactly
-    // what the prerender used, so the swap changes nothing on screen. If the
-    // API is down, the prerendered list stays and only the full case studies
-    // fail to load.
+    // The live read from Postgres. CI checks it matches the prerendered list;
+    // if the API is down, the prerendered list stays.
     api
       .getProjects()
       .then(setProjects)
@@ -57,10 +47,8 @@ export default function App({ initialProjects }: AppProps) {
       .finally(() => setLoadingProjects(false));
   }, [initialProjects]);
 
-  // Everything but the dialog goes inert while it is open, so neither the
-  // keyboard nor a screen reader's own cursor can reach the page behind it.
-  // Through the ref because React 18 has no inert prop. A layout effect, so
-  // inert is lifted before the dialog's cleanup hands focus back into the page.
+  // The page goes inert while the dialog is open (via ref: React 18 has no
+  // inert prop). Layout effect, so it lifts before focus returns.
   const dialogOpen = openProject !== null;
   useIsomorphicLayoutEffect(() => {
     const shell = shellRef.current;
@@ -95,8 +83,7 @@ export default function App({ initialProjects }: AppProps) {
   return (
     <LazyMotion features={domMax} strict>
       <MotionPauseProvider>
-        {/* Around the page and the dialog both, so the deck's face-up card
-            and its dialog can share a layoutId across the portal. */}
+        {/* Wraps page and dialog, so the card and dialog share a layoutId across the portal. */}
         <LayoutGroup>
           <div id="app-shell" ref={shellRef}>
             <a className="skip-link" href="#main">
@@ -105,10 +92,10 @@ export default function App({ initialProjects }: AppProps) {
 
             <ScrollProgress />
             <Nav />
-            {/* Faded out while the hero is pinned, beside the wheel. */}
+            {/* Hidden while the hero pins. */}
             <IndexRail sections={PAGE_SECTIONS} hideWhilePinned="top" />
 
-            {/* Page-wide, fixed, and purely a backdrop. */}
+            {/* Fixed page-wide backdrop. */}
             <Scene variant="starfield" className="scene-starfield" />
 
             <main id="main">

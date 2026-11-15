@@ -1,14 +1,10 @@
 import { useEffect } from "react";
 import { morphId } from "../motion/morph";
 
-/** The view-transition name the case study page's title carries (legal.css). */
+/** View-transition name of the case study page title (legal.css). */
 export const CASE_TITLE = "case-page-title";
 
-/**
- * What should travel to a project's page when the visitor follows a link
- * there: the case study's figure if its dialog is open, the project's card
- * if it is the one face up in the deck, or else the link itself.
- */
+/** What morphs into the project page: the open dialog's figure, the face-up card, or the link. */
 export function transitionSource(link: HTMLAnchorElement, slug: string): HTMLElement {
   const dialogFigure = document.querySelector<HTMLElement>("[role=dialog] .dialog-figure");
   if (dialogFigure) return dialogFigure;
@@ -17,18 +13,10 @@ export function transitionSource(link: HTMLAnchorElement, slug: string): HTMLEle
 }
 
 /**
- * Following a link to a project's own page (/work/<slug>/) on the home
- * page: the cross-document view transition (base.css) carries the card, or
- * the dialog's figure, or the link, into the page's title as the page
- * changes, rather than only wiping from one page to the next.
- *
- * The element is named on the click, just before the browser takes its
- * snapshot of the old page, and only one element ever holds the name.
- * Browsers without cross-document view transitions simply navigate, and
- * under reduced motion there is no transition (base.css), so the name does
- * nothing. A click that does not navigate here (a modified click, or one a
- * handler has already taken, like a skill's number dealing its card) is
- * left alone.
+ * On a link to /work/<slug>/, names the element that morphs into the page
+ * title in the cross-document view transition (base.css). Named on click,
+ * just before the browser snapshots the page; one element at a time.
+ * Modified or already-handled clicks are ignored.
  */
 export function useCaseTransition(): void {
   useEffect(() => {
@@ -45,8 +33,7 @@ export function useCaseTransition(): void {
       source.style.setProperty("view-transition-name", CASE_TITLE);
       source.setAttribute("data-case-transition", "");
     };
-    // Bubbling, so a handler that takes the click first (preventDefault)
-    // has had its say.
+    // Bubble phase: handlers that preventDefault run first.
     document.addEventListener("click", onClick);
     return () => document.removeEventListener("click", onClick);
   }, []);

@@ -8,7 +8,7 @@ export type ScrambleTrigger = "mount" | "inView" | { active: boolean };
 export interface ScrambleProps {
   text: string;
   className?: string;
-  /** When the decode runs: on mount, on first view, or when `active` turns true. */
+  /** Runs on mount, on first view, or when `active` turns true. */
   trigger?: ScrambleTrigger;
 }
 
@@ -16,17 +16,15 @@ const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
 const DIGITS = "0123456789";
 
-// Frames are written at most this often. Every animation frame would turn
-// the glyphs into a blur rather than a readout settling.
+// Frame write interval; every animation frame would blur the glyphs.
 const TICK_MS = 40;
 
 const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
 
 /**
- * One frame of the decode: characters left of the resolved point are final;
- * the rest are random glyphs of the same kind (a digit for a digit, a capital
- * for a capital). Punctuation and spaces never change, so "43.52° N" reads as
- * an instrument settling on a value rather than as noise.
+ * One decode frame: characters before the resolved point are final, the
+ * rest random glyphs of the same kind. Punctuation and spaces stay, so
+ * "43.52° N" reads as an instrument settling.
  */
 export function scrambleFrame(chars: string[], progress: number): string {
   const settled = Math.floor(progress * chars.length);
@@ -44,20 +42,14 @@ export function scrambleFrame(chars: string[], progress: number): string {
 
 /**
  * A mono label that decodes left to right: once on mount, or (trigger
- * "inView" or an `active` flag) each time it is reached, re-armed when the
- * visitor scrolls back above it. The final text is what the
- * server renders, what screen readers get and, outside the decode itself,
- * the only copy in the DOM.
+ * "inView" or `active`) each time it is reached, re-armed above. The final
+ * text is what the server renders and screen readers get.
  *
- * While decoding, the real text turns transparent (still in the
- * accessibility tree, still holding the width) and an aria-hidden overlay
- * shows the frames. Frames are written to the overlay's textContent from
- * requestAnimationFrame rather than through React state: twenty re-renders
- * a second for a label is waste. Math.random only ever runs in effects, so
- * the server and the first client render match.
- *
- * Never runs under reduced motion, before hydration or while motion is
- * paused; a paused decode stops and shows the final text.
+ * While decoding, the real text goes transparent (keeping its width and
+ * name) and an aria-hidden overlay shows frames written straight from
+ * requestAnimationFrame, not React state. Math.random runs only in effects,
+ * so hydration matches. Never runs under reduced motion, before hydration
+ * or while paused.
  */
 export function Scramble({ text, className, trigger = "mount" }: ScrambleProps) {
   const rootRef = useRef<HTMLSpanElement>(null);
@@ -68,8 +60,7 @@ export function Scramble({ text, className, trigger = "mount" }: ScrambleProps) 
   const done = useRef(false);
 
   const fire = typeof trigger === "object" ? trigger.active : trigger === "inView" ? inView : true;
-  // Anything but "mount" can fire again: back out of view, or the pipeline's
-  // stage scrolled back, re-arms the decode.
+  // Triggers other than "mount" re-arm when they turn false.
   const rearm = trigger !== "mount";
 
   useEffect(() => {

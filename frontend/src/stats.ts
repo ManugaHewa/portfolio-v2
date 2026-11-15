@@ -1,14 +1,7 @@
 /**
- * Every number the page shows about itself, derived from the data rather
- * than typed in, so a project or skill added to its source file updates the
- * counts, the project numbers and the tech band with it.
- *
- * The project list comes from content/projects.ts, the same file the
- * database is seeded from and the prerender writes into the HTML (a CI test
- * checks the API serves exactly that list), so these numbers agree with the
- * projects on screen. It arrives through `virtual:project-index`, a slim
- * copy vite.config.ts generates with only the fields used here, so the case
- * studies' full text stays out of the main bundle.
+ * Every number the page shows about itself, derived from the data. Projects
+ * come from content/projects.ts via `virtual:project-index` (vite.config.ts),
+ * a slim copy, so the case studies' text stays out of the main bundle.
  */
 import { PROJECTS } from "virtual:project-index";
 import { CATEGORIES, SKILLS } from "./skills";
@@ -29,11 +22,7 @@ export const STATS = {
   groups: CATEGORIES.length,
 } as const;
 
-/**
- * Each project's slug, title, tier and stack size in page order: the case studies first,
- * then the other work, each in content order. The skills section uses it to
- * turn an evidence title into a link.
- */
+/** Slug, title, tier and stack size per project, in page order (case studies first). */
 export const PROJECT_INDEX: ReadonlyArray<{ slug: string; title: string; tier: number; stackSize: number }> = [
   ...caseStudies,
   ...otherProjects,
@@ -41,18 +30,10 @@ export const PROJECT_INDEX: ReadonlyArray<{ slug: string; title: string; tier: n
 
 const NUMBERS = new Map(PROJECT_INDEX.map((p, i) => [p.slug, String(i + 1).padStart(2, "0")]));
 
-/**
- * A project's number on this page: "01" to "06" for the case studies, then
- * "07" onward for the other work, each in content order. Every place that
- * shows a project number uses this, so they cannot disagree. An unknown slug
- * gets an empty string rather than a made-up number.
- */
+/** A project's two-digit number in page order; "" for an unknown slug. */
 export function projectNumber(slug: string): string {
   return NUMBERS.get(slug) ?? "";
 }
 
-/**
- * The tech band: every technology named in the case studies' stacks, once,
- * in the order it first appears.
- */
+/** Every technology in the case studies' stacks, once, in first-seen order. */
 export const TECH_BAND: string[] = [...new Set(caseStudies.flatMap((p) => p.stack))];

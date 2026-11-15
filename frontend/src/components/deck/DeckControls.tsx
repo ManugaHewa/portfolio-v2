@@ -12,22 +12,16 @@ interface DeckControlsProps {
 }
 
 /**
- * The deck's controls, beside the heading: what the deck is, Draw, Spread
- * and Shuffle, how far through it the visitor is, and every project as a
- * plain list for anyone who would rather not play (a native disclosure, so
- * it opens without JavaScript too), each linking to the project's own page,
- * with the repositories that are not projects of their own after it.
- *
- * What happens is said once, politely, by the visually hidden line: each
- * draw, and a shuffle. The opening card, already on the table when the page
- * loads, is not announced.
+ * Deck controls beside the heading: Draw, Spread, Shuffle, progress, and a
+ * plain list of every project (a native disclosure, works without JS) plus
+ * the other repositories. A hidden polite line announces draws, shuffles
+ * and cuts; the opening card is not announced.
  */
 export function DeckControls({ projects, deck }: DeckControlsProps) {
   const current = deck.current === null ? undefined : projects[deck.current];
   const moved = deck.deal > 0 || deck.drawn > 1;
   const shuffled = deck.deal > 0 && deck.drawn === 1 ? "Shuffled. " : "";
-  // A cut is said while it is the last thing that happened; a second cut in
-  // a row changes the text (a trailing no-break space) so it is said again.
+  // Announced while the cut is the latest action; a trailing NBSP on alternate cuts re-announces a repeat.
   const cutLast = deck.cuts > 0 && deck.cutMark === `${deck.deal}:${deck.drawn}`;
   const said = cutLast
     ? `Cut the deck. A different card is on top.${deck.cuts % 2 === 0 ? "\u00a0" : ""}`
@@ -75,8 +69,7 @@ export function DeckControls({ projects, deck }: DeckControlsProps) {
           {String(deck.drawn).padStart(2, "0")} / {String(deck.size).padStart(2, "0")}
         </span>
       </div>
-      {/* Shown once focus is in the section, where the keys work. The
-          buttons carry the same keys for assistive technology. */}
+      {/* Shown while focus is in the section; buttons expose the keys to assistive tech. */}
       <p className="deck-keys mono" aria-hidden="true">
         <kbd>D</kbd> draw <kbd>S</kbd> spread <kbd>R</kbd> shuffle <kbd>C</kbd> cut
       </p>

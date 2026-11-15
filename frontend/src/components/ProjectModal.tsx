@@ -1,8 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
 import type { MutableRefObject } from "react";
 import { createPortal } from "react-dom";
-// Not re-exported from ../motion/m, which lists only what the page needed
-// before the dialog: a hook, so it cannot trip LazyMotion's strict mode.
+// A hook, so importing it directly cannot trip LazyMotion's strict mode.
 import { useIsPresent } from "framer-motion";
 import { AnimatePresence, m } from "../motion/m";
 import { morphId, useHydrated, useMotionAllowed } from "../motion";
@@ -16,24 +15,23 @@ import { caseStudyPath } from "../lib/paths";
 import { FADE, FIGURE_RADIUS, MORPH_SPRING, figureId, isOngoing } from "./work/workUtils";
 
 interface Props {
-  /** The project being shown, from the list: the dialog opens with this at once. */
+  /** The summary from the list; the dialog opens with it at once. */
   project: ProjectSummary | null;
-  /** The full case study, once /api/projects/:slug has answered. */
+  /** The full case study, once /api/projects/:slug answers. */
   detail: ProjectDetail | null;
-  /** True when that request failed. */
+  /** That request failed. */
   detailError?: boolean;
   onClose: () => void;
-  /** Where focus goes back to when the dialog closes. */
+  /** Focus target on close. */
   returnFocusTo: HTMLElement | null;
 }
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
 
-/** Renders a bulleted section, or nothing at all when the list is empty. */
+/** A bulleted section, or nothing when the list is empty. */
 function ListSection({ title, items }: { title: string; items: string[] | null | undefined }) {
-  // The API sends [] for an empty list, but a missing one should cost a
-  // section, not the whole dialog.
+  // Tolerates a missing list as well as [].
   if (!items || items.length === 0) return null;
   return (
     <section className="dialog-section">
@@ -57,11 +55,7 @@ function TextSection({ title, text }: { title: string; text: string | null | und
   );
 }
 
-/**
- * Links, with the placeholders the source list marks "[add link]" rendered as
- * muted labels rather than anchors: `<a href="">` reloads the page, and
- * inventing a destination would be worse than admitting one is still to come.
- */
+/** Links; ones without a url render as muted labels, not anchors. */
 function LinkList({ links }: { links: ProjectLink[] }) {
   return (
     <ul className="dialog-links">
@@ -85,35 +79,24 @@ function LinkList({ links }: { links: ProjectLink[] }) {
 
 interface LayerProps {
   project: ProjectSummary;
-  /** The full case study, only once it is for this project. */
+  /** The full case study, once it is for this project. */
   full: ProjectDetail | null;
   detailError: boolean;
-  /** Grow the figure out of the deck's face-up card (shared layoutId) rather than fade in. */
+  /** Grow the figure from the face-up card (shared layoutId) instead of fading. */
   morph: boolean;
-  /** Motion allowed at all; false means every change lands at once or as a short fade. */
+  /** Motion allowed; false means instant changes or a short fade. */
   allowed: boolean;
-  /** Where the open layer reports its panel, for the parent's Tab trap and first focus. */
+  /** Receives the open layer's panel, for the Tab trap and first focus. */
   panelRef: MutableRefObject<HTMLDivElement | null>;
   onClose: () => void;
 }
 
 /**
- * The dialog itself, one per opening (keyed by slug under AnimatePresence).
- *
- * The moment its exit starts it goes inert, so a closing dialog cannot be
- * clicked or typed into while its figure shrinks back into its card or it
- * fades. That has to happen in the commit that starts the exit, which is
- * what useIsPresent reports; the parent no longer knows about this layer by
- * then.
- *
- * A closing layer can still be on screen when the next one opens, so each
- * layer keeps its own panel and its own title id. It hands its panel to the
- * parent only while it is the open one, and on unmount takes it back only if
- * the parent still holds this panel, never the next layer's.
- *
- * The panel itself does not scroll. Its figure sits on top, outside the part
- * that does, so the figure can grow from wherever its card is on the page
- * without being cut off at the panel's edge, and Close stays in reach.
+ * One dialog per opening (keyed by slug under AnimatePresence). It goes
+ * inert as its exit starts (useIsPresent), so a closing dialog takes no
+ * input. Layers can overlap, so each keeps its own panel and title id, and
+ * hands the panel to the parent only while open. The panel doesn't scroll;
+ * the figure sits above the scrolling part so it can grow unclipped.
  */
 function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onClose }: LayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -150,15 +133,12 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
     { label: "Status", value: shown.status },
   ].filter((f): f is { label: string; value: string } => Boolean(f.value));
 
-  // A placeholder link has a label but no destination yet, so it cannot stand
-  // in for a repository: the note below keys off a real url, not off the count.
+  // Placeholder links have no url, so the note below checks for a real one.
   const hasPublishedLink = shown.links.some((link) => link.url);
 
-  // Morphing: the figure grows out of the card, the panel's surface opens
-  // around it, and the text fades in once the figure is most of the way
-  // there. Nothing transforms the panel itself, so the box the figure is
-  // measured into is where it really lands. Otherwise the whole panel takes
-  // one short fade (with a small rise when motion is allowed).
+  // Morph: the figure grows from the card, the surface opens around it and
+  // the text fades in; the panel itself never transforms, so the figure
+  // lands where measured. Otherwise the panel fades (rising slightly if allowed).
   const panelMotion = morph
     ? {}
     : {
@@ -207,8 +187,7 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
         >
           <m.span className="dialog-surface" aria-hidden="true" {...surfaceMotion} />
 
-          {/* The card's picture at the head of the dialog: the one thing that
-              travels between the two. */}
+          {/* The figure: the one element shared with the card. */}
           <m.div
             className={shot ? "case-figure dialog-figure has-shot" : "case-figure dialog-figure"}
             layoutId={morph ? figureId(project.slug) : undefined}
@@ -239,8 +218,7 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
                 <h2 className="dialog-title" id={titleId}>
                   {shown.title}
                 </h2>
-                {/* The plate above already says what the project is. A
-                    screenshot does not, so then the line comes down here. */}
+                {/* The plate shows the subtitle; with a screenshot it goes here. */}
                 {shot && <p className="dialog-subtitle">{shown.subtitle}</p>}
 
                 {facts.length > 0 && (
@@ -260,8 +238,7 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
               {shot && <p className="dialog-caption">{shot.caption}</p>}
 
               <div className="dialog-sections">
-                {/* A list, so no name breaks across a line, under a label in
-                    the same column as the sections below it. */}
+                {/* A list, so no name breaks across lines. */}
                 {shown.stack.length > 0 && (
                   <section className="dialog-section">
                     <h3 className="dialog-section-title">Stack</h3>
@@ -304,9 +281,7 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
                     <ListSection title="Risks handled" items={full.risks} />
                   </>
                 )}
-                {/* The delivery steps lead into the outcomes on one line; with no
-                    steps (or before the full case study arrives) the outcomes
-                    stand as their own list. */}
+                {/* Steps lead into outcomes; without steps, outcomes stand alone. */}
                 {full && full.deliveryProcess.length > 0 ? (
                   <ProcessTimeline steps={full.deliveryProcess} outcomes={shown.outcomes} />
                 ) : (
@@ -322,16 +297,13 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
                   </section>
                 )}
 
-                {/* The same case study at an address of its own, to share or
-                    to keep (scripts/prerender.mjs writes it). */}
+                {/* Its own page (scripts/prerender.mjs). */}
                 <p className="dialog-permalink">
                   <a href={caseStudyPath(shown.slug)}>Open this case study as a page</a>
                 </p>
               </div>
 
-              {/* Several of these have no published repository yet. Saying so
-                  beats rendering nothing, which just looks like a link that
-                  failed to load. */}
+              {/* Say so when there is no public repository, rather than show nothing. */}
               {!hasPublishedLink && (
                 <p className="dialog-note">
                   No public repository linked for this one yet. Happy to walk through the code
@@ -347,25 +319,18 @@ function DialogLayer({ project, full, detailError, morph, allowed, panelRef, onC
 }
 
 /**
- * The case-study dialog (redesign SPEC.md, section 5.3), portalled to <body>
- * outside #app-shell, which App makes inert while this is open (so a screen
- * reader's cursor cannot walk out of the dialog into the page behind).
- *
- * It opens at once with the summary the page already has and fills in the
- * rest when /api/projects/:slug answers. Opened from the deck's face-up
- * card, the card grows into the figure at the head of the dialog (the card's
- * face and the figure share a layoutId inside App's LayoutGroup) and shrinks
- * back into the card on close. With reduced motion or motion paused it fades.
- *
- * Nothing renders until the page has hydrated: the prerendered HTML has no
- * dialog, and createPortal needs document.body.
+ * The case-study dialog, portalled to <body> outside #app-shell (which App
+ * makes inert while open). Opens with the summary, fills in when
+ * /api/projects/:slug answers. From the face-up card it morphs (shared
+ * layoutId in App's LayoutGroup); otherwise, or without motion, it fades.
+ * Renders only after hydration.
  */
 export function ProjectModal({ project, detail, detailError = false, onClose, returnFocusTo }: Props) {
-  // The open layer's panel, which that layer sets (see DialogLayer).
+  // Set by the open layer (DialogLayer).
   const panelRef = useRef<HTMLDivElement | null>(null);
   const hydrated = useHydrated();
   const allowed = useMotionAllowed();
-  // The latest values, read by the effect's cleanup without re-running it.
+  // Latest values for the effect cleanup, without re-running it.
   const returnRef = useRef(returnFocusTo);
   returnRef.current = returnFocusTo;
   const closeRef = useRef(onClose);
@@ -374,11 +339,8 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
   const open = project !== null;
   const slug = project?.slug ?? null;
 
-  // Decided once per opening: grow out of the card only when the control that
-  // opened the dialog sits inside that project's face-up card in the deck
-  // (DeckTable.tsx gives it the id). The layoutId has to be fixed for the
-  // figure's whole life, because Motion registers a shared element when it
-  // mounts.
+  // Decided once per opening: morph only when opened from that project's
+  // face-up card. Fixed for the figure's life (Motion registers on mount).
   const morph = useMemo(
     () => Boolean(slug && allowed && returnFocusTo?.closest(`[id="${morphId(slug)}"]`)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -388,9 +350,7 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
   useEffect(() => {
     if (!open) return;
     lockScroll();
-    // Held from the moment the dialog opens: a parent that clears its own
-    // record of the trigger in the same update that closes the dialog would
-    // otherwise leave nothing to return to.
+    // Captured on open, in case the parent clears it while closing.
     const returnTo = returnRef.current;
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -400,8 +360,7 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
       }
       if (e.key !== "Tab") return;
 
-      // Trap: without this, tabbing walks straight out of the dialog and into
-      // the page behind it, which is still visible but not meant to be usable.
+      // Trap Tab inside the dialog.
       const panel = panelRef.current;
       if (!panel) return;
       const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
@@ -425,16 +384,15 @@ export function ProjectModal({ project, detail, detailError = false, onClose, re
     return () => {
       window.removeEventListener("keydown", onKeyDown);
       unlockScroll();
-      // App lifts inert from the page in a layout effect, which runs before
-      // this, so the element can take focus again by now. preventScroll: the
-      // card may still be mid-morph, and the page should not jump to it.
+      // App lifts inert in a layout effect first, so this can take focus.
+      // preventScroll: the card may still be morphing.
       (returnTo ?? returnRef.current)?.focus?.({ preventScroll: true });
     };
   }, [open]);
 
   if (!hydrated) return null;
 
-  // The detail only counts once it is for the project on screen.
+  // Use the detail only if it matches the project on screen.
   const full = detail && project && detail.slug === project.slug ? detail : null;
 
   return createPortal(

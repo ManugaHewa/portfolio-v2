@@ -1,19 +1,12 @@
-// Writes the rendered pages into the built HTML, the last step of
-// `npm run build`. Without it, the HTML body is an empty <div id="root">
-// until JavaScript runs, so crawlers, link previews and anyone without
-// JavaScript saw a page with no name and no projects in it.
+// Last step of `npm run build`: writes rendered HTML into the pages.
 //
-//   dist/index.html          home page, plus the project list it was
-//                            rendered with, for hydration to start from
+//   dist/index.html          home page, plus its project list for hydration
 //   dist/privacy/index.html  privacy page
-//   dist/404.html            served by Nginx with a 404 status; no script
-//   dist/work/<slug>/        each project's own page, the full case study;
-//                            no script
-//   dist/sitemap.xml         every page above but the 404
+//   dist/404.html            static, no script
+//   dist/work/<slug>/        each case study's page, no script
+//   dist/sitemap.xml         every page but the 404
 //
-// Every page's head also gets a preload for the Latin Mona Sans file, so the
-// browser fetches the main typeface alongside the stylesheet rather than only
-// once it has parsed it, and the swap from the fallback face comes sooner.
+// Each head also preloads the Latin Mona Sans file.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -24,16 +17,12 @@ const ROOT = '<div id="root"></div>';
 
 const server = await import(pathToFileURL(resolve(FRONTEND, "dist-server/entry-server.js")).href);
 
-// The file name carries Vite's content hash, so it is looked up in the build
-// rather than written here. Latin, width axis, upright: the one file every
-// page needs for its own text.
+// Hashed name, so found in the build: Latin, width axis, upright.
 const monaSans = readdirSync(resolve(DIST, "assets")).find((f) =>
   /^mona-sans-latin-wdth-normal-[\w-]+\.woff2$/.test(f),
 );
 if (!monaSans) throw new Error("No mona-sans-latin-wdth-normal .woff2 found in dist/assets");
-// crossorigin even though the font is same-origin: fonts are always fetched
-// in CORS mode, and a preload without it is not reused, so the file would be
-// downloaded twice.
+// crossorigin: fonts load in CORS mode, so a preload without it is fetched twice.
 const FONT_PRELOAD = `<link rel="preload" as="font" type="font/woff2" crossorigin href="/assets/${monaSans}" />`;
 
 function withPreload(page) {
@@ -49,9 +38,8 @@ function fill(template, html, after = "") {
   return parts[0] + `<div id="root">${html}</div>` + after + parts[1];
 }
 
-// Home: the markup, then the data it was rendered from. A JSON data block is
-// never executed, so the CSP's script-src does not apply to it. "<" is escaped
-// so no string in the data can close the script element early.
+// Home: markup plus its data as a JSON block (not executed, so the CSP allows
+// it); "<" is escaped so the data cannot close the script element.
 const homeTemplate = readFileSync(resolve(DIST, "index.html"), "utf8");
 const home = server.renderHome();
 const data = JSON.stringify(home.projects).replace(/</g, "\\u003c");
@@ -66,14 +54,9 @@ const privacyFile = resolve(DIST, "privacy/index.html");
 const privacyTemplate = readFileSync(privacyFile, "utf8");
 writeFileSync(privacyFile, withPreload(fill(privacyTemplate, server.renderPrivacy())));
 
-// 404: a document of its own rather than a template with pieces cut out. It
-// borrows the privacy page's stylesheet, which covers the header, the footer
-// and the reading column without the home page's sections, plus the favicon,
-// and nothing else.
+// 404: its own document with the privacy stylesheet and the favicon.
 const stylesheets = privacyTemplate.match(/<link rel="stylesheet"[^>]*>/g) ?? [];
-// Up to the closing quote, not the first ">": the favicon is an inline SVG,
-// and cutting at its first ">" left an open attribute that swallowed the
-// stylesheet link after it.
+// Match to the closing quote: the inline SVG favicon contains ">".
 const favicon = homeTemplate.match(/<link rel="icon" href="[^"]*"\s*\/?>/)?.[0] ?? "";
 if (stylesheets.length === 0) throw new Error("No stylesheet link found in the built privacy/index.html");
 writeFileSync(
@@ -98,9 +81,7 @@ writeFileSync(
 `,
 );
 
-// Each project's page: a document of its own like the 404 (the privacy
-// stylesheet, no script), with its own title, description, canonical
-// address and link preview.
+// Project pages: like the 404, plus title, description, canonical and link preview.
 const SITE_URL = "https://manugahewa.dev";
 const attr = (text) =>
   text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -143,7 +124,7 @@ for (const c of cases) {
   );
 }
 
-// The sitemap, from the pages actually written.
+// Sitemap of the pages written.
 const pages = ["/", "/privacy", ...cases.map((c) => `/work/${c.slug}/`)];
 writeFileSync(
   resolve(DIST, "sitemap.xml"),

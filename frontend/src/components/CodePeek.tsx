@@ -6,11 +6,9 @@ interface CodePeekProps {
 }
 
 /**
- * The real lines behind one step of the pipeline diagram, as they stood
- * when this page was built (frontend/build/repoFacts.ts reads and
- * highlights them), with their line numbers in the file. A code region a
- * screen reader can read like any other text: its label names the file and
- * the lines.
+ * The real source lines behind a pipeline step, as of this build
+ * (frontend/build/repoFacts.ts), with line numbers. A region labelled with
+ * the file and lines.
  */
 export function CodePeek({ id, peek }: CodePeekProps) {
   const end = peek.start + peek.lines.length - 1;

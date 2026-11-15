@@ -12,45 +12,35 @@ import { SITE } from "../site";
 import type { OpenProject, ProjectSummary } from "../types";
 
 interface HeroProps {
-  /** Every project, for the deck in the work index. */
+  /** Every project, for the deck. */
   projects: ProjectSummary[];
-  /** The list has not arrived yet (development only: production prerenders it). */
+  /** The list has not arrived yet (dev only; production prerenders it). */
   loading?: boolean;
   /** The list failed to load. */
   error?: boolean;
   onOpen: OpenProject;
 }
 
-// Every item is true of a project on the page: web apps (DMS, Alice, Smart
-// Grocery), mobile apps (RxFlow), APIs (the DMS API, the Superhero REST API),
-// machine-learning tools (Flaky Test Detector, Sketch2Photo, ShopSense).
+// Each is true of a project on the page: web apps (DMS, Alice, Smart Grocery),
+// mobile (RxFlow), APIs (DMS, Superhero), ML (Flaky Test Detector, Sketch2Photo, ShopSense).
 const BUILDS = ["web apps", "mobile apps", "APIs", "machine-learning tools"];
 
-// The sticky header's height. The stage pins just under it, so the hand-off
-// is measured from the moment the hero's top meets the header's bottom.
+// Sticky header height; the stage pins just under it.
 const HEADER_PX = 64;
 
-// Past this much of the hand-off the copy has started to fade under the work
-// index, so focus landing in it scrolls the hero back to its start.
+// Past this share of the hand-off the copy is fading, so keyboard focus in it scrolls back.
 const FOCUS_RETURN_AT = 0.05;
 
-// The stretch of the pin over which the wheel flies into the header:
-// it leaves once the work index has covered the copy, and has docked before
-// the stage lets go.
+// Share of the pin over which the wheel flies to the header.
 const DOCK_FROM = 0.5;
 const DOCK_TO = 0.9;
 
-// The live wheel's width as a share of its stage (rouletteScene.ts frames it
-// so), and its height as a share of its width: it is seen from above at an
-// angle, and the mark it hands over to is drawn face on.
+// Live wheel width as a share of its stage (rouletteScene.ts), and its
+// height-to-width ratio as seen at an angle (the mark is face on).
 const WHEEL_SPAN = 0.95;
 const WHEEL_TILT = 0.9;
 
-/**
- * Where the flying wheel is at `k` (0 at the hero, 1 docked): its centre
- * and size, eased, on an arc that bows up and out rather than a straight
- * diagonal.
- */
+/** The flying wheel's centre and size at `k` (0 hero, 1 docked), eased along an upward arc. */
 export function dockFrame(
   k: number,
   from: { x: number; y: number; size: number },
@@ -65,20 +55,14 @@ export function dockFrame(
   };
 }
 
-// Where the work index's heading has risen to, in px below the header, when
-// the copy it rises over has faded out.
+// The work index heading's distance below the header when the copy has faded out (px).
 const COPY_GONE_AT = 120;
 
 /**
- * One container (#top) holding the sticky stage and the work index, which
- * rises over the stage's copy column as the page scrolls (redesign SPEC.md,
- * section 5.2).
- *
- * The pin itself is CSS (hero.css, under the same media query as PIN_QUERY),
- * so the prerendered page is laid out right before any script runs. This
- * component only adds the scroll-linked hand-off on top, and only once
- * useMediaQuery(PIN_QUERY) is true, which is never on the server or during
- * hydration: until then every style below is the resting one.
+ * #top: the sticky stage plus the work index, which rises over the copy.
+ * The pin is CSS (hero.css, same query as PIN_QUERY), so the prerender is
+ * laid out right; this adds the scroll-linked hand-off once PIN_QUERY
+ * matches, never on the server or while hydrating.
  */
 export function Hero({ projects, loading, error, onOpen }: HeroProps) {
   const heroRef = useRef<HTMLDivElement>(null);
@@ -94,35 +78,26 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
     offset: [`start ${HEADER_PX}px`, "end end"],
   });
 
-  // The work index's heading on its way up: 0 as it enters at the bottom of
-  // the window, 1 once it is COPY_GONE_AT below the header.
+  // Work index heading rising: 0 entering at the bottom, 1 at COPY_GONE_AT below the header.
   const { scrollYProgress: indexRise } = useScroll({
     target: indexHeadRef,
     offset: ["start end", `start ${HEADER_PX + COPY_GONE_AT}px`],
   });
 
-  // The copy drifts up and fades as the work index rises over it, timed
-  // against the index itself rather than the pin, so what is left of the
-  // copy stays until the sheet is about to cover it and no empty band opens
-  // between them. The fade starts once the sheet has passed the copy's
-  // lower half. The wheel settles back a little across the whole pin, so it
-  // keeps reacting until the page moves on.
+  // The copy drifts up and fades, timed to the rising index (not the pin),
+  // so no empty band opens between them. The wheel shrinks slightly over the pin.
   const copyY = useTransform(indexRise, [0, 1], [0, -60]);
   const copyOpacity = useTransform(indexRise, [0.45, 1], [1, 0]);
   const wheelScale = useTransform(scrollYProgress, [0, 1], [1, 0.86]);
-  // The card table comes in as the wheel leaves for the header (the
-  // dock below), into the columns it vacates.
+  // The card table enters as the wheel docks, into the columns it leaves.
   const deckReveal = useTransform(scrollYProgress, [DOCK_FROM + 0.06, DOCK_FROM + 0.32], [0, 1]);
 
   /*
-   * The dock. Over the second half of the pin the wheel leaves the hero for
-   * the mark beside the name in the header (Nav.tsx): the live scene hands
-   * over to a fixed SVG copy of itself (WheelMark) where it stands, and the
-   * copy flies on an arc and shrinks onto the mark, tilting up to face the
-   * page on the way, and the mark then takes over. Scrolling back reverses it. Written straight to the nodes
-   * on each scroll change; --dock-mark on <html> tells the header's mark
-   * when to show. Only with the pinned layout (so never under reduced
-   * motion); everywhere else the header's mark simply shows.
+   * The dock: late in the pin, the live wheel hands over to a fixed SVG copy
+   * (WheelMark) that flies on an arc onto the header mark (Nav.tsx), tilting
+   * face on; scrolling back reverses it. Written straight to the nodes;
+   * --dock-mark on <html> shows the header mark. Pinned layout only, so
+   * never under reduced motion.
    */
   useEffect(() => {
     const stage = wheelStageRef.current;
@@ -134,8 +109,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
       const k = Math.min(1, Math.max(0, (p - DOCK_FROM) / (DOCK_TO - DOCK_FROM)));
       const mark = document.querySelector(".brand-mark");
       root.style.setProperty("--dock-mark", k >= 1 ? "1" : "0");
-      // The wheel fades out over the first tenth of the flight as its copy
-      // fades in on top of it; gone, its Spin plate is out of reach too.
+      // The wheel fades over the first tenth of the flight; hidden, its Spin plate is unreachable.
       stage.style.opacity = String(1 - Math.min(1, k / 0.1));
       stage.style.visibility = k >= 0.1 ? "hidden" : "";
       if (k <= 0 || k >= 1 || !mark) {
@@ -167,17 +141,14 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
     };
   }, [pinned, scrollYProgress]);
 
-  // A keyboard user tabbing back into the faded copy (WCAG 2.4.11): bring the
-  // hero back to its start so nothing focused sits under the work index, and
-  // hold the copy at full opacity while focus is in it (hero.css). Only for
-  // keyboard focus: a click on "See the work" also focuses that link, and the
-  // copy should still fade as the page scrolls away from it.
+  // Keyboard focus in the faded copy (WCAG 2.4.11) scrolls the hero back and
+  // holds the copy opaque (hero.css). Clicks don't count, so the copy still fades.
   const onCopyFocus = (e: FocusEvent<HTMLDivElement>) => {
     let keyboard = true;
     try {
       keyboard = e.target.matches(":focus-visible");
     } catch {
-      // A browser without :focus-visible: treat every focus as keyboard focus.
+      // No :focus-visible support: treat focus as keyboard focus.
     }
     if (!keyboard) return;
     setKeyboardInCopy(true);
@@ -215,9 +186,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
                 srLabel="web apps, mobile apps, APIs and machine-learning tools."
               />
             </p>
-            {/* The self-hosting claim is about this site only: the Superhero
-                API ran on AWS, and an app on a phone runs on no server of
-                mine (docs/claims-review.md, N1). */}
+            {/* Self-hosting covers this site only (docs/claims-review.md, N1). */}
             <p className="hero-lede-2 lede">
               Mostly in TypeScript, React, Node.js and Python. I host this site on my own server.
             </p>
@@ -256,12 +225,10 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
               className={cx("hero-wheel-stage", live && "is-live")}
               style={pinned ? { scale: wheelScale } : { scale: 1 }}
             >
-              {/* The still sits under the live scene and is hidden only while
-                  the scene reports a drawn frame. onLive(false) arrives on a
-                  lost context and on unmount, and brings it back. */}
+              {/* The still shows unless the scene has drawn a frame. */}
               <div className="hero-still" aria-hidden="true" />
               <Scene variant="core" className="scene-core" onLive={setLive} />
-              {/* Spin, on the wheel's front rim (SpinPlaque.tsx). */}
+              {/* Spin, on the wheel's rim (SpinPlaque.tsx). */}
               {projects.length > 0 && <SpinPlaque projects={projects} live={live} />}
             </m.div>
           </div>
@@ -277,7 +244,7 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
         reveal={pinned ? deckReveal : undefined}
       />
 
-      {/* The wheel on its way to the header (see the dock above). */}
+      {/* The wheel in flight to the header (the dock). */}
       {pinned && (
         <div className="wheel-flight" ref={flightRef} aria-hidden="true">
           <WheelMark />

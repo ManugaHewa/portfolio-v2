@@ -8,8 +8,7 @@ import { PIN_QUERY } from "../motion";
 import { projectNumber } from "../stats";
 import { Wrap, installMatchMedia } from "./motion/helpers";
 
-// From the import.meta.url string, never through `new URL()`: under jsdom the
-// URL class is jsdom's, which does not resolve file: URLs the way Node does.
+// From the import.meta.url string: jsdom's URL doesn't resolve file: URLs like Node's.
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const read = (path: string) => readFileSync(join(REPO, path), "utf8");
 
@@ -33,7 +32,7 @@ describe("Pipeline: the diagram is true", () => {
     expect(existsSync(join(REPO, path))).toBe(true);
   });
 
-  // Existing is not enough: each file still has to do what its node says.
+  // Each file must still do what its node says.
   it("cites files that still say what the nodes claim", () => {
     expect(read("content/projects.ts")).toMatch(/export const PROJECTS/);
     expect(read("scripts/deploy.sh")).toMatch(/backend\/prisma\/seed\.ts/);
@@ -92,7 +91,7 @@ describe("Pipeline: markup", () => {
     for (const label of container.querySelectorAll(".pl-cite, .pl-stem")) {
       expect(label.closest('[aria-hidden="true"]')).not.toBeNull();
     }
-    // The steps' list, in the stage; the live readout under it has its own.
+    // The steps list in the stage; the live readout has its own.
     const list = within(container.querySelector<HTMLElement>(".pipeline-stage")!).getByRole("list");
     const items = within(list).getAllByRole("listitem");
     expect(items).toHaveLength(PIPELINE_NODES.length);
@@ -110,7 +109,7 @@ describe("Pipeline: markup", () => {
     const { container } = renderPipeline();
     const cites = Array.from(container.querySelectorAll(".pl-nodes .pl-cite")).map((c) => c.textContent);
     expect(cites).toEqual(PIPELINE_NODES.filter((n) => n.source !== n.label).map((n) => n.source));
-    // content/projects.ts is its own source: named once, not twice.
+    // content/projects.ts is its own source: named once.
     expect(cites).not.toContain(PIPELINE_NODES[0].label);
   });
 
@@ -143,14 +142,14 @@ describe("Pipeline: markup", () => {
     media = installMatchMedia([PIN_QUERY]);
     const { container } = renderPipeline();
     await act(async () => {});
-    // jsdom never scrolls, so the drawing sits at the start of its track.
+    // jsdom never scrolls, so the drawing is at its start.
     const on = Array.from(container.querySelectorAll(".pl-node")).map((n) => n.getAttribute("data-on"));
     expect(on).toEqual(PIPELINE_NODES.map(() => "false"));
     expect(container.querySelector(".pl-route")).toHaveAttribute("data-on", "false");
     expect(container.querySelector(".pl-ci")).toHaveAttribute("data-on", "false");
-    // The counter reads step 1 from the moment the stage pins.
+    // The counter reads 1 once pinned.
     expect(container.querySelector(".pl-counter")).toHaveTextContent(`1/${PIPELINE_NODES.length}`);
-    // The text is still all there for anyone reading the list.
+    // The list still has all the text.
     expect(within(container.querySelector<HTMLElement>(".pipeline-stage")!).getByRole("list")).toHaveTextContent(
       PIPELINE_NODES[4].text,
     );
@@ -173,7 +172,7 @@ describe("Pipeline: the code behind each step", () => {
       const peek = container.querySelector("#pl-peek")!;
       expect(button).toHaveAttribute("aria-expanded", "true");
       expect(peek).toHaveAttribute("aria-label", expect.stringContaining(node.source));
-      // The excerpt is the file's own text at the lines it names.
+      // The excerpt matches the file at the lines it names.
       const source = read(node.source).split(/\r?\n/);
       const start = Number(/lines (\d+)/.exec(peek.getAttribute("aria-label")!)![1]);
       const first = peek.querySelector(".code-line")!.textContent!.replace(/^\d+/, "").trim();

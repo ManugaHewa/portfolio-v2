@@ -11,11 +11,9 @@ import {
 import type { ReactNode, RefObject } from "react";
 
 /**
- * The one query that decides whether the page pins (the hero stage, the
- * pipeline). CSS reads the same string in @media rules and owns the layout;
- * JS reads it only to attach the scroll-driven transforms on top. That way
- * the prerendered HTML is laid out correctly for every visitor before any
- * script runs.
+ * Whether the page pins (hero stage, pipeline). CSS uses the same query for
+ * layout, so the prerendered HTML is right before scripts run; JS only adds
+ * the scroll-driven transforms.
  */
 export const PIN_QUERY =
   "(min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference)";
@@ -25,23 +23,14 @@ const FINE_POINTER_QUERY = "(pointer: fine) and (hover: hover)";
 
 const noop = () => {};
 
-/**
- * useLayoutEffect in the browser, useEffect while prerendering. React warns
- * about a layout effect on the server, where there is no layout to read, and
- * the build-time prerender renders every component there once. The one copy
- * for the whole site: the app shell, the contact form and the primitives.
- */
+/** useLayoutEffect in the browser, useEffect in the prerender (no layout there; React warns). */
 export const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const subscribeNever = () => noop;
 
 /**
- * False on the server and during hydration, true afterwards.
- *
- * Built on useSyncExternalStore rather than a state flag set in an effect:
- * React uses the server snapshot (false) while hydrating, so the browser's
- * first render matches the prerendered HTML, and the client snapshot (true)
- * for anything mounted later, so a dialog or a lazily loaded section does not
- * render once in its "server" form for nothing.
+ * False on the server and while hydrating, true after. useSyncExternalStore
+ * uses the server snapshot while hydrating (matching the HTML) and the
+ * client one for later mounts, which skip a wasted "server" render.
  */
 export function useHydrated(): boolean {
   return useSyncExternalStore(
@@ -55,17 +44,13 @@ function canMatchMedia(): boolean {
   return typeof window !== "undefined" && typeof window.matchMedia === "function";
 }
 
-/**
- * Whether a media query matches, kept live. False on the server and during
- * hydration, for the same reason as useHydrated: the HTML was rendered
- * without knowing the visitor's screen or settings.
- */
+/** A live media query match. False on the server and while hydrating. */
 export function useMediaQuery(query: string): boolean {
   const subscribe = useMemo(
     () => (onChange: () => void) => {
       if (!canMatchMedia()) return noop;
       const mql = window.matchMedia(query);
-      // addListener for Safari before 14, which has no addEventListener here.
+      // addListener: Safari before 14.
       if (typeof mql.addEventListener === "function") {
         mql.addEventListener("change", onChange);
         return () => mql.removeEventListener("change", onChange);
@@ -83,35 +68,25 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
-/**
- * The visitor's reduced-motion setting, through useMediaQuery. Components
- * use this rather than framer-motion's useReducedMotion, which reads the
- * setting during the first render and so disagrees with the prerendered
- * HTML.
- */
+/** Reduced-motion setting. Not framer-motion's useReducedMotion, which mismatches the prerender. */
 export function usePrefersReducedMotion(): boolean {
   return useMediaQuery(REDUCED_QUERY);
 }
 
-/** A mouse or trackpad: the only pointers cursor effects are for. */
+/** Mouse or trackpad: the only pointers cursor effects are for. */
 export function useFinePointer(): boolean {
   return useMediaQuery(FINE_POINTER_QUERY);
 }
 
 /**
- * Scroll-spy for the header nav and the index rail: the id of the last
- * section whose top has crossed a line a third of the way down the viewport,
- * or null above the first one (in the hero, nothing is "current").
- *
- * getBoundingClientRect rather than offsetTop, because sticky stages and
- * transforms change what offsetTop is measured against. Reads are batched to
- * one per frame. At the very bottom of the page the last section may never
- * reach the line, so it is made current there.
+ * Scroll-spy for the nav and index rail: the last section whose top has
+ * crossed 34% of the viewport, or null above the first. Reads rects (sticky
+ * stages and transforms skew offsetTop), once per frame. At the page
+ * bottom, the last section is current.
  */
 export function useActiveSection(ids: string[]): string | null {
   const [active, setActive] = useState<string | null>(null);
-  // A string key, so callers can pass a fresh array literal on every render
-  // without restarting the listeners.
+  // String key, so callers can pass a fresh array each render.
   const key = ids.join("|");
 
   useEffect(() => {
@@ -151,15 +126,10 @@ export function useActiveSection(ids: string[]): string | null {
 }
 
 /**
- * Whether an entrance should stand in its finished state: true once `amount`
- * of the element has come into view, false again only when the element has
- * gone back below the bottom of the viewport. So every scroll down plays the
- * entrance again, and scrolling up past something that has played never
- * hides it in front of the visitor: leaving through the top keeps it shown,
- * and the reset happens out of sight, below the fold.
- *
- * False on the server and until the observer first reports, which is the
- * prerendered (hidden) state, so hydration agrees.
+ * Whether an entrance shows its finished state: true once `amount` of the
+ * element is in view, false again only after it drops below the viewport.
+ * It replays on each scroll down but never hides in front of the visitor.
+ * False on the server and until the first report, matching the prerender.
  */
 export function useReplayInView(ref: RefObject<Element>, amount = 0.2): boolean {
   const [shown, setShown] = useState(false);
@@ -173,15 +143,13 @@ export function useReplayInView(ref: RefObject<Element>, amount = 0.2): boolean 
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          // An element too tall for `amount` of it ever to fit counts once
-          // it fills that share of the viewport.
+          // Too tall to ever show `amount`: counts once it fills that share of the viewport.
           const viewH = entry.rootBounds?.height ?? window.innerHeight;
           const tall = (entry.boundingClientRect?.height ?? 0) * amount > viewH;
           if (entry.isIntersecting && (entry.intersectionRatio >= amount * 0.99 || tall)) {
             setShown(true);
           } else if (!entry.isIntersecting) {
-            // Below the viewport (the visitor scrolled back up): re-arm. Above
-            // it (scrolled on past): leave it as it is.
+            // Below the viewport (scrolled back up): re-arm. Above it: leave it.
             const top = entry.boundingClientRect?.top ?? 0;
             const bottom = entry.rootBounds?.bottom ?? window.innerHeight;
             if (top >= bottom) setShown(false);
@@ -202,11 +170,7 @@ export interface MotionPause {
   setPaused(p: boolean): void;
 }
 
-/**
- * The header's "Pause motion" toggle (WCAG 2.2.2). Held in React state for
- * the visit and never stored: the site keeps nothing in the browser. The
- * text loop, the marquee and every WebGL scene read it and stop.
- */
+/** The header's "Pause motion" toggle (WCAG 2.2.2). React state for the visit, never stored. */
 export const MotionPauseContext = createContext<MotionPause>({
   paused: false,
   setPaused: noop,
@@ -218,11 +182,7 @@ export function MotionPauseProvider(props: { children: ReactNode }): JSX.Element
   return createElement(MotionPauseContext.Provider, { value }, props.children);
 }
 
-/**
- * Whether anything may move right now: hydrated, no reduced-motion setting,
- * and not paused by the visitor. False on the server and during hydration,
- * so nothing starts moving until the page is the browser's own.
- */
+/** Whether anything may move: hydrated, no reduced motion, not paused. */
 export function useMotionAllowed(): boolean {
   const hydrated = useHydrated();
   const reduced = usePrefersReducedMotion();

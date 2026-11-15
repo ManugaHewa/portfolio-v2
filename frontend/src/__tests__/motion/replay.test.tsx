@@ -3,10 +3,7 @@ import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useReplayInView } from "../../motion";
 
-/**
- * An IntersectionObserver the test drives by hand: `report` sends one entry
- * for the observed element, placed where the test says.
- */
+/** A hand-driven IntersectionObserver: `report` sends one entry, placed as the test says. */
 let callback: IntersectionObserverCallback | null = null;
 const original = window.IntersectionObserver;
 
@@ -69,12 +66,11 @@ describe("useReplayInView", () => {
     report(true, 0.5, 600);
     expect(state()).toBe("shown");
 
-    // Scrolled on past it: it leaves through the top and stays as it is.
+    // Scrolled past: it leaves through the top and stays.
     report(false, 0, -300);
     expect(state()).toBe("shown");
 
-    // Back up through it, then above it: it leaves through the bottom and
-    // re-arms out of sight.
+    // Back up and above: it leaves through the bottom and re-arms.
     report(true, 1, 300);
     expect(state()).toBe("shown");
     report(false, 0, 900);

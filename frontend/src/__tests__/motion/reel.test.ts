@@ -3,8 +3,7 @@ import { reelRows } from "../../motion/TextLoop";
 
 describe("the slot reel", () => {
   it("runs once round the reel and on to the next word, with a row above it to overshoot into", () => {
-    // From "web apps" (0) to "mobile apps" (1) of four: the new word is row
-    // 1, the old one the last row, and every word passes on the way.
+    // Item 0 to 1 of four: new word row 1, old word last, every word passes.
     expect(reelRows(0, 1, 4)).toEqual([2, 1, 0, 3, 2, 1, 0]);
     // Round the end of the list.
     expect(reelRows(3, 0, 4)).toEqual([1, 0, 3, 2, 1, 0, 3]);

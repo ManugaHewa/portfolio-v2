@@ -22,7 +22,7 @@ const plate = (live: boolean) =>
   );
 const spinButton = () => screen.getByRole("button", { name: "Spin the wheel" });
 const said = (container: HTMLElement) => container.querySelector("[aria-live='polite']")?.textContent;
-// jsdom's name computation spaces the hidden tail off from the title.
+// jsdom adds a space before the hidden tail in the name.
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const dealtLink = (title: string) =>
   screen.getByRole("link", { name: new RegExp(`^${escape(title)}\\s*, dealt in the work below$`) });
@@ -82,11 +82,11 @@ describe("the spin plate", () => {
     expect(container.querySelector(".spin-call")).toHaveTextContent("No more bets");
     expect(said(container)).toBe("No more bets.");
 
-    // A press while the ball is out asks nothing more.
+    // A press while the ball is out does nothing.
     fireEvent.click(spinButton());
     expect(readSpin()?.id).toBe(ask.id);
 
-    // An answer to some other ask is not this one's.
+    // An answer to another ask is ignored.
     act(() => answerSpin({ id: ask.id - 1, number: 5 }));
     expect(container.querySelector(".spin-pocket")).toBeNull();
 

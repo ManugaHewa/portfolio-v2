@@ -46,9 +46,8 @@ vi.mock("../api", () => ({
 }));
 
 /**
- * axe's structural rules: roles, names, nesting, landmarks, heading order.
- * Contrast needs real layout and real colours, which jsdom does not have; it
- * is measured in a browser instead (docs/audit-2026-10.md, appendix E).
+ * axe structural rules: roles, names, nesting, landmarks, heading order.
+ * Contrast needs real layout; it is measured in a browser (docs/audit-2026-10.md, appendix E).
  */
 async function violations(root: Element = document.body) {
   const result = await axe.run(root, {
@@ -61,9 +60,7 @@ async function violations(root: Element = document.body) {
 
 describe("page landmarks", () => {
   it("offers a skip link pointing at the main landmark", async () => {
-    // The stylesheet carried .skip-link from the previous site, but the React
-    // rebuild never rendered it, so keyboard users had to tab the whole nav on
-    // every load. This pins the markup to the styles.
+    // The skip link must be rendered, not just styled.
     await act(async () => { render(<App />); });
 
     const skip = screen.getByRole("link", { name: /skip to content/i });
@@ -73,8 +70,7 @@ describe("page landmarks", () => {
 
   it("gives every section a heading that names it", async () => {
     await act(async () => { render(<App />); });
-    // The sections: the work (the deck, under the hero), how it's built,
-    // skills and contact. Each is labelled by a real heading with a real name.
+    // Each section is labelled by a real heading.
     for (const id of ["work-index", "pipeline", "skills", "contact"]) {
       const section = document.getElementById(id);
       expect(section, `#${id} should exist`).not.toBeNull();
@@ -96,7 +92,7 @@ describe("page landmarks", () => {
 
     expect(footer).toHaveTextContent("Manuga Hewa Pathirana");
     expect(footer).toHaveTextContent("Milton, Ontario");
-    // Contact offers an Email link too, so look inside the footer.
+    // Contact has an Email link too, so scope to the footer.
     expect(within(footer).getByRole("link", { name: "Email" })).toHaveAttribute(
       "href",
       expect.stringMatching(/^mailto:/),

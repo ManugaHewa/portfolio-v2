@@ -6,45 +6,35 @@ export interface SceneHandle {
   scene: Scene;
   camera: PerspectiveCamera;
   renderer: WebGLRenderer;
-  /** Longest edge of the drawing surface in CSS pixels. */
+  /** Longest edge of the canvas in CSS px. */
   size: number;
 }
 
 export interface SceneDef {
-  /** Build the contents. Return a per-frame update, or nothing. */
+  /** Builds the contents; may return a per-frame update. */
   setup: (h: SceneHandle) => ((t: number, dt: number) => void) | void;
-  /** Field of view, default 42. */
+  /** Field of view (default 42). */
   fov?: number;
-  /** Everything created in setup that holds GPU memory. */
+  /** Frees what setup put on the GPU. */
   dispose?: () => void;
 }
 
 export interface MountOptions {
-  /** Hears true once the first frame is drawn, false if the context is lost. */
+  /** true after the first frame; false if the context is lost. */
   onLive?: (live: boolean) => void;
-  /**
-   * Pixel ratio, antialiasing and frame-rate cap. A function rather than a
-   * value because it is read again on every resize: rotating a phone across
-   * a breakpoint should change the budget, not keep the one from mount. It is
-   * read at mount and on resize only, never per frame: each read asks
-   * matchMedia, and nothing it depends on changes between resizes.
-   */
+  /** Pixel ratio, antialiasing and frame cap. Read at mount and on resize, never per frame. */
   budget?: () => SceneBudget;
-  /** Start with the loop stopped (the visitor has paused motion). */
+  /** Start paused (the visitor paused motion). */
   paused?: boolean;
 }
 
-/**
- * What a mounted scene gives back. Pausing is separate from disposing so the
- * header's "Pause motion" toggle can stop every loop and start it again
- * without throwing away and rebuilding six GPU contexts.
- */
+/** Pausing is separate from disposing, so "Pause motion" never rebuilds contexts. */
 export interface SceneController {
   setPaused(paused: boolean): void;
   dispose(): void;
 }
 
-/** Collects anything holding GPU memory so teardown is not hand-maintained. */
+/** Collects GPU resources for a one-call teardown. */
 export function makeTracker() {
   const bag: Array<{ dispose: () => void }> = [];
   return {
@@ -63,25 +53,10 @@ export function makeTracker() {
 const INERT: SceneController = { setPaused: () => {}, dispose: () => {} };
 
 /**
- * Shared harness for every WebGL scene on the page.
- *
- * Written once because the same things go wrong in each of them:
- *
- * - Backing store vs CSS size. The renderer's drawing buffer has to match
- *   the element's real box times the pixel ratio, or the canvas is silently
- *   upscaled and everything looks soft.
- * - Resize. A canvas sized once at mount is wrong the moment the layout
- *   moves, so this watches the element rather than the window.
- * - Idle cost. A loop below the fold, in a background tab or after the
- *   visitor pressed "Pause motion" is pure battery drain, so the loop runs
- *   only while all three allow it.
- * - Disposal. Three holds GPU buffers until told otherwise; without an
- *   explicit teardown a StrictMode remount leaks a context every time.
- *
- * `onLive` hears true once the first frame is drawn and false if the context
- * is later lost. The hero shows a still image whenever its scene is not live,
- * so a device that never gets a frame out keeps the still instead of an
- * empty box.
+ * Shared WebGL harness: sizes the drawing buffer to the element's box,
+ * follows resizes, runs the loop only while on screen, visible and not
+ * paused, and frees GPU memory on dispose. Via `onLive`, the hero keeps its
+ * still image until a frame is drawn, and gets it back if the context is lost.
  */
 export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions = {}): SceneController {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -90,7 +65,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
 
   const { onLive } = options;
   const budget = options.budget ?? (() => sceneBudget());
-  // The budget as last read: at mount, then again by applySize on each resize.
+  // Budget as last read (mount, then each resize).
   let current = budget();
 
   let renderer: WebGLRenderer;
@@ -101,7 +76,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
       powerPreference: "low-power",
     });
   } catch {
-    // No WebGL: the CSS layer underneath is the whole experience.
+    // No WebGL: the CSS underneath stands in.
     return INERT;
   }
 
@@ -115,16 +90,13 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
   el.appendChild(canvas);
 
   const applySize = () => {
-    // clientWidth/Height, not getBoundingClientRect: the rect is the
-    // *transformed* box, and the hero's wheel is scaled as the work
-    // index rises over it. Measuring the rect would size the buffer to the
-    // shrunken box and leave the scene soft when it grows back.
+    // clientWidth/Height, not the transformed rect: the hero wheel scales
+    // while it docks, and a rect-sized buffer would stay soft.
     const w = Math.max(1, el.clientWidth);
     const h = Math.max(1, el.clientHeight);
     current = budget();
     renderer.setPixelRatio(current.pixelRatio);
-    // updateStyle false: the element is already sized by CSS, and letting
-    // three write inline px here is what desyncs buffer from box.
+    // updateStyle false: CSS sizes the element; inline px would desync it.
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
@@ -150,9 +122,8 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
 
   const tick = (now: number) => {
     if (!running) return;
-    // A frame-rate cap skips display frames rather than using a timer, so the
-    // frames that are drawn stay in step with the display. The millisecond of
-    // slack keeps a 60Hz display from landing just short of every other frame.
+    // Cap by skipping display frames, so drawn frames stay in step with the
+    // display. The 1 ms slack stops a 60 Hz display missing every other one.
     const cap = current.maxFps;
     if (cap > 0 && now - lastFrame < 1000 / cap - 1) {
       raf = requestAnimationFrame(tick);
@@ -166,15 +137,12 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
     raf = requestAnimationFrame(tick);
   };
 
-  // Independent reasons to stop, so none of them can restart the loop while
-  // another still wants it stopped. Intersection alone is not enough: the
-  // page-wide starfield is position: fixed, so it never stops intersecting.
+  // Separate stop reasons, so none restarts the loop while another holds it.
+  // The fixed starfield always intersects, so intersection alone is not enough.
   let onScreen = false;
   let visible = document.visibilityState !== "hidden";
   let paused = options.paused ?? false;
-  // Terminal, unlike the others: a lost context is never coming back here, so
-  // scrolling the element back into view must not restart the loop on it. A
-  // section scene gets a fresh context the next time its section approaches.
+  // Final: a section scene gets a new context when its section next approaches.
   let lost = false;
   let disposed = false;
 
@@ -183,8 +151,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
     if (shouldRun === running) return;
     running = shouldRun;
     if (running) {
-      // Without this the first frame after a pause sees the whole paused
-      // duration as its delta and the scene jumps forward.
+      // Or the first frame after a pause jumps by the paused time.
       lastFrame = performance.now();
       raf = requestAnimationFrame(tick);
     } else {
@@ -192,9 +159,7 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
     }
   };
 
-  // One frame straight away, at time zero, before any loop starts. A scene
-  // that mounts while motion is paused then shows its resting pose rather
-  // than an empty canvas, and the hero can swap its still for it.
+  // One frame at t = 0 first, so a paused scene shows its resting pose.
   update?.(0, 0);
   draw();
 
@@ -216,16 +181,12 @@ export function mountScene(el: HTMLElement, def: SceneDef, options: MountOptions
   const ro = new ResizeObserver(() => {
     if (lost || disposed) return;
     handle.size = applySize();
-    // Repaint immediately rather than waiting for the next frame: while the
-    // loop is stopped, nothing else would redraw the resized buffer.
+    // Redraw now: a stopped loop would leave the resized buffer blank.
     renderer.render(scene, camera);
   });
   ro.observe(el);
 
-  // A lost context would otherwise leave a dead black canvas on the page.
-  // Hiding it lets whatever sits underneath (the hero's still image, or just
-  // the section's background) show, and onLive(false) tells the hero to
-  // bring its still back.
+  // Hide a lost context's dead canvas so what is underneath shows.
   const onLost = (e: Event) => {
     e.preventDefault();
     lost = true;

@@ -10,24 +10,18 @@ export interface OdometerProps {
   className?: string;
 }
 
-// Height of one cell on a reel, in em. motion.css uses the same number for
-// the slot's line-height, so a reel moved by n cells shows digit n exactly.
+// Reel cell height, em; matches the slot's line-height in motion.css.
 const CELL_EM = 1;
 
-// The counter's spring (SPEC.md section 4: numbers roll on Motion springs).
-// Just under critically damped: the reels settle with a slight overshoot, the
-// way a mechanical counter clicks into place, in a little over a second.
+// Slightly underdamped: a small overshoot, settling in about a second.
 const ROLL = { type: "spring" as const, stiffness: 60, damping: 13, restDelta: 0.001 };
 
 const mod10 = (n: number) => ((n % 10) + 10) % 10;
 
 /**
- * Where the reel for one place value stands when the counter reads `count`,
- * as a position from 0 to 10 (10 is the repeated 0 at the reel's foot). The
- * units reel turns continuously; every higher reel stays on its digit and
- * turns only while the reel below it passes from 9 to 0, the way a
- * mechanical odometer carries. At whole numbers every reel rests exactly on
- * a digit.
+ * Reel position (0-10; 10 is the repeated 0) for one place value at
+ * `count`. The units reel turns continuously; higher reels turn only while
+ * the reel below passes 9 to 0, like a mechanical odometer.
  */
 export function reelPosition(count: number, place: number): number {
   if (place === 1) return mod10(count);
@@ -40,22 +34,14 @@ export function reelPosition(count: number, place: number): number {
 const digitAt = (value: number, place: number) => Math.floor(value / place) % 10;
 
 /**
- * A number that rolls into place one place value at a time.
+ * A number that rolls into place one digit at a time.
  *
- * The server renders the final digits as plain text, so crawlers, link
- * previews and visitors without JavaScript read the real number. The digits
- * are aria-hidden and a visually hidden copy carries the number for screen
- * readers, so the reels are never read out.
- *
- * After hydration, if motion is allowed and the number is still below the
- * fold, the digits become reels that wait at 0 and roll up the first time
- * the number comes into view. A number already on screen at that moment
- * keeps its plain digits: the visitor has read it, and any roll would first
- * have to show a wrong value (a spin to 13 passes through 03). Under reduced
- * motion or "Pause motion" the final digits simply stay too. Once the number
- * has gone back below the fold (the visitor scrolled up past it), its reels
- * return to 0 out of sight, so the next scroll down rolls it again. The reel faces
- * are drawn by CSS (motion.css), so the page text stays the number itself.
+ * The server renders the final digits as text (aria-hidden, with a visually
+ * hidden copy for screen readers). After hydration, with motion allowed and
+ * the number below the fold, the digits become reels at 0 that roll up when
+ * seen. A number already on screen keeps its digits (a roll would show wrong
+ * values). Back below the fold, the reels reset out of sight to roll again.
+ * Reel faces are CSS (motion.css).
  */
 export function Odometer({ value, className }: OdometerProps) {
   const target = Math.max(0, Math.round(value));
@@ -66,7 +52,7 @@ export function Odometer({ value, className }: OdometerProps) {
   const inView = useReplayInView(ref, 0.6);
   const wasInView = useRef(false);
   const decided = useRef(false);
-  // false: plain digits. true: reels, waiting at 0 for the first view.
+  // false: plain digits; true: reels waiting at 0.
   const [reels, setReels] = useState(false);
 
   useIsomorphicLayoutEffect(() => {
@@ -74,15 +60,14 @@ export function Odometer({ value, className }: OdometerProps) {
     decided.current = true;
     const el = ref.current;
     if (!allowed || !el || target === 0) return;
-    // Measured before paint, in the same layout effect that swaps in the
-    // reels, so a number already in view never shows anything but itself.
+    // Measured before paint, so a number in view only ever shows itself.
     const r = el.getBoundingClientRect();
     if (r.top < window.innerHeight && r.bottom >= 0) return;
     count.jump(0);
     setReels(true);
   }, [hydrated, allowed, target, count]);
 
-  // Re-armed below the fold: back to 0 where nobody sees it, ready to roll.
+  // Re-armed below the fold: back to 0 out of sight.
   useEffect(() => {
     if (inView) {
       wasInView.current = true;
@@ -98,7 +83,7 @@ export function Odometer({ value, className }: OdometerProps) {
 
   useEffect(() => {
     if (!armed) return;
-    // Paused or reduced part way through: land on the value now.
+    // Paused or reduced mid-roll: jump to the value.
     if (!allowed) {
       count.jump(target);
       return;
@@ -131,10 +116,9 @@ interface ReelProps {
 }
 
 /**
- * One place value. Keyed by place from the right, so when a number grows a
- * new reel arrives on the left and the units reel keeps turning. The ghost
- * digit is the reel's final face in normal flow: it gives the slot its width
- * and a real text baseline, and keeps the element's text the number.
+ * One place value, keyed by place, so a growing number adds reels on the
+ * left. The ghost digit gives the slot its width and baseline, and keeps
+ * the text the number.
  */
 function Reel({ place, count, digit }: ReelProps) {
   const y = useTransform(count, (c) => `${-reelPosition(c, place) * CELL_EM}em`);

@@ -26,8 +26,7 @@ describe("CopyEmail", () => {
   });
 
   it("keeps an empty polite live region in the page before anything happens", () => {
-    // A region added at the moment it changes is often missed, so it has to
-    // be there from the first render.
+    // The live region must exist from the first render; regions added on change are often missed.
     render(<CopyEmail email={EMAIL} />);
     const region = screen.getByRole("status");
     expect(region).toHaveAttribute("aria-live", "polite");

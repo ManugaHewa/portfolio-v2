@@ -1,16 +1,9 @@
 import { SITE } from "../site";
 
 /**
- * Who runs the site, where, and how to reach them, on every page. The privacy
- * page and the 404 use it too, which is why it imports no animation code:
- * those pages load none.
- *
- * "Back to top" goes to #top, which every page that renders this footer has
- * (the hero on the home page, the header elsewhere).
- *
- * Above the row, the name once more as an engraved wordmark across the full
- * column: SVG text fitted to the width (textLength), so it spans the page
- * exactly at every size, and decoration only (the name is in the row below).
+ * Footer on every page. No animation imports: the privacy page and 404 load
+ * none. "Back to top" targets #top, which every page has. The SVG wordmark
+ * spans the column via textLength; decorative (the name is in the row below).
  */
 export function Footer() {
   return (

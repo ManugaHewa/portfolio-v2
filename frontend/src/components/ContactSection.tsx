@@ -10,14 +10,9 @@ const PROFILES = [
 ];
 
 /**
- * The last stop on the page, and the one a recruiter came for: who to write
- * to, and a form for when that is quicker. Two columns on a wide screen, the
- * direct routes on the left with no panel around them, the form on the right
- * on its own opaque panel so the signal scene behind the lower half of the
- * section never runs under text a visitor is typing.
- *
- * Nothing here has an entrance animation apart from the heading: the
- * section's job is to be usable the moment it scrolls in.
+ * Contact: direct routes on the left, the form on the right on an opaque
+ * panel, so the signal scene never runs under typed text. Only the heading
+ * animates; the section must be usable at once.
  */
 export function ContactSection() {
   return (

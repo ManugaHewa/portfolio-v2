@@ -1,11 +1,7 @@
 /**
- * The contact form telling the contact section's scene what its message is
- * doing, so the scene can show it: a packet launched when the visitor
- * presses send, landing on the plane with the server's real answer.
- *
- * A numbered latest event rather than a subscription: the scene reads it in
- * its own render loop and acts once per new number, so nothing re-renders
- * and a scene that is paused or off screen simply never shows a stale send.
+ * Contact form to contact scene: a numbered latest event the scene reads in
+ * its render loop and acts on once per number. Nothing re-renders, and a
+ * paused or off-screen scene never replays a stale send.
  */
 export type SendEvent = { kind: "launch" } | { kind: "land"; ok: boolean; code: number | null };
 

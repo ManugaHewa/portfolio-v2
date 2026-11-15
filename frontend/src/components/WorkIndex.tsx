@@ -8,7 +8,7 @@ import { DeckControls } from "./deck/DeckControls";
 import { DeckTable } from "./deck/DeckTable";
 import { useDeck } from "./deck/useDeck";
 
-// The three gauges under the heading, in reading order.
+// The three readings under the heading.
 const READINGS: Array<[number, string]> = [
   [STATS.projects, "projects on this page"],
   [STATS.caseStudies, "case studies"],
@@ -16,24 +16,22 @@ const READINGS: Array<[number, string]> = [
 ];
 
 interface WorkIndexProps {
-  /** Every project, in the order the API sent them. */
+  /** Every project, in API order. */
   projects: ProjectSummary[];
-  /** No project list yet: nothing was prerendered and the API has not answered. */
+  /** No list yet: nothing prerendered and no API answer. */
   loading?: boolean;
-  /** The API failed and there was no prerendered list to fall back on. */
+  /** The API failed with no prerendered list to fall back on. */
   error?: boolean;
   onOpen: OpenProject;
-  /** The heading block, which the hero times its copy's fade against. */
+  /** The heading block, which the hero times its copy fade against. */
   headRef?: Ref<HTMLDivElement>;
-  /** The pinned hero's cue for the card table (Hero.tsx); absent elsewhere. */
+  /** The pinned hero's cue for the card table (Hero.tsx). */
   reveal?: MotionValue<number>;
 }
 
 /**
- * The deck's keyboard shortcut a key press means, if any. Single keys work
- * only while focus is in the work section (the handler sits on it), as
- * WCAG 2.1.4 asks of single-character shortcuts, and never with a modifier
- * held or from a text field.
+ * The deck action a key press means, if any. Only with focus in the section
+ * (WCAG 2.1.4), never with a modifier or from a text field.
  */
 export function deckKey(e: Pick<ReactKeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "repeat" | "target">) {
   if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return null;
@@ -43,23 +41,17 @@ export function deckKey(e: Pick<ReactKeyboardEvent, "key" | "altKey" | "ctrlKey"
 }
 
 /**
- * The work: every project as a card in one deck (components/deck), the one
- * place the projects are shown; each opens its case study, and each has a
- * page of its own (/work/<slug>/). Rises over the pinned hero (redesign
- * SPEC.md, 5.2).
+ * The work: every project as a card in one deck (components/deck), each
+ * opening its case study and with its own page (/work/<slug>/). Rises over
+ * the pinned hero.
  *
- * The section spans the page so it can sit in the same 12-column grid as the
- * hero stage. The sheet takes the copy column (the heading, the three
- * gauges read from the data, and the deck's controls) and carries the page
- * background, so the copy it rises over goes under it rather than showing
- * through. The card table takes the other five columns, which the wheel
- * leaves as it flies into the header; below 1100px it follows the sheet.
+ * Spans the page to share the hero's 12-column grid. The sheet (heading,
+ * readings, deck controls) carries the page background, so the copy it
+ * rises over goes under it; the card table takes the five columns the wheel
+ * leaves. Below 1100px the table follows the sheet.
  *
- * The cards are in number order (the case studies, then the other work),
- * whatever order the list arrived in, so the deck's numbers count up.
- *
- * While focus is anywhere in the section, D draws, S spreads (or gathers),
- * R shuffles and C cuts (deckKey).
+ * Cards are in number order (case studies, then other work). With focus in
+ * the section, D draws, S spreads or gathers, R shuffles, C cuts (deckKey).
  */
 export function WorkIndex({ projects, loading = false, error = false, onOpen, headRef, reveal }: WorkIndexProps) {
   const ordered = useMemo(

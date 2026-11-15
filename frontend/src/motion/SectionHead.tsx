@@ -8,11 +8,11 @@ export interface SectionHeadProps {
   title: string;
   intro?: ReactNode;
   className?: string;
-  /** Anything that belongs beside the heading, such as a readout. */
+  /** Extra content beside the heading, such as a readout. */
   children?: ReactNode;
 }
 
-/** Every section's heading: an h2 that slides in by word, and one intro line. */
+/** Section heading: an h2 that slides in by word, and an intro line. */
 export function SectionHead({ titleId, title, intro, className, children }: SectionHeadProps) {
   return (
     <div className={cx("section-head", className)}>

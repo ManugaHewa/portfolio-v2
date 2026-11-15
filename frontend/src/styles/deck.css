@@ -1,15 +1,8 @@
 /*
- * The deck of projects in the work index (components/deck).
- *
- * Layout: from 1100px the controls sit in the copy column under the heading
- * and the card table takes columns 8 to 12, where the wheel stood before
- * it flew into the header. Below that the sheet's box steps aside (display:
- * contents) so the heading, the table and the controls stack in that order.
- *
- * The cards are sized from the table's width (cqi on .deck): one card, a
- * little narrower than the table, so the deck on the right sits partly
- * under the face-up card on the left and the fan of earlier draws has room
- * behind it.
+ * The project deck (components/deck). From 1100px the controls sit under the
+ * heading and the table takes columns 8-12; below, the sheet uses display:
+ * contents so heading, table and controls stack. Cards size from the
+ * table width (cqi).
  */
 
 /* ------------------------------------------------------------ placement */
@@ -60,9 +53,7 @@
   }
 }
 
-/* On the pinned hero the sheet is a screen tall: the heading, the controls
-   and the table sit in the middle of it rather than leaving the bottom
-   third empty. (PIN_QUERY, motion/hooks.ts.) */
+/* Pinned: the sheet is a screen tall, content centred (PIN_QUERY). */
 @media (min-width: 1100px) and (min-height: 800px) and (prefers-reduced-motion: no-preference) {
   .work-index-sheet {
     display: flex;
@@ -76,8 +67,7 @@
   }
 }
 
-/* Keyboard focus in the table while the hand-off still has it faded: show
-   it. !important to beat Motion's inline style. */
+/* Keyboard focus shows a faded table. !important beats Motion's inline style. */
 .deck:focus-within {
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -90,8 +80,7 @@
   container-type: inline-size;
 }
 
-/* The field of motes (Scene3D, "field") drifting behind the table, a
-   little wider than it and faded at its edges (scenes.css). */
+/* The "field" scene behind the table, slightly wider, edges faded (scenes.css). */
 .deck-scene {
   inset: -14% -10%;
   opacity: 0.7;
@@ -133,11 +122,8 @@
 /* ------------------------------------------------------------- the shoe */
 
 /*
- * The dealer's shoe the deck sits in (DeckTable.tsx deals out of its mouth,
- * at the left, under the face-up card): a dark box a little larger than the
- * deck, open at the front, its raised back at the right, tilted with the
- * deck about the deck's own pivot (below). Under the cards, it shows round
- * their right side, and stands empty once every card is out.
+ * The dealer's shoe: a dark box round the deck, open at the left where cards
+ * come out, raised back at the right, tilted with the deck about its pivot.
  */
 .deck-shoe {
   position: absolute;
@@ -145,15 +131,14 @@
   border: 1px solid var(--line-strong);
   border-radius: calc(var(--card-r) + 10px);
   background: #0b0c0e;
-  /* The well the cards sit in, inside the shoe's walls. */
+  /* The well inside the walls. */
   box-shadow: inset 0 0 0 6px #121417;
   /* The deck's pivot (50% 160% of a card), in the shoe's larger box. */
   transform: rotate(-2deg);
   transform-origin: calc(50% - 12px) calc(160% - 39.2px);
 }
 
-/* The raised back, where the shoe's weight is: brushed steel, lit from the
-   left like the wheel's metalwork. */
+/* Raised back: brushed steel, lit from the left. */
 .deck-shoe::before {
   content: "";
   position: absolute;
@@ -166,7 +151,7 @@
   background: linear-gradient(90deg, #1c1f23, #30353b 55%, #23272b);
 }
 
-/* The mouth's steel lip, at the front, where the cards come out. */
+/* The steel lip at the mouth. */
 .deck-shoe::after {
   content: "";
   position: absolute;
@@ -178,7 +163,7 @@
   background: #3a3f45;
 }
 
-/* A phone's table runs to the page's gutter: the shoe keeps inside it. */
+/* Phones: keep the shoe inside the gutter. */
 @media (max-width: 719.98px) {
   .deck-shoe {
     inset: -10px -14px -16px -6px;
@@ -190,17 +175,17 @@
   }
 }
 
-/* Every card in the deck turns about the same point, well below it: the
-   deck's slight tilt, the spread's arc and the riffle all pivot there, so
-   moving between them never jumps (DeckTable.tsx, FAN_ORIGIN). Their
-   positions and stacking order are Motion's, inline. */
+/*
+ * Deck cards share one pivot well below them, so tilt, spread and riffle
+ * never jump (DeckTable.tsx FAN_ORIGIN). Position and stacking are inline.
+ */
 .pcard.is-pile {
   transform-origin: 50% 160%;
 }
 
 .pcard.is-top {
   cursor: grab;
-  /* A vertical swipe still scrolls the page; a sideways one throws the card. */
+  /* Vertical swipes scroll; sideways ones throw. */
   touch-action: pan-y;
 }
 
@@ -208,10 +193,7 @@
   cursor: grabbing;
 }
 
-/* The invitation (DeckTable.tsx): once per arrival, the top card lifts and
-   settles back, a little after the table lands. An animation rather than a
-   transition, so it can run over Motion's inline transform and hand back
-   to it when done. */
+/* The invitation: the top card lifts once per arrival. An animation, so it runs over Motion's inline transform. */
 @media (prefers-reduced-motion: no-preference) {
   .deck-table.is-inviting .pcard.is-top {
     animation: deck-invite 1.1s 0.5s var(--ease-out) backwards;
@@ -231,9 +213,7 @@
   }
 }
 
-/* Cards are held, pressed and dragged rather than read as running text: a
-   long press lifts a corner or brings a card close, instead of selecting
-   words or opening the browser's own menu. */
+/* Cards are held and dragged, not read: no text selection or long-press menu. */
 .deck-table .pcard {
   -webkit-user-select: none;
   user-select: none;
@@ -243,17 +223,12 @@
 /* ---------------------------------------------------------- the squeeze */
 
 /*
- * Pressing and holding the deck's top card lifts its top right corner
- * (DeckTable.tsx), the way a player squeezes a card to read its index. The
- * corner folds over the line between the two points --fold from it: the
- * back loses the triangle beyond the line, and the flap is that triangle
- * folded over, face side up, so it carries the face's own corner a quarter
- * turn round, as a lifted corner does. Cut and flap both follow --fold, so
- * they open together. (The back is turned twice, by the card and by its own
- * rule, so its corners are where they look.)
+ * The squeeze (DeckTable.tsx): holding the top card lifts its top right
+ * corner to show the index. The back loses the triangle beyond the --fold
+ * line; the flap is that triangle folded over, face up. Both follow
+ * --fold. (The back is turned twice, so its corners land where they look.)
  */
-/* A third of the card's width: enough to show the index whole, small
-   enough that the index lands clear of the face-up card over the deck. */
+/* A third of the card's width: shows the index whole, clear of the face-up card. */
 .deck-pile .pcard.is-top {
   --fold-max: calc(var(--card-w) * 0.34);
   --fold: 0px;
@@ -263,7 +238,7 @@
   --fold: var(--fold-max);
 }
 
-/* Room is left round the card for its shadow, which only the corner loses. */
+/* Room for the shadow, which only the corner loses. */
 .deck-pile .pcard.is-top .pcard-back {
   clip-path: polygon(
     -60px -60px,
@@ -284,7 +259,7 @@
   width: var(--fold-max);
   height: var(--fold-max);
   pointer-events: none;
-  /* The lifted corner's shadow on the card under it. */
+  /* The lifted corner's shadow on the card below. */
   filter: drop-shadow(-2px 3px 3px rgba(0, 0, 0, 0.45));
 }
 
@@ -295,7 +270,7 @@
   clip-path: polygon(calc(100% - var(--fold)) 0, 100% var(--fold), calc(100% - var(--fold)) var(--fold));
 }
 
-/* The face's top left corner, as on the face, turned onto the flap. */
+/* The face's top left corner, turned onto the flap. */
 .pcard-peel-face {
   --suit: var(--ember);
   --suit-line: var(--ember-line);
@@ -317,7 +292,7 @@
   --suit-line: var(--sky-line);
 }
 
-/* The face's frame, where it runs through the corner. */
+/* The face frame through the corner. */
 .pcard-peel-face::before {
   content: "";
   position: absolute;
@@ -329,9 +304,7 @@
   border-radius: calc(var(--card-r) * 0.6);
 }
 
-/* The bend: lifted toward the light, brightest along the fold where the
-   card curves over (the fold is the diagonal, halfway along this gradient,
-   once the corner is fully up). */
+/* The bend: brightest along the fold. */
 .pcard-peel-face::after {
   content: "";
   position: absolute;
@@ -357,9 +330,10 @@
 
 /* -------------------------------------------------------------- the cut */
 
-/* The deck's right edge, where it is cut by hand (DeckTable.tsx): a strip
-   over the edge, a little past it. Over it, the packet a cut would take
-   lifts; held, it follows the pointer along the edge, then out. */
+/*
+ * Hand-cut strip over the deck's right edge (DeckTable.tsx): hover lifts
+ * the packet a cut would take; held, it follows the pointer, then out.
+ */
 .deck-cut {
   position: absolute;
   top: 6%;
@@ -377,8 +351,7 @@
 
 /* -------------------------------------------------------------- the win */
 
-/* The cascade when the last card is drawn (lib/winCascade.ts): over the
-   whole window and never in the way, fading once the last card is gone. */
+/* The win cascade (lib/winCascade.ts): full window, no pointer events, fades at the end. */
 .win-cascade {
   position: fixed;
   inset: 0;
@@ -393,8 +366,7 @@
   opacity: 0;
 }
 
-/* Spread out: every card is a card to pick, and the fan lies over the
-   drawn cards (dimmed under it) rather than under them. */
+/* Spread: every card is pickable, and the fan lies over the dimmed hand. */
 .deck-table.is-spread .deck-pile {
   z-index: 50;
 }
@@ -415,17 +387,17 @@
   transform-style: preserve-3d;
 }
 
-/* In a face-up card the back is the far side of the turn. */
+/* Face up, the back is the far side. */
 .pcard-inner > .pcard-back {
   transform: rotateY(180deg);
 }
 
-/* Earlier draws, under the face-up card: dimmed, so the eye stays on top. */
+/* Earlier draws, dimmed under the face-up card. */
 .pcard.is-under .pcard-face {
   filter: brightness(0.62);
 }
 
-/* The joker, in the deck's place once the deck is empty (DeckTable.tsx). */
+/* The joker, where the deck was once empty. */
 .pcard.is-joker-slot {
   left: auto;
   right: 0;
@@ -455,9 +427,7 @@
 
 /* ---------------------------------------------------------------- face */
 
-/* A printed card: the surface, a hairline frame inset from the edge in the
-   suit's colour, the corner indices, a pip in the open top half and the
-   words along the bottom. */
+/* A printed card: surface, inset frame in the suit colour, corner indices, pip, words at the bottom. */
 .pcard-face {
   --suit: var(--ember);
   --suit-line: var(--ember-line);
@@ -504,7 +474,7 @@
   transform: rotate(180deg);
 }
 
-/* The pip: the suit, large and engraved, in the card's open top half. */
+/* The pip: a large engraved suit in the top half. */
 .pcard-face > .pcard-body::before {
   content: "";
   position: absolute;
@@ -605,8 +575,7 @@
   gap: var(--s3) var(--s4);
 }
 
-/* The shortcut hint (DeckControls.tsx): kept in the layout so nothing
-   moves when it appears, and shown only while focus is in the section. */
+/* Shortcut hint: keeps its space, shown only while focus is in the section. */
 .deck-keys {
   display: flex;
   flex-wrap: wrap;
@@ -641,7 +610,7 @@
   margin-left: 0;
 }
 
-/* A card in the hand can be picked back up. */
+/* Hand cards can be picked back up. */
 .pcard.is-in-hand {
   cursor: pointer;
 }
@@ -696,7 +665,7 @@
   font-size: var(--fs-label);
 }
 
-/* The repositories that are not projects of their own, after the list. */
+/* Repositories that aren't projects, after the list. */
 .deck-list-sub {
   margin: var(--s5) 0 0;
   color: var(--text-3);

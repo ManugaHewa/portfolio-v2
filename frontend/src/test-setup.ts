@@ -1,8 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-// jsdom ships no matchMedia. Anything that checks prefers-reduced-motion or
-// the pinned-layout query needs it to exist. Reports
-// "no match", i.e. the no-preference / desktop-less default.
+// jsdom has no matchMedia; this one matches nothing.
 if (!window.matchMedia) {
   window.matchMedia = (query: string) =>
     ({
@@ -17,10 +15,7 @@ if (!window.matchMedia) {
     }) as unknown as MediaQueryList;
 }
 
-// Also absent from jsdom, and needed by framer-motion's whileInView and
-// useInView (Reveal, Odometer) and by the scenes' visibility gate. This stub reports the target as
-// immediately intersecting, so reveal-on-scroll content is present in tests
-// instead of being stuck at opacity 0 forever.
+// jsdom has no IntersectionObserver; this one reports every target as intersecting.
 if (!window.IntersectionObserver) {
   class StubIntersectionObserver implements IntersectionObserver {
     readonly root = null;
@@ -45,9 +40,7 @@ if (!window.IntersectionObserver) {
     StubIntersectionObserver as unknown as typeof IntersectionObserver;
 }
 
-// jsdom has no ResizeObserver, and Motion's scroll tracking and layout
-// animations construct one. A stub that never fires is correct here: nothing
-// resizes in a test.
+// jsdom has no ResizeObserver; nothing resizes in tests, so this never fires.
 if (!window.ResizeObserver) {
   class StubResizeObserver implements ResizeObserver {
     observe() {}
@@ -57,10 +50,7 @@ if (!window.ResizeObserver) {
   window.ResizeObserver = StubResizeObserver as unknown as typeof ResizeObserver;
 }
 
-// jsdom ships no PointerEvent either, so fireEvent.pointerMove falls back to a
-// bare Event and the handler sees no coordinates at all. MouseEvent does exist
-// and already carries clientX/clientY, so deriving from it gives pointer
-// handlers something real to read.
+// jsdom has no PointerEvent; derive one from MouseEvent so handlers get coordinates.
 if (!window.PointerEvent) {
   class StubPointerEvent extends MouseEvent {
     readonly pointerId: number;
@@ -75,8 +65,5 @@ if (!window.PointerEvent) {
   window.PointerEvent = StubPointerEvent as unknown as typeof PointerEvent;
 }
 
-// jsdom has no canvas backend and logs a loud "Not implemented" error every
-// time getContext is called. A null context means "this environment cannot
-// draw", which is the correct answer here, so return null quietly and keep
-// real failures visible.
+// jsdom has no canvas; return null quietly instead of logging "Not implemented".
 HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;

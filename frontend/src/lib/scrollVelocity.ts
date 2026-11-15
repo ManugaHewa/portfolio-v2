@@ -1,22 +1,15 @@
 /**
- * How fast the page is scrolling, for the WebGL scenes: the starfield
- * stretches its stars into streaks with it, and the hero's wheel spins up.
- *
- * One passive scroll listener for the whole page, attached while at least
- * one scene is reading and removed when the last one stops. Scenes read it
- * inside their own render loop (readScrollVelocity), so nothing re-renders
- * React and nothing runs per scroll event beyond two numbers being stored.
+ * Page scroll speed for the WebGL scenes (starfield streaks, wheel spin-up).
+ * One passive listener, attached while any scene reads it. Scenes poll it in
+ * their render loop, so React never re-renders.
  */
 
-/** How quickly a reading follows a new speed (per second; higher is snappier). */
+/** Smoothing rate toward a new speed, per second. */
 const FOLLOW = 18;
-/** How quickly the reading falls away once the scroll events stop (ms). */
+/** Decay time once scroll events stop (ms). */
 const SETTLE_MS = 160;
 
-/**
- * Smoothed scroll speed in px/s, signed: positive while the page moves down
- * the document. Pure, so it can be tested without a browser.
- */
+/** Smoothed, signed scroll speed in px/s (positive = down). Pure, for tests. */
 export class VelocityTracker {
   private lastY: number | null = null;
   private lastT = 0;
@@ -26,7 +19,7 @@ export class VelocityTracker {
     if (this.lastY !== null && t > this.lastT) {
       const dt = (t - this.lastT) / 1000;
       const raw = (y - this.lastY) / dt;
-      // Exponential smoothing that does not depend on the event rate.
+      // Exponential smoothing, independent of event rate.
       const k = 1 - Math.exp(-FOLLOW * dt);
       this.v += (raw - this.v) * k;
     }
@@ -34,7 +27,7 @@ export class VelocityTracker {
     this.lastT = t;
   }
 
-  /** The speed at time `t`, eased toward 0 for as long as no events came. */
+  /** Speed at time `t`, decaying toward 0 while no events arrive. */
   read(t: number): number {
     const quiet = Math.max(0, t - this.lastT);
     return this.v * Math.exp(-quiet / SETTLE_MS);
@@ -46,7 +39,7 @@ let readers = 0;
 
 const onScroll = () => tracker?.push(window.scrollY, performance.now());
 
-/** Start reading; returns the function that stops. */
+/** Starts reading; returns a stop function. */
 export function watchScrollVelocity(): () => void {
   if (readers++ === 0) {
     tracker = new VelocityTracker();
@@ -64,7 +57,7 @@ export function watchScrollVelocity(): () => void {
   };
 }
 
-/** The current speed in px/s (0 when nothing is watching). */
+/** Current speed in px/s; 0 when nothing is watching. */
 export function readScrollVelocity(): number {
   return tracker ? tracker.read(performance.now()) : 0;
 }

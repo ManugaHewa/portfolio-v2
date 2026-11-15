@@ -1,22 +1,19 @@
 /**
- * The win: once every card in the deck has been drawn, the drawn cards leave
- * the table one after another and bounce down the window, each leaving a
- * trail of itself, the way a won game of solitaire throws its cards about.
- * Drawn on one canvas over the page, which is never cleared while the cards
- * run (that is what leaves the trails), and faded away once the last one is
- * off screen. Decoration: aria-hidden, no pointer events, and the caller runs
- * it only while motion is allowed (DeckTable.tsx).
+ * The win: once the deck is drawn, the cards bounce down the window leaving
+ * trails, like a won game of solitaire. One canvas over the page, never
+ * cleared mid-run (hence the trails), faded once the last card leaves.
+ * aria-hidden, no pointer events; DeckTable runs it only when motion is allowed.
  */
 
 export interface CascadeCard {
-  /** The corner index: the project's number. */
+  /** Corner index: the project's number. */
   rank: string;
-  /** 1 for a case study (ember diamond), otherwise the other work (sky ring). */
+  /** 1 = case study (ember diamond); otherwise other work (sky ring). */
   tier: number;
   title: string;
 }
 
-/** A card in flight, in CSS pixels and seconds. */
+/** A card in flight, in CSS px and seconds. */
 export interface Flier {
   x: number;
   y: number;
@@ -25,13 +22,10 @@ export interface Flier {
 }
 
 const GRAVITY = 1900;
-/** How much of its fall a card keeps after each bounce. */
+/** Share of its speed a card keeps after each bounce. */
 const BOUNCE = 0.74;
 
-/**
- * One step of a flier: falling, and bouncing off `floor` (the y its top
- * reaches when its bottom meets the window's foot). Returns it moved.
- */
+/** Steps a flier: falls, bouncing off `floor` (its top's y when its bottom meets the window's foot). */
 export function stepFlier(f: Flier, dt: number, floor: number): Flier {
   let vy = f.vy + GRAVITY * dt;
   let y = f.y + vy * dt;
@@ -42,7 +36,7 @@ export function stepFlier(f: Flier, dt: number, floor: number): Flier {
   return { x: f.x + f.vx * dt, y, vx: f.vx, vy };
 }
 
-/** Whether a flier `width` wide has left a window `span` wide, either side. */
+/** Whether a flier `width` wide has left a `span`-wide window on either side. */
 export const gone = (f: Flier, width: number, span: number) => f.x > span || f.x + width < 0;
 
 interface Inks {
@@ -83,7 +77,7 @@ function roundRect(g: CanvasRenderingContext2D, x: number, y: number, w: number,
   g.closePath();
 }
 
-/** The suit: a filled diamond for a case study, a ring for the other work. */
+/** Suit: diamond for a case study, ring for other work. */
 function suit(g: CanvasRenderingContext2D, cx: number, cy: number, size: number, tier: number, ink: Inks, fill: boolean) {
   g.save();
   g.translate(cx, cy);
@@ -105,7 +99,7 @@ function suit(g: CanvasRenderingContext2D, cx: number, cy: number, size: number,
   g.restore();
 }
 
-/** One card's face, drawn once at `w` by `h` CSS pixels, to stamp along its path. */
+/** Draws a card face once at w x h CSS px, to stamp along its path. */
 function drawCard(card: CascadeCard, w: number, h: number, scale: number, ink: Inks): HTMLCanvasElement | null {
   const c = document.createElement("canvas");
   c.width = Math.ceil(w * scale);
@@ -124,7 +118,7 @@ function drawCard(card: CascadeCard, w: number, h: number, scale: number, ink: I
   roundRect(g, inset, inset, w - inset * 2, h - inset * 2, r * 0.6);
   g.strokeStyle = card.tier === 1 ? ink.emberLine : ink.skyLine;
   g.stroke();
-  // The corner index.
+  // Corner index.
   const corner = w * 0.065;
   const size = w * 0.052;
   g.fillStyle = card.tier === 1 ? ink.ember : ink.sky;
@@ -133,12 +127,12 @@ function drawCard(card: CascadeCard, w: number, h: number, scale: number, ink: I
   g.textBaseline = "top";
   g.fillText(card.rank, corner + size * 0.7, corner);
   suit(g, corner + size * 0.7, corner + size * 1.9, Math.max(5, size * 0.75), card.tier, ink, true);
-  // The pip, large, in the open top half.
+  // Large pip, top half.
   g.globalAlpha = 0.55;
   g.lineWidth = 1;
   suit(g, w / 2, h * 0.26, w * 0.2, card.tier, ink, false);
   g.globalAlpha = 1;
-  // The title, on up to two lines, low on the card.
+  // Title, up to two lines, low on the card.
   g.fillStyle = ink.text;
   g.font = `700 ${w * 0.095}px ${ink.sans}`;
   g.textAlign = "left";
@@ -160,16 +154,15 @@ function drawCard(card: CascadeCard, w: number, h: number, scale: number, ink: I
 }
 
 /**
- * Starts the cascade from `from` (the face-up card's box, in the viewport)
- * with `cards`, top first. Returns a stop that ends it at once. A browser
- * without a 2D canvas simply gets nothing.
+ * Runs the cascade from `from` (the face-up card's viewport box), top card
+ * first. Returns a stop function. No 2D canvas, no cascade.
  */
 export function runCascade(from: DOMRect, cards: CascadeCard[], random: () => number = Math.random): () => void {
   const canvas = document.createElement("canvas");
   const g = canvas.getContext("2d");
   if (!g || cards.length === 0) return () => {};
   const scale = Math.min(2, window.devicePixelRatio || 1);
-  // The window's own box, without its scrollbar: what the fixed canvas covers.
+  // Viewport minus scrollbar: what the fixed canvas covers.
   let span = document.documentElement.clientWidth;
   let foot = document.documentElement.clientHeight;
   canvas.className = "win-cascade";
@@ -180,8 +173,7 @@ export function runCascade(from: DOMRect, cards: CascadeCard[], random: () => nu
   document.body.appendChild(canvas);
 
   const ink = readInks();
-  // A little smaller than on the table, so the trails leave the page legible
-  // round them.
+  // Smaller than on the table, so the page stays legible around the trails.
   const w = from.width * 0.7;
   const h = from.height * 0.7;
   const x0 = from.left + (from.width - w) / 2;
@@ -224,7 +216,7 @@ export function runCascade(from: DOMRect, cards: CascadeCard[], random: () => nu
     last = now;
     clock += dt;
     while (launched < cards.length && clock >= launched * GAP) {
-      // Off to one side or the other, a little up or straight down.
+      // Left or right, with an upward kick.
       const side = random() < 0.5 ? -1 : 1;
       fliers[launched] = { x: x0, y: y0, vx: side * (260 + random() * 180), vy: -(80 + random() * 380) };
       launched++;

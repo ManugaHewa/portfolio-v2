@@ -1,7 +1,5 @@
-// Every skill here names the project it was used in (`evidence`), and the
-// skills section turns that into a link to the project on the page. Keep it
-// accurate: if a technology leaves the stack, its entry goes too (GSAP,
-// Lenis and Canvas 2D left with the redesign).
+// Each skill names the project it was used in (`evidence`), linked on the page.
+// Remove a skill when it leaves the stack.
 
 export type CategoryId =
   | "language"
@@ -21,8 +19,7 @@ export interface Skill {
   name: string;
   category: CategoryId;
   blurb: string;
-  /** The project this is demonstrated in, not a file path: a reader
-   * wants to know where it was used, not which line to open. */
+  /** The project it was used in (not a file path). */
   evidence: string;
 }
 

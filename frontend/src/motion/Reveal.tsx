@@ -8,11 +8,11 @@ export type RevealTag = "div" | "li" | "article" | "section" | "ul" | "ol" | "sp
 
 export interface RevealProps {
   as?: RevealTag;
-  /** Place in a staggered group; the delay is index * stagger. */
+  /** Index in a staggered group; delay = index * stagger. */
   index?: number;
-  /** Seconds between neighbours in a group. */
+  /** Seconds between neighbours. */
   stagger?: number;
-  /** Pixels the element rises from. */
+  /** Rise distance, px. */
   y?: number;
   className?: string;
   id?: string;
@@ -21,19 +21,14 @@ export interface RevealProps {
 }
 
 /**
- * An entrance each time it is scrolled down to: rise and fade, staggered
- * within a group, reset out of sight when the visitor scrolls back above it
- * (useReplayInView). Each
- * element watches its own visibility, so a group that arrives together
- * staggers by index and one that arrives row by row does not wait for the
- * rows above it.
+ * Rise-and-fade entrance on each scroll down, reset out of sight above
+ * (useReplayInView). Each element watches itself, so a group staggers by
+ * index without waiting on earlier rows.
  *
- * It starts hidden in the prerendered HTML, so it carries data-reveal, which
- * the <noscript> block and the reduced-motion rule in base.css both undo, as
- * does base.css's three-second fail-safe if the bundle never runs.
- * motion.css also shows it the moment anything inside takes focus, so a
- * keyboard user tabbing ahead of the scroll never lands on an invisible
- * link. Under reduced motion or "Pause motion" the entrance lands at once.
+ * Hidden in the prerendered HTML, so it carries data-reveal, undone by the
+ * <noscript> block, base.css's reduced-motion rule and its 3 s fail-safe.
+ * motion.css shows it when anything inside takes focus. Reduced motion or
+ * "Pause motion" makes it land at once.
  */
 export function Reveal({
   as = "div",
@@ -48,7 +43,7 @@ export function Reveal({
   const instant = useInstantMotion();
   const ref = useRef<HTMLDivElement>(null);
   const shown = useReplayInView(ref, 0.2);
-  // Every tag in RevealTag takes the same motion props; the cast only names one.
+  // All RevealTag elements take the same motion props; the cast names one.
   const Tag = m[as] as typeof m.div;
 
   return (
@@ -60,7 +55,7 @@ export function Reveal({
       data-reveal=""
       initial={{ opacity: 0, y }}
       animate={shown ? { opacity: 1, y: 0 } : { opacity: 0, y }}
-      // The reset happens below the fold, so it lands at once.
+      // Resets happen below the fold, so they land at once.
       transition={
         instant || !shown ? { duration: 0 } : { duration: 0.6, ease: EASE_OUT, delay: index * stagger }
       }

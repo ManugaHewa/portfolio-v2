@@ -5,7 +5,7 @@ interface Props {
   className?: string;
 }
 
-// How long the button says "Copied" before it goes back to "Copy".
+// How long "Copied" shows.
 const CONFIRM_MS = 2200;
 
 type Result = "idle" | "copied" | "selected";
@@ -17,14 +17,10 @@ const MESSAGES: Record<Result, string> = {
 };
 
 /**
- * The email address as a mailto link, with a Copy button beside it for
- * anyone whose browser has no mail client set up (most work laptops).
- *
- * The confirmation happens in place, on the button itself, and is said once
- * in a polite live region that is always in the DOM: a region added at the
- * moment it changes is often missed by screen readers. Where the clipboard
- * API is missing or refused (an insecure origin, an old browser, a denied
- * permission), the address is selected instead, so Ctrl+C is one key away.
+ * The email as a mailto link, plus Copy for browsers without a mail client.
+ * Confirms on the button and in an always-present polite live region (one
+ * added on change is often missed). Without clipboard access, it selects
+ * the address instead.
  */
 export function CopyEmail({ email, className }: Props) {
   const [result, setResult] = useState<Result>("idle");
@@ -90,8 +86,7 @@ export function CopyEmail({ email, className }: Props) {
             </svg>
           )}
         </span>
-        {/* The visible word starts the accessible name, so voice control
-            users can say what they see (WCAG 2.5.3). */}
+        {/* The visible word starts the accessible name, for voice control (WCAG 2.5.3). */}
         <span className="copy-email-label">{copied ? "Copied" : "Copy"}</span>
         <span className="visually-hidden"> email address</span>
       </button>

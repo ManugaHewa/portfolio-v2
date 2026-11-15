@@ -3,27 +3,11 @@ import { sceneAllowed, SMALL_OR_TOUCH_QUERY } from "./sceneQuality";
 import type { SceneVariant } from "./sceneQuality";
 
 /**
- * Whether a WebGL scene should exist at all on this device. When the hero's
- * does not, the still image of the wheel stays in its place; the section
- * scenes simply leave their section's own background.
- *
- * - Someone asking their system for less motion: a slowly turning instrument
- *   is exactly the ambient motion that preference is about.
- * - Data saver on: the Three chunk is 133 kB gzipped for a decoration.
- * - A weak device: two gigabytes of memory or less, or two CPU cores or
- *   fewer. Browsers that do not report these are given the benefit of the
- *   doubt; sceneQuality.ts still sizes the work to the screen.
- * - A touch screen or a window under 720px: only the wheel and the
- *   starfield run there (sceneQuality.ts says why).
- *
- * mountScene checks the motion preference again before it touches WebGL, so
- * this is the outer of two layers. It earns its place by keeping the Three
- * chunk off the wire entirely rather than merely idle.
- *
- * Both queries are kept live, so changing the system setting or resizing the
- * window across 720px takes effect without a reload. Both are false on the
- * server and during hydration (useMediaQuery), so the prerendered HTML and
- * the browser's first render agree that there is no scene yet.
+ * Whether a WebGL scene should exist on this device. No scene under reduced
+ * motion, data saver, 2 GB of memory or less, or 2 cores or fewer; section
+ * scenes also skip touch screens and windows under 720px. Saying no keeps
+ * the Three chunk (133 kB gzipped) off the wire. The queries are live, and
+ * false on the server and during hydration, so the prerender matches.
  */
 const MOTION_OK = "(prefers-reduced-motion: no-preference)";
 
@@ -44,7 +28,6 @@ export function deviceCanRunScene(nav: Navigator & DeviceHints = navigator as Na
 export function useSceneEnabled(variant: SceneVariant = "core"): boolean {
   const motionOk = useMediaQuery(MOTION_OK);
   const smallOrTouch = useMediaQuery(SMALL_OR_TOUCH_QUERY);
-  // The navigator is only read once motionOk is true, which never happens on
-  // the server or during hydration.
+  // navigator is read only once motionOk, which is false on the server and while hydrating.
   return motionOk && sceneAllowed(variant, smallOrTouch) && deviceCanRunScene();
 }

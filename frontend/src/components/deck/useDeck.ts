@@ -1,11 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * The deck's state: the order the cards are in, how many have been drawn,
- * which deal this is, and whether the deck is spread out on the table, being
- * riffled or being cut. Drawn cards come off the top in order; the last one
- * drawn is the one face up. `deal` counts shuffles, so a reshuffled deck
- * gets fresh keys for its animations.
+ * Deck state. Cards come off the top of `order`; the last drawn is face up.
+ * `deal` counts shuffles, so a reshuffle gets fresh animation keys.
  */
 export interface DeckState {
   order: number[];
@@ -13,23 +10,19 @@ export interface DeckState {
   deal: number;
   spread: boolean;
   riffling: boolean;
-  /** How many cards are lifted off the top for a cut on its way, or 0. */
+  /** Cards lifted for a cut in progress, or 0. */
   cutting: number;
-  /** Cuts so far, and when the last one was made (`deal:drawn`), so a cut is said once. */
+  /** Cut count, and where the last cut was made (`deal:drawn`), so it is announced once. */
   cuts: number;
   cutMark: string;
 }
 
-/** How long the riffle takes before the new top card is dealt (ms). */
+/** Riffle time before the new top card is dealt (ms). */
 export const RIFFLE_MS = 1050;
-/** How long a cut's top packet is held aside before it goes under (ms). */
+/** Time a cut's top packet is held aside (ms). */
 export const CUT_MS = 420;
 
-/**
- * The opening state, the same on the server and in the browser: the
- * projects in page order, with the first already turned over, so the
- * prerendered page shows a project rather than a face-down pile.
- */
+/** Opening state, same on server and client: page order, first card face up. */
 export function initialDeck(size: number): DeckState {
   return {
     order: Array.from({ length: size }, (_, i) => i),
@@ -43,18 +36,13 @@ export function initialDeck(size: number): DeckState {
   };
 }
 
-/** The next card off the top, or the same state when the deck is empty or busy. */
+/** Draws the top card; unchanged when empty or riffling. */
 export function drawCard(s: DeckState): DeckState {
   if (s.riffling || s.drawn >= s.order.length) return s;
   return { ...s, drawn: s.drawn + 1, spread: false };
 }
 
-/**
- * One particular project, face up: taken from wherever it is in the deck
- * and dealt, or, if it is already on the table, brought to the top of the
- * cards there. Picking a card from the spread and a skill's number both
- * use this.
- */
+/** Puts one project face up: dealt from the deck, or raised to the top of the table. */
 export function pullCard(s: DeckState, index: number): DeckState {
   const at = s.order.indexOf(index);
   if (at < 0 || s.riffling) return s;
@@ -69,11 +57,8 @@ export function pullCard(s: DeckState, index: number): DeckState {
 }
 
 /**
- * Every card back in the deck, shuffled (Fisher-Yates; `random` is the
- * source, Math.random in the browser), with nothing dealt yet: the deck is
- * riffled first and the top card dealt after (useDeck). Only ever called
- * from a click, never while rendering, so the server and the first render
- * agree.
+ * All cards back, Fisher-Yates shuffled, none dealt; useDeck deals the top
+ * card after the riffle. Called only from clicks, so hydration matches.
  */
 export function shuffleDeck(s: DeckState, random: () => number = Math.random): DeckState {
   const order = [...s.order];
@@ -85,10 +70,8 @@ export function shuffleDeck(s: DeckState, random: () => number = Math.random): D
 }
 
 /**
- * The cut: the top `k` of the cards still in the deck go to the bottom, as a
- * dealer cuts. The drawn cards stay where they are. A cut that would leave
- * either packet empty, or one made while riffling, changes nothing (beyond
- * ending a cut on its way).
+ * Moves the top `k` undrawn cards to the bottom. An empty packet or a cut
+ * while riffling changes nothing (except ending a cut in progress).
  */
 export function cutDeck(s: DeckState, k: number): DeckState {
   const left = s.order.length - s.drawn;
@@ -104,17 +87,14 @@ export function cutDeck(s: DeckState, k: number): DeckState {
   };
 }
 
-/**
- * Where a cut by key lands: near the middle, give or take a couple of
- * cards, as a hand's does. 0 when there is nothing to cut.
- */
+/** Cut depth near the middle, give or take two; 0 when nothing can be cut. */
 export function cutDepth(remaining: number, random: () => number = Math.random): number {
   if (remaining < 2) return 0;
   const k = Math.round(remaining / 2 + (random() - 0.5) * Math.min(4, remaining - 2));
   return Math.max(1, Math.min(remaining - 1, k));
 }
 
-/** The face-up card and the ones under it, most recent first, as indices into the projects. */
+/** Face-up card and those under it, newest first (project indices). */
 export function tableCards(s: DeckState, keep = 4): number[] {
   return s.order.slice(Math.max(0, s.drawn - keep), s.drawn).reverse();
 }
@@ -124,10 +104,7 @@ export function deckCards(s: DeckState): number[] {
   return s.order.slice(s.drawn);
 }
 
-/**
- * Whether a released drag threw the top card off the deck: far enough, or
- * fast enough, in any direction.
- */
+/** Whether a released drag threw the top card: far or fast enough, any direction. */
 export function thrown(offset: { x: number; y: number }, velocity: { x: number; y: number }): boolean {
   return Math.hypot(offset.x, offset.y) > 90 || Math.hypot(velocity.x, velocity.y) > 650;
 }
@@ -135,22 +112,19 @@ export function thrown(offset: { x: number; y: number }, velocity: { x: number; 
 export interface Deck extends DeckState {
   size: number;
   remaining: number;
-  /** Index into the projects of the card face up on the table, or null before any draw. */
+  /** Project index of the face-up card, or null. */
   current: number | null;
   draw(): void;
   pull(index: number): void;
   shuffle(): void;
   setSpread(spread: boolean): void;
-  /** Cut near the middle: the top packet is lifted aside, then goes under (CUT_MS). */
+  /** Cuts near the middle: the packet is held aside, then goes under (CUT_MS). */
   cut(): void;
-  /** Cut `k` cards down, at once: a cut made by hand, whose packet is already aside. */
+  /** Cuts `k` cards at once (a hand cut, packet already aside). */
   cutAt(k: number): void;
 }
 
-/**
- * The deck, live. `instant` (reduced motion, or motion paused) skips the
- * riffle: a shuffle deals its top card straight away.
- */
+/** The live deck. `instant` (reduced motion or paused) skips the riffle and cut delays. */
 export function useDeck(size: number, instant: boolean): Deck {
   const [state, setState] = useState(() => initialDeck(size));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,8 +138,7 @@ export function useDeck(size: number, instant: boolean): Deck {
     [],
   );
 
-  // A list that arrives after the first render (development, where nothing
-  // is prerendered, or a failed load retried) deals a fresh deck for it.
+  // A list arriving after the first render (dev, or a retried load) gets a fresh deck.
   useEffect(() => {
     setState((s) => (s.order.length === size ? s : initialDeck(size)));
   }, [size]);
@@ -179,7 +152,7 @@ export function useDeck(size: number, instant: boolean): Deck {
   const shuffle = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     setState((s) => (s.riffling ? s : shuffleDeck(s)));
-    // The riffle runs, then the new top card is dealt.
+    // Riffle, then deal the new top card.
     timer.current = setTimeout(
       () => setState((s) => ({ ...s, riffling: false, drawn: Math.max(s.drawn, Math.min(1, s.order.length)) })),
       instant ? 0 : RIFFLE_MS,

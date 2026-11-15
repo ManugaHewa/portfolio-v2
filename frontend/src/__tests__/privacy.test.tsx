@@ -8,8 +8,7 @@ import { NotFoundPage } from "../components/NotFoundPage";
 import { ContactForm } from "../components/ContactForm";
 import { RETENTION, SITE } from "../site";
 
-// From the import.meta.url string, never through `new URL()`: under jsdom the
-// global URL is jsdom's, and Node's fileURLToPath rejects its objects.
+// From the import.meta.url string: Node's fileURLToPath rejects jsdom's URL objects.
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..");
 const source = (path: string) => readFileSync(join(SRC, path), "utf8");
 
@@ -41,7 +40,7 @@ describe("the privacy page", () => {
 
   it("names exactly what is stored, and what is not", () => {
     render(<PrivacyPage />);
-    // Mirrors the ContactMessage model: name, email, message, createdAt.
+    // Mirrors ContactMessage: name, email, message, createdAt.
     expect(screen.getByText(/your name, your email address, your message, and the time/i)).toBeInTheDocument();
     expect(screen.getByText(/not your ip address/i)).toBeInTheDocument();
   });
@@ -58,7 +57,7 @@ describe("the privacy page", () => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     }
     expect(screen.getAllByText(/SIL Open Font License 1\.1/)).toHaveLength(2);
-    // Both left with the redesign.
+    // Both removed in the redesign.
     for (const name of [/gsap/i, /lenis/i]) {
       expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
     }
@@ -87,7 +86,7 @@ describe("the privacy page", () => {
     render(<PrivacyPage />);
     expect(screen.getByRole("link", { name: "Credits" })).toHaveAttribute("href", "/privacy#credits");
     expect(document.getElementById("credits")).not.toBeNull();
-    // "Back to top" needs a #top to land on here too.
+    // "Back to top" needs #top here too.
     expect(screen.getByRole("link", { name: "Back to top" })).toHaveAttribute("href", "#top");
     expect(document.getElementById("top")).not.toBeNull();
   });
@@ -126,7 +125,7 @@ describe("the contact form's privacy line", () => {
       "href",
       "/privacy",
     );
-    // Nothing to tick: there is nothing optional to consent to.
+    // No checkbox: nothing optional to consent to.
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 });

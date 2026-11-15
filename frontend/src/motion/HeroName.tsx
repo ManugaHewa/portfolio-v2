@@ -9,42 +9,27 @@ export interface HeroNameProps {
   className?: string;
 }
 
-// How far from the cursor a letter still answers it, in px.
+// Cursor reach, px.
 const REACH = 220;
-// The resting axes are the ones hero.css sets (weight 800, width 118%); a
-// letter right under the cursor goes to the face's heaviest and widest.
+// Rest matches hero.css (wght 800, wdth 118%); the letter under the cursor peaks.
 const REST = { wght: 800, wdth: 118 };
 const PEAK = { wght: 900, wdth: 125 };
 
-/**
- * How strongly a letter answers a cursor `distance` px away: 1 under the
- * cursor, easing to 0 at REACH (smoothstep, so the falloff has no edge).
- */
+/** Cursor pull on a letter `distance` px away: 1 under it, smoothstep to 0 at REACH. */
 export function pressure(distance: number): number {
   const t = Math.max(0, 1 - distance / REACH);
   return t * t * (3 - 2 * t);
 }
 
 /**
- * The page's h1. Each word rises from a mask with CSS keyframes alone
- * (motion.css), so the name animates before any JavaScript has loaded and
- * the largest paint is not held back by it. --i is each word's place in the
- * 70ms stagger.
+ * The page's h1. Words rise from a mask with CSS keyframes (motion.css), so
+ * the name animates before JS loads; --i staggers the words.
  *
- * With a mouse, and while motion is allowed, the letters answer the cursor:
- * each one near the pointer goes heavier and wider on Mona Sans's own weight
- * and width axes, falling off smoothly over about 220px, so the name swells
- * where the cursor passes. Only the letterforms change (no colour, glow or
- * shadow). The axes are written straight to the letters once per frame.
- * The width a line gains near the cursor is taken back from its letters
- * further away, which narrow a little, so each line keeps its length and
- * the name never rewraps. The prerendered HTML has whole words; the
- * letters are split only after hydration, and their text is the same name.
- *
- * Nothing here hides the name in the HTML: the keyframes only run under
- * prefers-reduced-motion: no-preference, and their end state is the
- * element's own, so without CSS animation the name simply sits in place.
- * No data-reveal for the same reason.
+ * With a mouse and motion allowed, letters near the cursor get heavier and
+ * wider on Mona Sans's axes, written once per frame. Width gained near the
+ * cursor is taken back from the rest of the line, so it never rewraps.
+ * Letters are split only after hydration; the HTML holds whole words. The
+ * keyframes end on the element's own state, so nothing hides the name.
  */
 export function HeroName({ id, text, className }: HeroNameProps) {
   const words = text.split(/\s+/).filter(Boolean);
@@ -59,13 +44,12 @@ export function HeroName({ id, text, className }: HeroNameProps) {
     if (!live || !h1 || !area) return;
     const letters = Array.from(h1.querySelectorAll<HTMLElement>(".hero-name-char"));
     let centres: { x: number; y: number }[] = [];
-    // Which line each letter sits on, by index into `lineOf`.
+    // Line index per letter.
     let lineOf: number[] = [];
     let frame = 0;
     let pointer: { x: number; y: number } | null = null;
 
-    // Letter centres in page coordinates, measured at rest so the swelling
-    // itself never moves the targets. Re-measured on resize.
+    // Letter centres in page coordinates, measured at rest so swelling never moves them.
     const measure = () => {
       for (const l of letters) l.style.fontVariationSettings = "";
       centres = letters.map((l) => {
@@ -86,7 +70,7 @@ export function HeroName({ id, text, className }: HeroNameProps) {
         const c = centres[i];
         return pointer && c ? pressure(Math.hypot(pointer.x - c.x, pointer.y - c.y)) : 0;
       });
-      // Each line's average pressure: what its letters give back in width.
+      // Each line's mean pull: the width its letters give back.
       const sum: number[] = [];
       const count: number[] = [];
       lineOf.forEach((k, i) => {
@@ -101,7 +85,7 @@ export function HeroName({ id, text, className }: HeroNameProps) {
           return;
         }
         const wght = REST.wght + (PEAK.wght - REST.wght) * p[i];
-        // A little extra given back keeps the line from ever growing.
+        // Giving back slightly more keeps the line from growing.
         const wdth = REST.wdth + (PEAK.wdth - REST.wdth) * (p[i] - mean * 1.08);
         l.style.fontVariationSettings = `"wght" ${wght.toFixed(0)}, "wdth" ${wdth.toFixed(1)}`;
       });
@@ -115,8 +99,7 @@ export function HeroName({ id, text, className }: HeroNameProps) {
       pointer = { x: e.clientX + window.scrollX, y: e.clientY + window.scrollY };
       schedule();
     };
-    // Measured afresh as the pointer arrives: by then the name's entrance
-    // has long finished, and the page may have scrolled.
+    // Re-measure on arrival: the entrance is over and the page may have scrolled.
     const onEnter = () => measure();
     const onLeave = () => {
       pointer = null;
@@ -132,7 +115,7 @@ export function HeroName({ id, text, className }: HeroNameProps) {
     area.addEventListener("pointermove", onMove);
     area.addEventListener("pointerleave", onLeave);
     window.addEventListener("resize", onResize);
-    // The fonts settle the letters' widths; measure again once they have.
+    // Fonts change letter widths; re-measure once loaded.
     void document.fonts?.ready.then(onResize);
     return () => {
       if (frame) cancelAnimationFrame(frame);

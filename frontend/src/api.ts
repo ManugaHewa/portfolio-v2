@@ -43,11 +43,7 @@ export interface ContactPayload {
   turnstileToken?: string;
 }
 
-/**
- * The project list, timed: how long this visit's request took and how many
- * projects came back go to the live readout (lib/liveStats.ts). A failure is
- * recorded as one, never as a number.
- */
+/** Fetches the project list and records its timing for the live readout (lib/liveStats.ts). */
 async function getProjects(): Promise<ProjectSummary[]> {
   const start = performance.now();
   try {

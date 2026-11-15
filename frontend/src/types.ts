@@ -1,11 +1,6 @@
 export interface ProjectLink {
   label: string;
-  /**
-   * Empty when the destination is not known yet. The source list marks those
-   * "[add link]", and inventing a URL to fill the gap would be worse than
-   * showing the reader that one is coming, so the UI renders an empty url as
-   * a muted label rather than as an anchor.
-   */
+  /** Empty when not published yet; rendered as a muted label, not a link. */
   url: string;
 }
 
@@ -31,11 +26,7 @@ export interface ProjectSummary {
   links: ProjectLink[];
 }
 
-/**
- * The full case study. Every list is optional in practice rather than in type:
- * a small project fills in one or two of them and the modal simply skips the
- * sections that come back empty, so a sparse project renders cleanly.
- */
+/** The full case study. Lists may be empty; the dialog skips empty sections. */
 export interface ProjectDetail extends ProjectSummary {
   context: string | null;
   scope: string[];
@@ -50,8 +41,5 @@ export interface ProjectDetail extends ProjectSummary {
   learned: string | null;
 }
 
-/**
- * Opens a project's dialog. `trigger` is the control that was pressed, so
- * focus can go back to it when the dialog closes.
- */
+/** Opens a project's dialog; focus returns to `trigger` on close. */
 export type OpenProject = (project: ProjectSummary, trigger: HTMLElement) => void;

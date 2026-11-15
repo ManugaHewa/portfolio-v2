@@ -1,24 +1,16 @@
 /*
- * The motion primitives' own rules (src/motion, redesign SPEC.md section 7):
- * masks, reels, stacks and the marquee's two layouts. Only structure and
- * movement live here; each section's stylesheet sets the type and colour of
- * the things it puts in them.
- *
- * Everything that moves is gated twice: the components only start motion
- * after hydration and outside reduced motion, and the rules below either
- * sit under prefers-reduced-motion: no-preference or are undone under
- * reduce, so a stylesheet alone never animates for a visitor who asked it
- * not to.
+ * Structure and movement for the motion primitives (src/motion); sections
+ * set type and colour. Anything that moves is gated twice: components wait
+ * for hydration and no reduced motion, and these rules sit under
+ * no-preference or are undone under reduce.
  */
 
 /* ---------------------------------------------------------- hero name */
 
 /*
- * Each word of the h1 rises out of its own mask, 70ms apart, on CSS alone:
- * it runs as soon as the HTML paints, before any JavaScript, so the name (the
- * page's largest paint) is never waiting on the bundle. The mask is padded
- * past the line box, and the padding taken back with negative margins, so a
- * tight line-height does not clip the descenders or accents.
+ * Each h1 word rises from its own mask, 70ms apart, in CSS alone, so the
+ * name paints before JS. The mask's padding (taken back with negative
+ * margins) keeps descenders and accents unclipped.
  */
 .hero-name-mask {
   display: inline-block;
@@ -32,16 +24,14 @@
   display: inline-block;
 }
 
-/* The letters that answer the cursor (HeroName.tsx). The transition smooths
-   the per-frame axis values and carries each letter back to rest. */
+/* Letters that answer the cursor (HeroName.tsx); the transition smooths the axis values. */
 .hero-name.is-pressable .hero-name-char {
   transition: font-variation-settings 260ms var(--ease-out);
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .hero-name-word {
-    /* both: each word waits below its mask through its delay. No `to`
-       keyframe, so the end state is the word's own place. */
+    /* both: each word waits below its mask; no `to` keyframe, so it ends in place. */
     animation: hero-word-rise var(--dur-4) var(--ease-out) both;
     animation-delay: calc(var(--i, 0) * 70ms + 120ms);
   }
@@ -55,9 +45,7 @@
 
 /* -------------------------------------------------------- split title */
 
-/* Section titles: the same mask, driven by Motion once in view
-   (SplitTitle.tsx). The words' hidden state is an inline transform, which
-   [data-reveal] rules in base.css and the <noscript> block undo. */
+/* Section titles: the same mask, driven by Motion (SplitTitle.tsx); [data-reveal] rules undo the hidden state. */
 .split-mask {
   display: inline-block;
   overflow: clip;
@@ -72,10 +60,7 @@
 
 /* ------------------------------------------------------------- reveal */
 
-/* Anything an entrance still holds hidden shows the moment it, or anything
-   inside it, takes focus: a keyboard user tabbing ahead of the scroll must
-   never land on an invisible link. !important to beat Motion's inline
-   style, the same way the reduced-motion rule does. */
+/* Anything still hidden shows when it or its contents take focus. !important beats Motion's inline style. */
 [data-reveal]:focus-within {
   opacity: 1 !important;
   transform: none !important;
@@ -83,9 +68,7 @@
 
 /* ----------------------------------------------------------- scramble */
 
-/* While decoding, the real text keeps its place (and stays in the
-   accessibility tree) but turns transparent; the frames are drawn over it
-   in the same box, so the line never changes width. */
+/* While decoding, the real text goes transparent in place; frames draw over it, so width never changes. */
 .scramble {
   position: relative;
   display: inline-block;
@@ -105,9 +88,7 @@
 
 /* ---------------------------------------------------------- text loop */
 
-/* Every item stacked in one cell: the invisible ghosts hold the width of
-   the longest, the live word sits in the clipped cell, and the reel runs
-   through it while the word changes. */
+/* All items stacked in one cell: ghosts hold the longest width, the live word and reel sit in the clipped cell. */
 .text-loop-stage {
   position: relative;
   display: inline-grid;
@@ -125,8 +106,7 @@
   visibility: hidden;
 }
 
-/* The ghosts' text comes from their data-text attribute, so it is not page
-   text: find-in-page, copy and tests see each word once. */
+/* Ghost text comes from data-text, so each word is page text once. */
 .text-loop-ghost::before {
   content: attr(data-text);
 }
@@ -135,10 +115,10 @@
   display: inline-block;
 }
 
-/* The reel (TextLoop.tsx): a column of words over the cell, its top on the
-   cell's (the cell is its containing block), moved by Motion. --smear,
-   also Motion's, is how fast it is going: each word leaves a faint copy of
-   itself just above and below, the way a turning reel blurs. */
+/*
+ * The reel (TextLoop.tsx): a column of words over the cell, moved by
+ * Motion. --smear (speed) adds faint copies above and below, like a turning reel.
+ */
 .text-loop-reel {
   position: absolute;
   top: 0;
@@ -178,13 +158,9 @@
 }
 
 /*
- * One window per place value. The ghost is the final digit in normal flow:
- * it sizes the window and gives it the parent's baseline, so swapping the
- * plain digits for reels moves nothing. The reel is drawn by ::before
- * (0 to 9 and a repeated 0, so 9 rolls forward into 0 with no jump); its
- * faces are generated content, so the page text stays the number.
- * Odometer.tsx moves the reel in whole em steps: 1em per face, the window's
- * line-height.
+ * One window per place value. The ghost (final digit, in flow) sizes it and
+ * sets the baseline. The reel is ::before (0-9 then 0, so 9 rolls into 0);
+ * Odometer.tsx moves it 1em per face.
  */
 .odometer-slot {
   position: relative;
@@ -214,9 +190,7 @@
 
 /* ----------------------------------------------------------- magnetic */
 
-/* The hit area reaches 12px past the button on every side, given back by
-   the negative margin so the layout does not change. Only the inner span
-   moves. */
+/* Hit area 12px past the button, offset by negative margin; only the inner span moves. */
 .magnetic {
   display: inline-block;
   padding: 12px;
@@ -242,8 +216,7 @@
   min-width: 0;
 }
 
-/* The static layout: one list, wrapped. This is what the HTML shows, and
-   what the strip returns to when paused or under reduced motion. */
+/* Static layout: one wrapped list (the HTML, paused and reduced-motion state). */
 .marquee-list {
   display: flex;
   flex-wrap: wrap;
@@ -261,9 +234,7 @@
   white-space: nowrap;
 }
 
-/* A sky dot after every item, drawn as a box rather than a "·" character so
-   screen readers have nothing to read out. In the moving row every item has
-   one, so the seam between the two copies gets a dot too. */
+/* A sky dot after each item, drawn as a box so screen readers skip it. */
 .marquee-item::after {
   content: "";
   flex: none;
@@ -281,10 +252,10 @@
   flex: none;
 }
 
-/* The moving row: both copies side by side, the viewport's gap equal to the
-   items' gap so the loop has no seam, the edges faded. Each copy moves by
-   its own width plus one gap per lap, then starts over where the other
-   began. */
+/*
+ * Moving row: both copies side by side, viewport gap equal to item gap so
+ * the loop is seamless, edges faded. Each copy moves its width plus a gap per lap.
+ */
 .marquee.is-running .marquee-viewport {
   overflow: clip;
   gap: var(--marquee-gap);
@@ -297,8 +268,7 @@
   flex-wrap: nowrap;
 }
 
-/* The moving strip can be grabbed and flung (Marquee.tsx). Sideways only on
-   a touch screen, so a vertical swipe still scrolls the page. */
+/* Grab and fling (Marquee.tsx); touch is sideways only, so vertical swipes scroll. */
 .marquee.is-running .marquee-viewport {
   cursor: grab;
   touch-action: pan-y;

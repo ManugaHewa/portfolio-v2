@@ -33,28 +33,20 @@ const EMBER = "#e98e49";
 
 export interface Scene3DProps {
   variant: SceneVariant;
-  /** The visitor's "Pause motion": stops the loop on the current frame. */
+  /** "Pause motion": stops the loop on the current frame. */
   paused?: boolean;
   onLive?: (live: boolean) => void;
 }
 
 /**
- * Every WebGL scene on the site, behind one lazy import.
- *
- * Deliberately one module rather than a component per scene: each would
- * otherwise pull Three into its own chunk, and the library is roughly the
- * size of the entire rest of the bundle. One entry point means one shared
- * chunk, fetched once, reused by all six.
- *
- * Whether and when this mounts is Scene.tsx's job; once mounted it builds its
- * scene, follows the pause prop, and tears everything down on unmount.
+ * Every WebGL scene, in one module so Three ships in one shared chunk.
+ * Scene.tsx decides when this mounts; it builds the scene, follows `paused`
+ * and tears down on unmount.
  */
 export default function Scene3D({ variant, paused = false, onLive }: Scene3DProps) {
   const ref = useRef<HTMLDivElement>(null);
   const controller = useRef<SceneController | null>(null);
-  // Read through refs so a new callback or a pause from the parent never
-  // rebuilds the scene. These effects run before the build below, so the
-  // build sees the current values.
+  // Refs, so a new callback or pause never rebuilds the scene; these effects run before the build.
   const pausedRef = useRef(paused);
   const onLiveRef = useRef(onLive);
   useEffect(() => {
@@ -74,8 +66,7 @@ export default function Scene3D({ variant, paused = false, onLive }: Scene3DProp
       live = next;
       onLiveRef.current?.(next);
     };
-    // Detail is read at build time, so a scene rebuilt after a rotation picks
-    // up the budget for the orientation it is actually in.
+    // Detail is read per build, so a rebuild after rotation fits the new orientation.
     const c = mountScene(el, BUILDERS[variant](sceneBudget(variant).detail), {
       onLive: report,
       budget: () => sceneBudget(variant),
@@ -85,8 +76,7 @@ export default function Scene3D({ variant, paused = false, onLive }: Scene3DProp
     return () => {
       c.dispose();
       controller.current = null;
-      // The canvas is gone, so whatever stood in for it (the hero's still)
-      // has to come back.
+      // Canvas gone: bring back the hero's still.
       if (live) report(false);
     };
   }, [variant]);
@@ -99,12 +89,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   // Hero: a roulette wheel (rouletteScene.ts).
   core: (detail) => rouletteScene(detail),
 
-  /* ---------------------------------------------------------------
-     Contact: a signal going out. Rings leave the origin and travel
-     outward across a receding plane, with a drift of particles above
-     it. The section asks someone to make contact, so the backdrop is
-     that gesture rather than another abstract field.
-  --------------------------------------------------------------- */
+  /* Contact: rings travel out from an origin across a receding grid, with motes above. */
   signal: (detail) => {
     const t = makeTracker();
     const RING_COUNT = 5;
@@ -119,9 +104,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         const world = new Group();
         scene.add(world);
 
-        // The ground plane, drawn as a grid that recedes. Lines converging
-        // toward the horizon are what give the rings something to travel
-        // across; without it they read as flat circles on a black card.
+        // Receding grid, so the rings read as travelling across a plane.
         const gridPts: number[] = [];
         const HALF = 9;
         const DEPTH = 15;
@@ -146,8 +129,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         );
         world.add(grid);
 
-        // Rings expanding from the origin. One material each, because each
-        // has to fade on its own schedule as it travels out.
+        // Expanding rings, one material each so each fades on its own.
         const ringGeo = t.track(ringsGeometry([1], scaled(96, detail, 48)));
         const rings: Array<{ o: LineSegments; m: LineBasicMaterial; phase: number }> = [];
         for (let i = 0; i < RING_COUNT; i++) {
@@ -165,8 +147,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           rings.push({ o, m, phase: i / RING_COUNT });
         }
 
-        // A drift of motes above the plane, so the space has volume rather
-        // than being a floor with nothing over it.
+        // Motes above the plane, for volume.
         const motes: number[] = [];
         const N = scaled(70, detail, 30);
         for (let i = 0; i < N; i++) {
@@ -193,7 +174,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         const mote = new Points(moteGeo, moteMat);
         world.add(mote);
 
-        // The origin itself: a small ember mark the rings leave from.
+        // The ember origin.
         const originGeo = t.track(new BufferGeometry());
         originGeo.setAttribute("position", new Float32BufferAttribute([0, 0.02, 0], 3));
         const origin = new Points(
@@ -213,13 +194,9 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         const originMat = origin.material as PointsMaterial;
 
         /*
-         * The visitor's message (lib/sendSignal.ts). Pressing send launches
-         * a packet from the side of the section the form is on; it curves
-         * down to the origin and holds there, pulsing, until the server
-         * answers. Then it lands: on success an ember shockwave runs out
-         * across the plane and the origin flares; on a failure a short grey
-         * ring, and nothing goes out. What the server said is written
-         * beside the form; this is the same event, seen.
+         * The visitor's message (lib/sendSignal.ts): a packet flies from the
+         * form's side to the origin and pulses until the server answers;
+         * success sends an ember shockwave, failure a short grey ring.
          */
         const glow = softDot();
         if (glow) t.track(glow);
@@ -240,7 +217,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         packet.visible = false;
         world.add(packet);
 
-        // Its trail: the last few positions, brightest nearest the packet.
+        // Trail of recent positions, brightest nearest the packet.
         const TRAIL = 16;
         const trailPos = new Float32Array(TRAIL * 3);
         const trailCol: number[] = [];
@@ -277,8 +254,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         burst.visible = false;
         world.add(burst);
 
-        // Off to the right and in front, where the form is; in over the
-        // plane; down onto the origin.
+        // Flight path: from the form's side, over the plane, onto the origin.
         const FROM = [2.9, 1.9, 2.5];
         const VIA = [1.4, 2.5, 0.3];
         const TO = [0, 0.06, 0];
@@ -318,7 +294,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
             packet.visible = true;
             trail.visible = true;
             packet.position.set(at[0], at[1], at[2]);
-            // Holding over the origin: a pulse, the way a request waits.
+            // Pulses while waiting over the origin.
             packetMat.size = (glow ? 0.55 : 0.16) * (k < 1 ? 1 : 1 + 0.25 * Math.sin(flight * 9));
             packetMat.opacity = Math.min(1, flight / 0.12);
             trailMat.opacity = packetMat.opacity * 0.9;
@@ -365,18 +341,18 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         return (time, dt) => {
           stepPacket(dt);
           rings.forEach(({ o, m, phase }) => {
-            // 0 at the origin, 1 at the far edge of the travel.
+            // 0 at the origin, 1 at the far edge.
             const u = ((time / PERIOD + phase) % 1 + 1) % 1;
             const r = 0.25 + u * 8.5;
             o.scale.set(r, 1, r);
-            // Zero at both ends, so a ring is invisible when it restarts.
+            // Invisible at both ends, so the restart never shows.
             const fadeIn = Math.min(1, u / 0.07);
             const fadeOut = Math.min(1, (1 - u) / 0.45);
             m.opacity = 0.5 * fadeIn * fadeOut;
           });
 
           mote.rotation.y = time * 0.035;
-          // A slow breath on the whole plane, so it is never quite still.
+          // A slow sway, so the plane is never still.
           world.rotation.y = Math.sin(time * 0.08) * 0.07;
           origin.rotation.y = time;
         };
@@ -384,24 +360,13 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     };
   },
 
-  /* ---------------------------------------------------------------
-     How it's built: a corridor of frames receding into depth. The
-     section traces the project list from one file to this page, so the
-     backdrop is a journey given an actual Z axis.
-
-     It sits behind a diagram and its text, so it is kept sparse: 14
-     frames rather than the 26 it had as a section of its own, and the
-     tunnel's centre is moved off to the right, away from the reading
-     column on the left.
-  --------------------------------------------------------------- */
+  /* Pipeline: a sparse corridor of frames, vanishing point off to the right of the text. */
   corridor: () => {
     const t = makeTracker();
     const FRAMES = 14;
-    // Wider spacing than before, so fewer frames still make a corridor of
-    // about the same depth rather than a short box.
     const SPACING = 1.8;
     const SPEED = 2.1;
-    // Where the vanishing point sits across the stage, from the left edge.
+    // Vanishing point across the stage, from the left.
     const CENTRE_X = 0.7;
     return {
       fov: 58,
@@ -410,12 +375,8 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         camera.position.set(0, 0, 3.4);
         camera.lookAt(0, 0, -8);
 
-        // An off-axis view rather than moving the frames: every frame
-        // converges on the centre of the projection however far it is moved
-        // sideways, so the only way to put the vanishing point at 70% of the
-        // width is to slide the view window itself. setViewOffset works in
-        // fractions of the full view, so it holds at any size; it also
-        // overwrites the aspect ratio, which applySize has already set.
+        // Off-axis view moves the vanishing point (moving frames can't).
+        // setViewOffset resets the aspect, so restore it.
         const aspect = camera.aspect;
         camera.setViewOffset(1, 1, -(CENTRE_X - 0.5), 0, 1, 1);
         camera.aspect = aspect;
@@ -425,11 +386,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         scene.add(world);
 
         const frames: Group[] = [];
-        // One material per frame, not one shared: each has to fade on its
-        // own as it nears the camera. Sharing meant the closest frames
-        // stayed at full strength while scaling past the viewport, which
-        // read as stray diagonals cutting across the section rather than
-        // as a corridor.
+        // One material per frame, so each fades as it nears the camera.
         const mats: LineBasicMaterial[] = [];
         const ringGeo = t.track(ringsGeometry([2.6], 4)); // a square frame
 
@@ -450,23 +407,18 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
         const TOTAL = FRAMES * SPACING;
         return (time) => {
-          // Frames stream toward the camera and recycle, so the corridor
-          // never ends without building 200 of them.
+          // Frames stream toward the camera and recycle.
           frames.forEach((f, i) => {
             let z = (-i * SPACING + time * SPEED) % TOTAL;
             if (z > 0) z -= TOTAL;
             f.position.z = z;
-            // 0 at the far end, 1 just in front of the camera.
+            // 0 far, 1 at the camera.
             const near = 1 - Math.abs(z) / TOTAL;
             f.scale.setScalar(0.8 + near * 1.35);
-            // Both ends of the loop reach exactly zero opacity, so a frame
-            // is invisible at the moment it appears and the moment it is
-            // recycled, and the wrap never shows.
+            // Zero opacity at both ends, so the wrap never shows.
             const fadeIn = Math.min(1, near / 0.1);
             const fadeOut = Math.min(1, (1 - near) / 0.08);
-            // Distant frames crowd together around the tunnel's centre line,
-            // where their lines stack into a bright knot. Weighting by depth
-            // keeps that knot as dim as the open frames around it.
+            // Dim distant frames, which stack into a bright knot.
             const depth = 0.3 + 0.7 * near * near;
             mats[i].opacity = 0.85 * fadeIn * fadeOut * depth;
           });
@@ -475,12 +427,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     };
   },
 
-  /* ---------------------------------------------------------------
-     Skills: a slow wireframe globe, pinned behind the section while its
-     groups scroll past. Purely atmospheric: it is held at low strength
-     and faded out across the left half (styles/scenes.css), so the lists
-     in front stay the thing you read.
-  --------------------------------------------------------------- */
+  /* Skills: a faint, slow wireframe globe, faded on the left (styles/scenes.css). */
   globe: (detail) => {
     const t = makeTracker();
     return {
@@ -494,8 +441,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         scene.add(world);
         world.rotation.z = 0.34;
 
-        // Slightly wider than the viewport box is tall, so it reads as a
-        // backdrop the cards sit on rather than a ball behind the middle one.
+        // Larger than the box is tall, so it reads as a backdrop.
         const sphere = t.track(
           new SphereGeometry(2.35, scaled(26, detail, 16), scaled(16, detail, 10))
         );
@@ -506,7 +452,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           )
         );
 
-        // A scatter of points on the shell, so it reads as populated.
+        // Points on the shell.
         const pts: number[] = [];
         const DOTS = scaled(90, detail, 44);
         for (let i = 0; i < DOTS; i++) {
@@ -544,20 +490,11 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
   },
 
 
-  /* ---------------------------------------------------------------
-     Whole page: a quiet star layer fixed behind everything. Three depth
-     bands drifting at different rates, so scrolling gives parallax
-     without anything sweeping across the content - the page-wide radar
-     that came before this was removed for exactly that reason.
-
-     Every so often a shooting star crosses part of the sky: a white-hot
-     head with a soft glow, burning out through sky or ember into a long
-     tapering tail, gone in about a second. One every 5 to 13 seconds of
-     the scene's own clock (so none pile up while it is paused or off
-     screen), sometimes followed closely by a second. Each is one small
-     ribbon whose shape is drawn by its shader from a few uniforms, so a
-     frame moves numbers, never buffers.
-  --------------------------------------------------------------- */
+  /*
+   * Whole page: a fixed star layer in three drifting depth bands (parallax
+   * on scroll). Every 5 to 13 s of scene time a shooting star crosses, as a
+   * shader-drawn ribbon driven by uniforms, so no buffers change per frame.
+   */
   starfield: (detail) => {
     const t = makeTracker();
     return {
@@ -572,10 +509,9 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
 
         // Three bands: far ones smaller, dimmer and slower.
         const bands: Array<{ g: Group; rate: number }> = [];
-        // Each band's star positions, kept for the constellations.
+        // Star positions per band, for the constellations.
         const bandPts: number[][] = [];
-        // The page-wide layer, and the only one that is always on screen,
-        // so it is the one worth thinning most on a phone.
+        // Always on screen, so thinned most on phones.
         const LAYERS: Array<[number, number, number, number]> = [
           // count, spread, size, opacity
           [scaled(190, detail, 70), 16, 0.028, 0.34],
@@ -586,8 +522,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         LAYERS.forEach(([count, spread, size, opacity], li) => {
           const pts: number[] = [];
           for (let i = 0; i < count; i++) {
-            // Golden-angle scatter: deterministic, so the sky is identical
-            // on every load instead of reshuffling on each mount.
+            // Golden-angle scatter: the same sky on every load.
             const a = i * 2.399963 + li * 1.7;
             const r = Math.sqrt((i + 0.5) / count) * spread;
             pts.push(Math.cos(a) * r, Math.sin(a) * r * 0.62, -li * 2.2 - ((i % 7) * 0.3));
@@ -616,12 +551,9 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         });
 
         /*
-         * Constellations (lib/constellation.ts): while the page points at a
-         * project (a skill row, a case card), the middle band joins one of
-         * its stars per technology that project used into a figure, drawn a
-         * line at a time. The stars are chosen among those on screen, from a
-         * start fixed by the project's name, walking to the nearest unused
-         * star each step, so a project always draws its own shape.
+         * Constellations (lib/constellation.ts): the middle band joins one
+         * on-screen star per technology, starting from a star fixed by the
+         * project's hash and walking to the nearest unused one, line by line.
          */
         const MAX_STARS = 16;
         const host = bands[1];
@@ -665,7 +597,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           const cos = Math.cos(g.rotation.z);
           const sin = Math.sin(g.rotation.z);
           const halfH = Math.tan(((camera.fov / 2) * Math.PI) / 180);
-          // Stars on screen now, by index into the band.
+          // On-screen stars, as band indices.
           const seen: number[] = [];
           for (let i = 0; i < hostPts.length / 3; i++) {
             const x = hostPts[i * 3];
@@ -732,12 +664,12 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
           figLines.visible = figStars.visible = figFade > 0;
         };
 
-        // Two shooting stars, reused: a lead and the odd follower.
+        // Two reusable shooting stars: a lead and an occasional follower.
         const glow = softDot();
         if (glow) t.track(glow);
         const meteors = [0, 1].map(() => makeMeteor(t, glow));
         meteors.forEach((m) => scene.add(m.group));
-        // The first one a few seconds in, so it is not lost in the load.
+        // First one a few seconds in, after the load.
         let next = 3.5;
 
         return (time, dt) => {
@@ -752,7 +684,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
             const lead = meteors[0];
             if (!lead.active) {
               launchMeteor(lead, halfW, halfH, Math.random() < 0.35 ? EMBER : SKY);
-              // Now and then a second, close behind on a near-parallel path.
+              // Sometimes a second, close behind on a near-parallel path.
               if (Math.random() < 0.3 && !meteors[1].active) {
                 launchMeteor(meteors[1], halfW, halfH, SKY, lead, 0.22 + Math.random() * 0.25);
               }
@@ -766,12 +698,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
     };
   },
 
-  /* ---------------------------------------------------------------
-     Work: a slow drifting field of motes, giving the case studies
-     something with parallax behind them. The motes are round and soft-
-     edged (softDot below): square GL points read as hard pixels wherever
-     one drifted behind a line of text.
-  --------------------------------------------------------------- */
+  /* Work: a slow field of soft motes behind the deck (round sprites, not square GL points). */
   field: (detail) => {
     const t = makeTracker();
     return {
@@ -785,8 +712,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
         scene.add(world);
 
         const pts: number[] = [];
-        // Deterministic scatter: a fixed pattern beats Math.random here
-        // because the layout then looks identical on every load.
+        // Deterministic scatter: identical on every load.
         const MOTES = scaled(160, detail, 70);
         for (let i = 0; i < MOTES; i++) {
           const a = i * 2.399963; // golden angle
@@ -803,9 +729,7 @@ const BUILDERS: Record<SceneVariant, (detail: number) => SceneDef> = {
             t.track(
               new PointsMaterial({
                 color: new Color(SKY),
-                // Larger than the old hard dots, because most of a soft
-                // sprite is its falloff: the bright middle ends up about the
-                // size the square used to be.
+                // Larger, since most of a soft sprite is falloff.
                 size: dot ? 0.12 : 0.05,
                 map: dot,
                 transparent: true,
@@ -835,7 +759,7 @@ interface Meteor {
   head: PointsMaterial;
   headPoint: Points;
   active: boolean;
-  /** Seconds since launch, or a negative wait before a follower sets off. */
+  /** Seconds since launch; negative while a follower waits. */
   age: number;
   life: number;
   x: number;
@@ -846,14 +770,13 @@ interface Meteor {
 }
 
 /**
- * One shooting star: a ribbon (two triangles) whose shader lays it out
- * from the head back along the direction of travel, wide and white-hot at
- * the head and tapering to nothing, through the meteor's colour, at the
- * tail; and a soft glow sprite on the head. Hidden until launched.
+ * A shooting star: a two-triangle ribbon the shader lays out behind the
+ * head, white and wide at the head, tapering into the meteor's colour,
+ * plus a glow sprite on the head. Hidden until launched.
  */
 function makeMeteor(t: ReturnType<typeof makeTracker>, glow: CanvasTexture | null): Meteor {
   const geo = t.track(new BufferGeometry());
-  // (along, across): along 0 is the head, 1 the tail end.
+  // (along, across): along 0 = head, 1 = tail.
   geo.setAttribute(
     "position",
     new Float32BufferAttribute([0, -1, 0, 0, 1, 0, 1, -1, 0, 1, 1, 0], 3),
@@ -904,8 +827,7 @@ function makeMeteor(t: ReturnType<typeof makeTracker>, glow: CanvasTexture | nul
       transparent: true,
       depthWrite: false,
       blending: AdditiveBlending,
-      // Laid out by the shader, so which way the triangles wind depends on
-      // the direction of flight: drawn from both sides.
+      // Winding depends on flight direction, so draw both sides.
       side: DoubleSide,
     }),
   );
@@ -933,11 +855,7 @@ function makeMeteor(t: ReturnType<typeof makeTracker>, glow: CanvasTexture | nul
   return { group, ribbon, head, headPoint, active: false, age: 0, life: 1, x: 0, y: 0, dx: 1, dy: 0, speed: 1 };
 }
 
-/**
- * Sends a meteor across the upper part of the view, down and to one side at
- * 18 to 38 degrees. A follower takes the leader's path, offset a little and
- * a moment behind.
- */
+/** Launches a meteor across the upper view, 18-38° downward; a follower trails the lead, slightly offset. */
 function launchMeteor(m: Meteor, halfW: number, halfH: number, colour: string, lead?: Meteor, delay = 0) {
   if (lead) {
     m.dx = lead.dx;
@@ -951,7 +869,7 @@ function launchMeteor(m: Meteor, halfW: number, halfH: number, colour: string, l
     const angle = ((18 + Math.random() * 20) * Math.PI) / 180;
     m.dx = Math.cos(angle) * (rightward ? 1 : -1);
     m.dy = -Math.sin(angle);
-    // From somewhere across the top half, starting on the side it leaves.
+    // Starts in the top half, on the side it leaves from.
     m.x = (rightward ? -1 : 1) * halfW * (0.15 + Math.random() * 0.75);
     m.y = halfH * (0.25 + Math.random() * 0.7);
     m.speed = halfW * (0.85 + Math.random() * 0.5);
@@ -977,9 +895,9 @@ function stepMeteor(m: Meteor, dt: number) {
   m.x += m.dx * m.speed * dt;
   m.y += m.dy * m.speed * dt;
   const k = m.age / m.life;
-  // Flares in fast, burns, then fades over the last third.
+  // Flares in, burns, fades over the last third.
   const alpha = Math.min(1, k / 0.08) * (k > 0.66 ? 1 - (k - 0.66) / 0.34 : 1);
-  // The tail grows out of the head over the first part of the flight.
+  // The tail grows early in the flight.
   const length = Math.min(1, k / 0.35) * 2.6;
   (m.ribbon.uniforms.uHead.value as Vector2).set(m.x, m.y);
   m.ribbon.uniforms.uLen.value = length;
@@ -988,11 +906,7 @@ function stepMeteor(m: Meteor, dt: number) {
   m.headPoint.position.set(m.x, m.y, 0);
 }
 
-/**
- * A small white disc with a soft edge, drawn once into a canvas, for use as a
- * points sprite map. White so the material's colour tints it. Null where a 2D
- * context is unavailable, in which case the field falls back to plain points.
- */
+/** Soft white disc sprite (tinted by the material). Null without a 2D context; callers fall back to plain points. */
 function softDot(): CanvasTexture | null {
   const SIZE = 64;
   const c = document.createElement("canvas");
