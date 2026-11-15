@@ -13,3 +13,6 @@ export const SITE = {
  * in step with `npm run contact:prune` (CONTACT_RETENTION_DAYS, default 365).
  */
 export const RETENTION = { months: 12, label: "12 months" } as const;
+
+/** The résumé PDF, or null until frontend/public/resume.pdf is added; every link to it hides until then. */
+export const RESUME = __RESUME__;

@@ -11,7 +11,7 @@ import { WheelMark } from "./WheelMark";
 import { RollLabel } from "./RollLabel";
 import { SpinPlaque } from "./SpinPlaque";
 import { WorkIndex } from "./WorkIndex";
-import { SITE } from "../site";
+import { RESUME, SITE } from "../site";
 import type { OpenProject, ProjectSummary } from "../types";
 
 interface HeroProps {
@@ -221,6 +221,13 @@ export function Hero({ projects, loading, error, onOpen }: HeroProps) {
               <li>
                 <a href={`mailto:${SITE.email}`}>Email</a>
               </li>
+              {RESUME && (
+                <li>
+                  <a href={RESUME.href}>
+                    Résumé<span className="visually-hidden"> (PDF, {RESUME.size})</span>
+                  </a>
+                </li>
+              )}
             </ul>
           </m.div>
 

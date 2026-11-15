@@ -3,7 +3,7 @@ import { ContactForm } from "./ContactForm";
 import { CopyEmail } from "./CopyEmail";
 import { Scene } from "./Scene";
 import { SectionHead } from "../motion";
-import { SITE } from "../site";
+import { RESUME, SITE } from "../site";
 
 const PROFILES = [
   { label: "GitHub", path: SITE.github.label, href: SITE.github.url },
@@ -50,6 +50,16 @@ export const ContactSection = memo(function ContactSection() {
                   </dd>
                 </div>
               ))}
+              {RESUME && (
+                <div className="contact-route">
+                  <dt className="mono contact-route-label">Résumé</dt>
+                  <dd className="contact-route-value">
+                    <a className="contact-profile mono" href={RESUME.href}>
+                      PDF, {RESUME.size}
+                    </a>
+                  </dd>
+                </div>
+              )}
             </dl>
 
             <p className="contact-aside">

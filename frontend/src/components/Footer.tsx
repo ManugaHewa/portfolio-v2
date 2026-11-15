@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { SITE } from "../site";
+import { RESUME, SITE } from "../site";
 
 /**
  * Footer on every page. No animation imports: the privacy page and 404 load
@@ -42,6 +42,13 @@ export const Footer = memo(function Footer() {
                 LinkedIn
               </a>
             </li>
+            {RESUME && (
+              <li>
+                <a href={RESUME.href}>
+                  Résumé<span className="visually-hidden"> (PDF, {RESUME.size})</span>
+                </a>
+              </li>
+            )}
             <li>
               <a href="/privacy">Privacy</a>
             </li>

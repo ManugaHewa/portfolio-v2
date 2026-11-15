@@ -5,6 +5,7 @@ import { defineConfig, transformWithOxc, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import { repoFacts } from "./build/repoFacts.ts";
 import { previewApi } from "./build/previewApi.ts";
+import { resumeStamp } from "./build/resume.ts";
 
 const page = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 
@@ -77,6 +78,7 @@ export default defineConfig(({ isSsrBuild }) => ({
   plugins: [react(), projectIndex(), ...repoFacts(), previewApi(loadContent)],
   define: {
     __BUILD__: JSON.stringify(buildStamp()),
+    __RESUME__: JSON.stringify(resumeStamp()),
   },
   // The SSR prerender bundles every dependency into one file.
   ssr: { noExternal: true },
