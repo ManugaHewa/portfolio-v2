@@ -9,6 +9,8 @@ export interface ContactOptions {
   minSubmitMs: number;
   /** Cloudflare Turnstile secret; null switches the check off. */
   turnstileSecret: string | null;
+  /** Called after a message is stored, without its contents (the new-message ping). */
+  onStored?: () => void;
 }
 
 /**
@@ -39,14 +41,14 @@ const RECEIVED = { status: "received" } as const;
 
 // POST /api/contact: validates and stores the message.
 //
-// Nothing here forwards visitor text anywhere. If a notification is ever
-// added, it must not carry the name, email or message through a public push
-// service such as the ntfy topic the deploy script uses: those topics are
-// readable by anyone who guesses the name.
+// Nothing here forwards visitor text anywhere. The optional new-message ping
+// (onStored, lib/notify.ts) carries none of it: push topics can be read by
+// anyone who guesses the name.
 //
 // Any route that reads these messages back must authenticate on the server.
-// There is no such route today, by design.
-export function createContactRouter({ minSubmitMs, turnstileSecret }: ContactOptions) {
+// There is no such route today, by design; `npm run contact:list` reads them
+// on the server.
+export function createContactRouter({ minSubmitMs, turnstileSecret, onStored }: ContactOptions) {
   const router = Router();
 
   router.post(
@@ -73,6 +75,8 @@ export function createContactRouter({ minSubmitMs, turnstileSecret }: ContactOpt
       // nothing else. Even a compromised API process cannot read back what
       // visitors have sent. See docs/manual-steps.md for the role itself.
       await prisma.contactMessage.createMany({ data: [{ name, email, message }] });
+      // Not awaited: the visitor's answer never waits on the ping.
+      onStored?.();
       res.status(201).json(RECEIVED);
     }),
   );

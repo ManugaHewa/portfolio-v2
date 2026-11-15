@@ -71,7 +71,12 @@ describe("the privacy page", () => {
 
   it("carries the date of its last change", () => {
     render(<PrivacyPage />);
-    expect(screen.getByText("Last updated 10 November 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated 15 November 2026")).toBeInTheDocument();
+  });
+
+  it("says page views are counted from the logs, on the server", () => {
+    render(<PrivacyPage />);
+    expect(screen.getByText(/count page views from these logs, on the server itself/i)).toBeInTheDocument();
   });
 
   it("has the plain header: the name, and a way back, with no section nav or pause toggle", () => {

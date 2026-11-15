@@ -6,6 +6,7 @@ import { rateLimit } from "express-rate-limit";
 import { projectsRouter } from "./routes/projects.js";
 import { createContactRouter } from "./routes/contact.js";
 import { readConfig } from "./config.js";
+import { pingNewMessage } from "./lib/notify.js";
 
 export interface AppOptions {
   /** POST /api/contact requests allowed per client per window. */
@@ -17,6 +18,8 @@ export interface AppOptions {
   minSubmitMs?: number;
   corsOrigins?: string[];
   turnstileSecret?: string | null;
+  /** See Config.contactNotifyUrl. */
+  contactNotifyUrl?: string | null;
 }
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
@@ -35,6 +38,7 @@ export function createApp(options: AppOptions = {}) {
     minSubmitMs = 3000,
     corsOrigins = config.corsOrigins,
     turnstileSecret = config.turnstileSecret,
+    contactNotifyUrl = config.contactNotifyUrl,
   } = options;
 
   const app = express();
@@ -90,7 +94,14 @@ export function createApp(options: AppOptions = {}) {
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.use("/api/projects", projectsRouter);
-  app.use("/api/contact", createContactRouter({ minSubmitMs, turnstileSecret }));
+  app.use(
+    "/api/contact",
+    createContactRouter({
+      minSubmitMs,
+      turnstileSecret,
+      onStored: contactNotifyUrl ? () => void pingNewMessage(contactNotifyUrl) : undefined,
+    }),
+  );
 
   // An unknown /api path used to fall through to Express's default handler, which
   // answers with an HTML "Cannot GET" page. The frontend calls res.json() on

@@ -13,7 +13,9 @@
     "test": "npm run test --workspace backend && npm run test --workspace frontend",
     "lint": "npm run lint --workspace backend && npm run lint --workspace frontend",
     "contact:delete": "tsx backend/scripts/contact-delete.ts",
-    "contact:prune": "tsx backend/scripts/contact-prune.ts"
+    "contact:list": "tsx backend/scripts/contact-list.ts",
+    "contact:prune": "tsx backend/scripts/contact-prune.ts",
+    "visits": "tsx backend/scripts/visits.ts"
   },
   "devDependencies": {
     "prettier": "^3.9.10"

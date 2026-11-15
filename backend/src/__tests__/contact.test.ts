@@ -81,6 +81,37 @@ describe("POST /api/contact", () => {
     expect(insert).not.toHaveBeenCalled();
   });
 
+  it("pings once per stored message, with none of the visitor's text", async () => {
+    const send = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", send);
+    try {
+      const pinged = createApp({ contactLimit: 100, contactNotifyUrl: "https://ntfy.sh/test-topic" });
+      await request(pinged).post("/api/contact").send(valid);
+      await request(pinged).post("/api/contact").send({ ...valid, website: "spam" });
+      await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+      const [url, init] = send.mock.calls[0];
+      expect(url).toBe("https://ntfy.sh/test-topic");
+      const sent = JSON.stringify(init);
+      for (const field of [valid.name, valid.email, valid.message]) expect(sent).not.toContain(field);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("still answers 201 when the ping fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network down")));
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const pinged = createApp({ contactLimit: 100, contactNotifyUrl: "https://ntfy.sh/test-topic" });
+      const res = await request(pinged).post("/api/contact").send(valid);
+      expect(res.status).toBe(201);
+      await vi.waitFor(() => expect(errors).toHaveBeenCalledWith("New-message ping failed: TypeError"));
+    } finally {
+      errors.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("refuses a bare POST without the timing field", async () => {
     const bare: Record<string, unknown> = { ...valid };
     delete bare.elapsedMs;

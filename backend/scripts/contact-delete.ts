@@ -4,6 +4,7 @@
 //   npm run contact:delete -- someone@example.com --dry-run   (count only)
 //   npm run contact:delete -- someone@example.com
 import { loadEnv } from "./env.js";
+import { describe } from "./describe.js";
 
 loadEnv();
 
@@ -35,13 +36,4 @@ try {
   process.exitCode = 1;
 } finally {
   await db.$disconnect();
-}
-
-function describe(err: unknown): string {
-  if (!(err instanceof Error)) return String(err);
-  return err.message
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("Invalid `"))
-    .join(" ");
 }

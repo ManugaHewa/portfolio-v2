@@ -11,6 +11,8 @@ export interface Config {
   corsOrigins: string[];
   /** Cloudflare Turnstile secret. Unset means the check is off. */
   turnstileSecret: string | null;
+  /** ntfy topic or Slack/Discord webhook pinged when a message is stored. Unset means no ping. */
+  contactNotifyUrl: string | null;
 }
 
 const PRODUCTION_ORIGIN = "https://manugahewa.dev";
@@ -33,5 +35,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
           ? [PRODUCTION_ORIGIN, VITE_DEV_ORIGIN]
           : [PRODUCTION_ORIGIN],
     turnstileSecret: env.TURNSTILE_SECRET_KEY?.trim() || null,
+    contactNotifyUrl: /^https:\/\//.test(env.CONTACT_NOTIFY_URL?.trim() ?? "") ? env.CONTACT_NOTIFY_URL!.trim() : null,
   };
 }

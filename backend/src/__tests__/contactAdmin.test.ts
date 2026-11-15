@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from "vitest";
 import {
   DEFAULT_RETENTION_DAYS,
   deleteMessagesFrom,
+  formatMessage,
+  listMessages,
+  printable,
   pruneMessages,
   retentionCutoff,
   type ContactStore,
@@ -12,10 +15,40 @@ function fakeStore(count = 3) {
     contactMessage: {
       count: vi.fn().mockResolvedValue(count),
       deleteMany: vi.fn().mockResolvedValue({ count }),
+      findMany: vi.fn().mockResolvedValue([]),
     },
   };
   return store satisfies ContactStore;
 }
+
+describe("reading messages", () => {
+  it("lists the newest first, as many as asked", async () => {
+    const db = fakeStore();
+    await listMessages(db, 5);
+    expect(db.contactMessage.findMany).toHaveBeenCalledWith({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { name: true, email: true, message: true, createdAt: true },
+    });
+  });
+
+  it("prints sender and indented text", () => {
+    const out = formatMessage({
+      name: "Jane Recruiter",
+      email: "jane@example.com",
+      message: "Hello,\nlet's talk.",
+      createdAt: new Date(2026, 10, 15, 9, 5),
+    });
+    expect(out).toBe("2026-11-15 09:05  Jane Recruiter <jane@example.com>\n    Hello,\n    let's talk.");
+  });
+
+  it("cannot drive the terminal: escape and bidi characters are replaced", () => {
+    const hostile = "hi\u001b[2J\u001b]0;pwned\u0007 ‮evil";
+    // eslint-disable-next-line no-control-regex -- checking control characters are gone
+    expect(printable(hostile)).not.toMatch(/[\u001b\u0007‮]/);
+    expect(printable("plain text, émigré")).toBe("plain text, émigré");
+  });
+});
 
 describe("deletion requests", () => {
   it("deletes every message from the address, ignoring case and stray spaces", async () => {

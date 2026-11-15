@@ -16,28 +16,27 @@ Conventions:
 
 ## In order
 
-Updated 2026-11-10. Phases 0 to 3 went out in one push that morning, so the
-three-stage plan this table used to start with is history. What is left:
+Updated 2026-11-15, checked from outside where possible. Done: the tunnel
+(A), Node 20.19 or later (B: the Vite 8 build deployed), the pushes (0),
+Web Analytics off (6.1) and Rocket Loader off (10.2).
 
-| Step | What | Where |
-|---|---|---|
-| 1 | **The site is down (Cloudflare error 1033): bring the tunnel back** | section A |
-| 2 | Check the server's Node version | section B |
-| 3 | Push stage 4, then stage 5 | section 0 |
-| 4 | Replace the Nginx config | section 1 |
-| 5 | `NODE_ENV=production`, `HOST=127.0.0.1`, restart the API | section 3 |
-| 6 | Postgres on loopback with a real password (backup first) | section 4 |
-| 7 | Insert-only database role for the API (optional) | section 5 |
-| 8 | Cloudflare: Web Analytics off, HTTPS settings | section 6 |
-| 9 | GitHub: Dependabot alerts (the github.io copy is already unpublished) | section 7 |
-| 10 | Daily retention cron | section 8.1 |
-| 11 | Cloudflare: email obfuscation off | section 10.1 |
-| 12 | Search Console: verify, sitemap, indexing | section 9 |
-| 13 | A day or two after step 4: enforce the CSP | section 2 |
-| 14 | A few days after step 6: delete the database backup | section 4.9 |
+| Step | What | Where | Seen from outside on 2026-11-15 |
+|---|---|---|---|
+| 1 | **Cloudflare: email obfuscation off** | section 10.1 | **Still on.** It rewrites the page, so React re-renders it on every visit. |
+| 2 | Cloudflare: Always Use HTTPS, HSTS | section 6.2 | Not done: `http://` serves the page. |
+| 3 | Replace the Nginx config | section 1 | Not done: no security headers; unknown URLs answer 200. The privacy page describes this config. |
+| 4 | `NODE_ENV=production`, `HOST=127.0.0.1`, restart the API | section 3 | Can't be seen from outside. |
+| 5 | New-message alerts, reading messages | section 11 | Needs the deploy that adds them. |
+| 6 | Postgres on loopback with a real password (backup first) | section 4 | Can't be seen from outside. |
+| 7 | Insert-only database role for the API (optional) | section 5 | |
+| 8 | Daily retention cron | section 8.1 | Can't be seen from outside. |
+| 9 | Search Console: verify, sitemap, indexing | section 9 | Not done: no verification TXT record. |
+| 10 | GitHub: Dependabot alerts | section 7.2 | |
+| 11 | Visit counts | section 12 | After step 3. |
+| 12 | A day or two after step 3: enforce the CSP | section 2 | |
+| 13 | A few days after step 6: delete the database backup | section 4.9 | |
 
-If you already did some of steps 4 to 14, skip them: none of them could be
-checked from outside while the site was down.
+Skip anything you have already done.
 
 ---
 
@@ -791,7 +790,8 @@ Then reply to say it is done. The address matches regardless of capitals.
 ### 8.3 Keep the privacy page true
 
 `/privacy` describes the server after sections 1, 6.1 and 8.1: anonymised
-logs, no analytics, deletion after 12 months. Do those three before or soon
+logs, no analytics, deletion after 12 months. It also says page views are
+counted from the logs on the server (section 12). Do those three before or soon
 after deploying Phase 2. It also says the server is in Ontario, Canada;
 tell me if that is wrong.
 
@@ -805,10 +805,10 @@ The page should answer with your name in the HTML itself, no JavaScript
 needed (after stage 3):
 
 ```bash
-curl -s https://manugahewa.dev/ | grep -o "<h1[^>]*>[^<]*</h1>"
+curl -s https://manugahewa.dev/ | grep -c "Manuga Hewa Pathirana"
 ```
 
-Expected: `<h1 class="hero-subtitle hero-stagger">Manuga Hewa Pathirana</h1>`.
+Expected: a number above 0.
 
 ```bash
 curl -s https://manugahewa.dev/robots.txt
@@ -873,6 +873,63 @@ Expected: `0`.
 
 They rewrite scripts and markup the same way. Neither is on today (the live
 HTML has no sign of them); leave them off: **Speed > Optimization**.
+
+## 11. New-message alerts and reading messages
+
+After the deploy that adds them. The API pings your phone when a message is
+stored. The ping says only that one arrived, never who or what.
+
+### 11.1 Alerts
+
+Use the topic your deploy alerts already go to. Show it:
+
+```bash
+cat /home/manuga/.config/portfolio-deploy.env
+```
+
+Copy the URL after `NOTIFY_URL=`, then add it to the API's environment as a
+new line, `CONTACT_NOTIFY_URL=` followed by the URL:
+
+```bash
+nano /home/manuga/portfolio-v2/backend/.env
+```
+
+```bash
+sudo systemctl restart portfolio-backend
+```
+
+Send yourself a message through the form. Your phone should show
+"Portfolio: new message".
+
+### 11.2 Reading messages
+
+The 20 newest, newest first:
+
+```bash
+npm --prefix /home/manuga/portfolio-v2 run --silent contact:list
+```
+
+More of them:
+
+```bash
+npm --prefix /home/manuga/portfolio-v2 run --silent contact:list -- 50
+```
+
+## 12. Visit counts
+
+After section 1, so the log has real, anonymised addresses. Page views per
+day and per page, counted on the server from the last 14 days of logs:
+
+```bash
+npm --prefix /home/manuga/portfolio-v2 run --silent visits
+```
+
+If it says it can't read the logs, give yourself read access once, then log
+out and back in:
+
+```bash
+sudo usermod -aG adm manuga
+```
 
 ---
 

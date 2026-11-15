@@ -11,14 +11,14 @@ import { RETENTION, SITE } from "../site";
  * - No analytics: Cloudflare Web Analytics off; the CSP in
  *   deploy/nginx/portfolio.conf would block it anyway.
  * - Logs: the anonymised format in deploy/nginx/portfolio.conf; Nginx logs
- *   rotate after 14 days.
+ *   rotate after 14 days. Page view totals: backend/scripts/visits.ts, run on the server.
  * - Rate limiting: the 15-minute in-memory window in backend/src/app.ts.
  * - Credits: what ships to the browser (frontend/package.json).
  *
  * No cookies or browser storage (measured: docs/audit-2026-10.md). Own entry
  * (privacy-main.tsx), so nothing here imports from src/motion.
  */
-const UPDATED = "10 November 2026";
+const UPDATED = "15 November 2026";
 
 interface Credit {
   name: string;
@@ -171,6 +171,10 @@ export function PrivacyPage() {
             The web server logs each request (the time, the page and the response) and keeps the log
             for up to 14 days. Ordinary entries record only the first three parts of your IP address.
             Entries for errors, such as a request that is too large, can include the full address.
+          </p>
+          <p>
+            I count page views from these logs, on the server itself, to see how many people visit.
+            The counts are only totals per day and per page; nothing is sent anywhere.
           </p>
           <p>
             To slow down spam, the API also counts requests per IP address for 15 minutes. That count

@@ -7,6 +7,7 @@
 // It prints a count and nothing about the messages themselves, so its log
 // holds no personal data.
 import { loadEnv } from "./env.js";
+import { describe } from "./describe.js";
 
 loadEnv();
 
@@ -34,13 +35,4 @@ try {
   process.exitCode = 1;
 } finally {
   await db.$disconnect();
-}
-
-function describe(err: unknown): string {
-  if (!(err instanceof Error)) return String(err);
-  return err.message
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("Invalid `"))
-    .join(" ");
 }

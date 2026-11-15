@@ -133,4 +133,10 @@ describe("configuration defaults", () => {
     expect(readConfig({ TURNSTILE_SECRET_KEY: "   " }).turnstileSecret).toBeNull();
     expect(readConfig({ TURNSTILE_SECRET_KEY: "0x4AAA" }).turnstileSecret).toBe("0x4AAA");
   });
+
+  it("pings about new messages only to an https URL that is set", () => {
+    expect(readConfig({}).contactNotifyUrl).toBeNull();
+    expect(readConfig({ CONTACT_NOTIFY_URL: "http://ntfy.sh/topic" }).contactNotifyUrl).toBeNull();
+    expect(readConfig({ CONTACT_NOTIFY_URL: " https://ntfy.sh/topic " }).contactNotifyUrl).toBe("https://ntfy.sh/topic");
+  });
 });
