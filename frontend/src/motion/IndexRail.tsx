@@ -10,25 +10,18 @@ export interface RailSection {
 
 export interface IndexRailProps {
   sections: RailSection[];
-  /**
-   * The id of a stage that pins under PIN_QUERY (the hero, #top). While it
-   * is pinned the rail is faded out, and it fades in over the last part of
-   * the pin, so it never crowds what the pinned stage is showing.
-   */
+  /** Id of a stage that pins under PIN_QUERY (#top). The rail hides while it pins, fading in at the end. */
   hideWhilePinned?: string;
 }
 
-// Where an in-page jump leaves a section's top (base.css gives every [id]
-// scroll-margin-top: 80px). A tick sits at the scroll position a jump to
-// its section lands on, so the marker crosses the tick exactly there.
+// base.css gives [id] scroll-margin-top: 80px; a tick sits where a jump to its section lands.
 const SCROLL_MARGIN = 80;
 
-// The share of the pin, at its end, over which the rail fades in.
+// Share of the pin, at its end, over which the rail fades in.
 const FADE_IN_SHARE = 0.25;
 
-// The ball: its radius, how far it drops sideways off the track into a
-// pocket (px), and how long it sits in each pocket as the page goes by, as
-// a share of the way to the next pocket on either side.
+// Ball radius, its sideways drop into a pocket (px), and how long it sits
+// in each pocket (share of the way to the next, each side).
 const BALL_R = 4;
 const SEAT_DEPTH = 4.5;
 const SEAT = 0.2;
@@ -40,21 +33,17 @@ const smoothstep = (a: number, b: number, v: number) => {
 };
 
 /**
- * Where the rail's ball is at scroll progress `p` (0 to 1), given the
- * pockets' places along the rail, in order: `at`, its place along the rail
- * (0 to 1), and `seat`, how far it has dropped into a pocket (0 on the
- * track, 1 in it). Near a pocket it sits in it while the page scrolls on a
- * little; between two it rolls out of one and on into the next, quickest
- * halfway. A function of the scroll alone, so it is a readout of the
- * visitor's own scrolling, not an animation of its own.
+ * The rail ball at scroll progress `p` (0-1), given ordered pocket
+ * positions: `at` along the rail (0-1) and `seat` (0 on the track, 1 in a
+ * pocket). It rests in each pocket for a stretch, then rolls to the next,
+ * fastest midway. A pure function of scroll, not an animation.
  */
 export function railBall(p: number, pockets: number[]): { at: number; seat: number } {
   const n = pockets.length;
   if (n === 0) return { at: p, seat: 0 };
   const first = pockets[0];
   const last = pockets[n - 1];
-  // Before the first pocket and after the last, it simply rolls with the
-  // page, dropping in as it arrives and climbing out as it leaves.
+  // Outside the pockets it rolls with the page, dropping in and climbing out.
   if (p <= first) return { at: p, seat: smoothstep(first - 0.03, first, p) };
   if (p >= last) return { at: p, seat: 1 - smoothstep(last, last + 0.03, p) };
   let i = 0;
@@ -70,27 +59,17 @@ const sameList = (a: number[] | null, b: number[]) =>
   a !== null && a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 0.001);
 
 /**
- * The section index down the right edge on wide screens, drawn as a ball
- * track: one hairline, one pocket per section beside it. Each pocket is a
- * link whose mono label shows on hover and focus and is its accessible
- * name; the current section's has aria-current="location" (from the same
- * scroll-spy as the header nav).
+ * Section index on the right edge of wide screens, drawn as a ball track:
+ * one pocket per section, each a link whose label shows on hover and focus.
+ * The current one has aria-current="location" (the nav's scroll-spy).
  *
- * --pos (0 to 1) places a pocket along the rail. The server renders them
- * evenly spaced, which is also the no-JavaScript layout. After hydration
- * each pocket moves to its section's measured place in the page's scroll
- * range, re-measured whenever the page's size changes (fonts arriving, the
- * project list loading, a resize), and an ivory ball, the wheel's, runs the
- * track with the scroll position: it drops into each section's pocket and
- * sits there while the page passes, then rolls out and on to the next,
- * turning as it rolls (railBall). It follows the scroll directly, with no
- * spring, so it is a readout of the visitor's own scrolling rather than an
- * animation, and is the same under reduced motion.
+ * --pos (0-1) places a pocket. The server spaces them evenly (the no-JS
+ * layout); after hydration each moves to its section's place in the scroll
+ * range, re-measured as the page resizes. The ball follows the scroll
+ * directly (railBall), so it is the same under reduced motion.
  *
- * With hideWhilePinned, and only while the page pins (PIN_QUERY), the whole
- * rail is faded out at the top of the page and fades in as the pinned stage
- * lets go, measured from the stage's place in the page like the ticks are.
- * Never on the server or during hydration, so the HTML shows the rail.
+ * With hideWhilePinned, and only while pinning, the rail fades in as the
+ * pinned stage lets go. Never on the server or while hydrating.
  */
 export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
   const active = useActiveSection(sections.map((s) => s.id));
@@ -102,7 +81,7 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
   const { scrollY, scrollYProgress } = useScroll();
   const last = Math.max(sections.length - 1, 1);
   const pockets = positions ?? sections.map((_, i) => i / last);
-  // Moved pockets move the ball too, without waiting for a scroll.
+  // Re-runs the transforms when pockets move, without a scroll.
   const refresh = useMotionValue(0);
   useEffect(() => {
     refresh.set(refresh.get() + 1);
@@ -112,9 +91,9 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
     ([p, h]) => railBall(p as number, pockets).at * (h as number),
   );
   const markerX = useTransform([scrollYProgress, refresh], ([p]) => -SEAT_DEPTH * railBall(p as number, pockets).seat);
-  // Rolling: a turn for every 2πr of track.
+  // One turn per 2πr of travel.
   const markerTurn = useTransform(markerY, (y) => (y / BALL_R) * (180 / Math.PI));
-  // The scroll positions where the pin ends and where the fade-in starts.
+  // Scroll positions where the pin ends and the fade-in starts.
   const pinEnd = useMotionValue(0);
   const fadeFrom = useMotionValue(0);
   const railOpacity = useTransform([scrollY, fadeFrom, pinEnd], ([y, from, end]) => {
@@ -134,8 +113,7 @@ export function IndexRail({ sections, hideWhilePinned }: IndexRailProps) {
       if (track) trackHeight.set(track.clientHeight);
       const stage = hideWhilePinned ? document.getElementById(hideWhilePinned) : null;
       if (stage) {
-        // A sticky stage is pinned from the page's top until its container's
-        // end meets the window's: that is the scroll range of the hand-off.
+        // A sticky stage pins until its container's bottom meets the viewport's.
         const rect = stage.getBoundingClientRect();
         const end = rect.bottom + window.scrollY - window.innerHeight;
         const start = Math.max(0, rect.top + window.scrollY);
