@@ -18,6 +18,32 @@ How to read it:
 Three were checked against your public DMS repository (`Test` branch,
 pushed 2025-11-25) rather than asked: C39, C41 and C42.
 
+## Status on 2026-11-15 (after the redesign went live)
+
+The skills list now shows only a name and the number of the project it was
+used in, so for C15 to C21 only the credited project matters.
+
+- **Nothing to decide (gone or done):** C1 to C3, C4 (no degree line on the
+  page now), C5, C7 to C13, C14, C17, C23, C24 to C26, C29, N1 to N5.
+- **Your answer needed (10):** C19, C22, C31, C33, C40, C43, C45, C47, C48,
+  C54.
+- **Your yes needed (as proposed below, 17):** C15, C16, C18, C20, C21, C34,
+  C36, C37, C38, C39, C44, C49, C50, C51, C52, C53, C55.
+- **Links still empty (11):** RxFlow demo video; Alice live site and
+  repository; Sketch2Photo repository and sample outputs; Portfolio v2 live
+  site (C52); DURB, Superhero API, iFinance, Mail Client and Distance Vector
+  Routing repositories. Give a URL, or say to remove the link.
+
+### Redesign copy still in draft
+
+| Where | Draft |
+|---|---|
+| Spin plate | "Place your bets", "No more bets", "Dealt in the work below", "The zero is the joker" |
+| Spin plate, screen readers | "No more bets." / "Landed on 1. RxFlow is dealt in the work below." / "Landed on 0, the joker." |
+| Joker card | "That's the deck" / "All thirteen, face up. If one of them is close to what you need, tell me about it." / "Get in touch" |
+| Privacy, Server logs (new) | "I count page views from these logs, on the server itself, to see how many people visit. The counts are only totals per day and per page; nothing is sent anywhere." |
+| Résumé link (new) | Hero and footer: "Résumé"; contact: "Résumé" then "PDF, 120 kB" (its real size) |
+
 ## Head tags and hero
 
 | # | Now | Proposal |
